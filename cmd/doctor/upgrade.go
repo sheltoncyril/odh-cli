@@ -8,6 +8,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	doctorcmd "github.com/lburgazzoli/odh-cli/pkg/cmd/doctor"
+	"github.com/lburgazzoli/odh-cli/pkg/cmd/doctor/upgrade"
 )
 
 const (
@@ -58,7 +59,7 @@ func AddUpgradeCommand(parent *cobra.Command, flags *genericclioptions.ConfigFla
 	}
 
 	sharedOpts := doctorcmd.NewSharedOptions(streams)
-	opts := doctorcmd.NewUpgradeOptions(sharedOpts)
+	opts := upgrade.NewOptions(sharedOpts)
 
 	// Use the ConfigFlags from parent instead of creating new ones
 	sharedOpts.ConfigFlags = flags

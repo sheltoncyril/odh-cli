@@ -1,10 +1,14 @@
 package doctor
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"path"
 	"time"
+
+	"sigs.k8s.io/yaml"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
@@ -185,4 +189,189 @@ func ValidateCheckSelector(selector string) error {
 	}
 
 	return nil
+}
+
+// CheckResultOutput represents a check result for JSON/YAML output.
+type CheckResultOutput struct {
+	CheckID     string         `json:"checkId"               yaml:"checkId"`
+	CheckName   string         `json:"checkName"             yaml:"checkName"`
+	Category    string         `json:"category"              yaml:"category"`
+	Status      string         `json:"status"                yaml:"status"`
+	Severity    *string        `json:"severity,omitempty"    yaml:"severity,omitempty"`
+	Message     string         `json:"message"               yaml:"message"`
+	Remediation string         `json:"remediation,omitempty" yaml:"remediation,omitempty"`
+	Details     map[string]any `json:"details,omitempty"     yaml:"details,omitempty"`
+}
+
+// LintOutput represents the full lint output for JSON/YAML.
+type LintOutput struct {
+	Components   []CheckResultOutput `json:"components"   yaml:"components"`
+	Services     []CheckResultOutput `json:"services"     yaml:"services"`
+	Dependencies []CheckResultOutput `json:"dependencies" yaml:"dependencies"`
+	Workloads    []CheckResultOutput `json:"workloads"    yaml:"workloads"`
+	Summary      struct {
+		Total  int `json:"total"  yaml:"total"`
+		Passed int `json:"passed" yaml:"passed"`
+		Failed int `json:"failed" yaml:"failed"`
+	} `json:"summary" yaml:"summary"`
+}
+
+// FilterResultsBySeverity filters check results based on minimum severity level.
+func FilterResultsBySeverity(
+	resultsByCategory map[check.CheckCategory][]check.CheckExecution,
+	minSeverity MinimumSeverity,
+) map[check.CheckCategory][]check.CheckExecution {
+	// If no filtering requested, return original results
+	if minSeverity == MinimumSeverityAll {
+		return resultsByCategory
+	}
+
+	filtered := make(map[check.CheckCategory][]check.CheckExecution)
+	for category, results := range resultsByCategory {
+		var categoryResults []check.CheckExecution
+		for _, result := range results {
+			// Always include pass/error results (no severity)
+			// Include results that match the minimum severity filter
+			if minSeverity.ShouldInclude(result.Result.Severity) {
+				categoryResults = append(categoryResults, result)
+			}
+		}
+		filtered[category] = categoryResults
+	}
+
+	return filtered
+}
+
+// OutputTable is a shared function for outputting check results in table format.
+func OutputTable(out io.Writer, resultsByCategory map[check.CheckCategory][]check.CheckExecution) error {
+	categories := []check.CheckCategory{
+		check.CategoryComponent,
+		check.CategoryService,
+		check.CategoryDependency,
+		check.CategoryWorkload,
+	}
+
+	totalChecks := 0
+	totalPassed := 0
+	totalFailed := 0
+
+	for _, category := range categories {
+		results := resultsByCategory[category]
+		if len(results) == 0 {
+			continue
+		}
+
+		_, _ = fmt.Fprintf(out, "\n%s Checks:\n", category)
+		_, _ = fmt.Fprintln(out, "---")
+
+		for _, exec := range results {
+			totalChecks++
+
+			status := "✓"
+			if exec.Result.IsFailing() {
+				status = "✗"
+				totalFailed++
+			} else {
+				totalPassed++
+			}
+
+			severity := ""
+			if exec.Result.Severity != nil {
+				severity = fmt.Sprintf("[%s] ", *exec.Result.Severity)
+			}
+
+			_, _ = fmt.Fprintf(out, "%s %s %s- %s\n", status, exec.Check.Name(), severity, exec.Result.Message)
+
+			if exec.Result.Remediation != "" && exec.Result.IsFailing() {
+				_, _ = fmt.Fprintf(out, "  Remediation: %s\n", exec.Result.Remediation)
+			}
+		}
+	}
+
+	_, _ = fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out, "Summary:")
+	_, _ = fmt.Fprintf(out, "  Total: %d | Passed: %d | Failed: %d\n", totalChecks, totalPassed, totalFailed)
+
+	return nil
+}
+
+// OutputJSON is a shared function for outputting check results in JSON format.
+func OutputJSON(out io.Writer, resultsByCategory map[check.CheckCategory][]check.CheckExecution) error {
+	output := ConvertToOutputFormat(resultsByCategory)
+
+	encoder := json.NewEncoder(out)
+	encoder.SetIndent("", "  ")
+
+	if err := encoder.Encode(output); err != nil {
+		return fmt.Errorf("encoding JSON: %w", err)
+	}
+
+	return nil
+}
+
+// OutputYAML is a shared function for outputting check results in YAML format.
+func OutputYAML(out io.Writer, resultsByCategory map[check.CheckCategory][]check.CheckExecution) error {
+	output := ConvertToOutputFormat(resultsByCategory)
+
+	yamlBytes, err := yaml.Marshal(output)
+	if err != nil {
+		return fmt.Errorf("encoding YAML: %w", err)
+	}
+
+	_, _ = fmt.Fprint(out, string(yamlBytes))
+
+	return nil
+}
+
+// ConvertToOutputFormat converts check executions to output format.
+func ConvertToOutputFormat(resultsByCategory map[check.CheckCategory][]check.CheckExecution) *LintOutput {
+	output := &LintOutput{
+		Components:   make([]CheckResultOutput, 0),
+		Services:     make([]CheckResultOutput, 0),
+		Dependencies: make([]CheckResultOutput, 0),
+		Workloads:    make([]CheckResultOutput, 0),
+	}
+
+	for category, results := range resultsByCategory {
+		for _, exec := range results {
+			var severityStr *string
+			if exec.Result.Severity != nil {
+				s := string(*exec.Result.Severity)
+				severityStr = &s
+			}
+
+			result := CheckResultOutput{
+				CheckID:     exec.Check.ID(),
+				CheckName:   exec.Check.Name(),
+				Category:    string(exec.Check.Category()),
+				Status:      string(exec.Result.Status),
+				Severity:    severityStr,
+				Message:     exec.Result.Message,
+				Remediation: exec.Result.Remediation,
+				Details:     exec.Result.Details,
+			}
+
+			output.Summary.Total++
+			if exec.Result.IsFailing() {
+				output.Summary.Failed++
+			} else {
+				output.Summary.Passed++
+			}
+
+			switch category {
+			case check.CategoryComponent:
+				output.Components = append(output.Components, result)
+			case check.CategoryService:
+				output.Services = append(output.Services, result)
+			case check.CategoryDependency:
+				output.Dependencies = append(output.Dependencies, result)
+			case check.CategoryWorkload:
+				output.Workloads = append(output.Workloads, result)
+			default:
+				// Unreachable: all check categories are handled above
+			}
+		}
+	}
+
+	return output
 }

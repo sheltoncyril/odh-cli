@@ -1,4 +1,4 @@
-package doctor
+package upgrade
 
 import (
 	"context"
@@ -7,13 +7,14 @@ import (
 
 	"github.com/blang/semver/v4"
 
+	"github.com/lburgazzoli/odh-cli/pkg/cmd/doctor"
 	"github.com/lburgazzoli/odh-cli/pkg/doctor/check"
 	"github.com/lburgazzoli/odh-cli/pkg/doctor/version"
 )
 
-// UpgradeOptions contains options for the upgrade command.
-type UpgradeOptions struct {
-	*SharedOptions
+// Options contains options for the upgrade command.
+type Options struct {
+	*doctor.SharedOptions
 
 	// TargetVersion is the target OpenShift AI version for upgrade assessment
 	TargetVersion string
@@ -22,15 +23,15 @@ type UpgradeOptions struct {
 	parsedTargetVersion *semver.Version
 }
 
-// NewUpgradeOptions creates a new UpgradeOptions with defaults.
-func NewUpgradeOptions(shared *SharedOptions) *UpgradeOptions {
-	return &UpgradeOptions{
+// NewOptions creates a new Options with defaults.
+func NewOptions(shared *doctor.SharedOptions) *Options {
+	return &Options{
 		SharedOptions: shared,
 	}
 }
 
-// Complete populates UpgradeOptions and performs pre-validation setup.
-func (o *UpgradeOptions) Complete() error {
+// Complete populates Options and performs pre-validation setup.
+func (o *Options) Complete() error {
 	// Complete shared options (creates client)
 	if err := o.SharedOptions.Complete(); err != nil {
 		return fmt.Errorf("completing shared options: %w", err)
@@ -47,7 +48,7 @@ func (o *UpgradeOptions) Complete() error {
 }
 
 // Validate checks that all required options are valid.
-func (o *UpgradeOptions) Validate() error {
+func (o *Options) Validate() error {
 	// Validate shared options
 	if err := o.SharedOptions.Validate(); err != nil {
 		return fmt.Errorf("validating shared options: %w", err)
@@ -67,7 +68,7 @@ func (o *UpgradeOptions) Validate() error {
 }
 
 // Run executes the upgrade command.
-func (o *UpgradeOptions) Run(ctx context.Context) error {
+func (o *Options) Run(ctx context.Context) error {
 	// Create context with timeout to prevent hanging on slow clusters
 	ctx, cancel := context.WithTimeout(ctx, o.Timeout)
 	defer cancel()
@@ -141,7 +142,7 @@ func (o *UpgradeOptions) Run(ctx context.Context) error {
 	}
 
 	// Filter results by minimum severity if specified
-	filteredResults := filterResultsBySeverity(resultsByCategory, o.MinSeverity)
+	filteredResults := doctor.FilterResultsBySeverity(resultsByCategory, o.MinSeverity)
 
 	// Format and output results (reuse lint formatting logic)
 	if err := o.formatAndOutputUpgradeResults(currentVersion.Version, filteredResults); err != nil {
@@ -169,31 +170,43 @@ func (o *UpgradeOptions) Run(ctx context.Context) error {
 }
 
 // formatAndOutputUpgradeResults formats upgrade assessment results.
-func (o *UpgradeOptions) formatAndOutputUpgradeResults(currentVer string, resultsByCategory map[check.CheckCategory][]check.CheckExecution) error {
+func (o *Options) formatAndOutputUpgradeResults(currentVer string, resultsByCategory map[check.CheckCategory][]check.CheckExecution) error {
 	switch o.OutputFormat {
-	case OutputFormatTable:
+	case doctor.OutputFormatTable:
 		return o.outputUpgradeTable(currentVer, resultsByCategory)
-	case OutputFormatJSON:
-		return outputJSON(o.Out, resultsByCategory)
-	case OutputFormatYAML:
-		return outputYAML(o.Out, resultsByCategory)
+	case doctor.OutputFormatJSON:
+		if err := doctor.OutputJSON(o.Out, resultsByCategory); err != nil {
+			return fmt.Errorf("outputting JSON: %w", err)
+		}
+
+		return nil
+	case doctor.OutputFormatYAML:
+		if err := doctor.OutputYAML(o.Out, resultsByCategory); err != nil {
+			return fmt.Errorf("outputting YAML: %w", err)
+		}
+
+		return nil
 	default:
 		return fmt.Errorf("unsupported output format: %s", o.OutputFormat)
 	}
 }
 
 // outputUpgradeTable outputs upgrade results in table format with header.
-func (o *UpgradeOptions) outputUpgradeTable(currentVer string, resultsByCategory map[check.CheckCategory][]check.CheckExecution) error {
+func (o *Options) outputUpgradeTable(currentVer string, resultsByCategory map[check.CheckCategory][]check.CheckExecution) error {
 	_, _ = fmt.Fprintln(o.Out)
 	_, _ = fmt.Fprintf(o.Out, "UPGRADE READINESS: %s → %s\n", currentVer, o.TargetVersion)
 	_, _ = fmt.Fprintln(o.Out, "=============================================================")
 
 	// Reuse the lint table output logic
-	return outputTable(o.Out, resultsByCategory)
+	if err := doctor.OutputTable(o.Out, resultsByCategory); err != nil {
+		return fmt.Errorf("outputting table: %w", err)
+	}
+
+	return nil
 }
 
 // determineExitCode returns an error if fail-on conditions are met.
-func (o *UpgradeOptions) determineExitCode(resultsByCategory map[check.CheckCategory][]check.CheckExecution) error {
+func (o *Options) determineExitCode(resultsByCategory map[check.CheckCategory][]check.CheckExecution) error {
 	var hasCritical, hasWarning bool
 
 	for _, results := range resultsByCategory {

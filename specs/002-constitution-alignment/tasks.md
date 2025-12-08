@@ -84,7 +84,7 @@ This project follows the odh-cli structure:
 - [x] T018 [US2] Update mock method calls to use testify/mock pattern (e.g., mockCheck.On("ID").Return("test")) in pkg/doctor/check/selector_test.go
 - [x] T019 [US2] Run make test to verify selector tests pass with centralized mock
 - [x] T020 [US2] Run make check to verify linting compliance
-- [ ] T021 [US2] Commit: T015-T020: Centralize MockCheck using testify/mock framework
+- [x] T021 [US2] Commit: T015-T020: Centralize MockCheck using testify/mock framework
 
 **Checkpoint**: At this point, all mocks are centralized, no inline mocks remain, and all tests pass
 

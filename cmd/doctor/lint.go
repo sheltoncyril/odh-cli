@@ -8,6 +8,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	doctorcmd "github.com/lburgazzoli/odh-cli/pkg/cmd/doctor"
+	"github.com/lburgazzoli/odh-cli/pkg/cmd/doctor/lint"
 )
 
 const (
@@ -57,7 +58,7 @@ func AddLintCommand(parent *cobra.Command, flags *genericclioptions.ConfigFlags)
 	}
 
 	sharedOpts := doctorcmd.NewSharedOptions(streams)
-	opts := doctorcmd.NewLintOptions(sharedOpts)
+	opts := lint.NewOptions(sharedOpts)
 
 	// Use the ConfigFlags from parent instead of creating new ones
 	sharedOpts.ConfigFlags = flags
