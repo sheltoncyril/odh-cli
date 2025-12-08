@@ -29,9 +29,11 @@ Follow-up TODOs:
     - Move pkg/doctor/checks/components/kserve_serverless_removal.go to pkg/doctor/checks/components/kserve/kserve.go
     - Update all test files accordingly
     - Update imports across codebase
-  ⚠ Move MockCheck from selector_test.go to pkg/util/test/mocks/check.go
-  ⚠ Refactor inline mocks to use testify/mock
-  ⚠ Refactor pkg/cmd/doctor/ structure per Principle XI
+  ✅ Move MockCheck from selector_test.go to pkg/util/test/mocks/check.go (2025-12-08)
+  ✅ Refactor inline mocks to use testify/mock (2025-12-08)
+  ✅ Refactor pkg/cmd/doctor/ structure per Principle XI (2025-12-08)
+  ✅ Remove obvious comments per Code Comments standard (2025-12-08)
+  ✅ Refactor test assertions to use MatchFields pattern (2025-12-08)
 
 Rationale for MINOR bump (1.11.0 → 1.12.0):
 - New package organization guidance added (Diagnostic Check Package Isolation)
