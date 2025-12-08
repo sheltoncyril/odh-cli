@@ -7,7 +7,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 )
 
-// CheckTarget represents the target environment for check execution.
+// CheckTarget holds all context needed for executing diagnostic checks, including cluster version and optional resource.
 type CheckTarget struct {
 	// Client provides access to Kubernetes API for querying resources
 	Client *client.Client

@@ -8,7 +8,7 @@ import (
 	"k8s.io/client-go/discovery"
 )
 
-// GetGroupResources returns all API resources for a given group.
+// GetGroupResources queries the API server for all resources belonging to the specified group.
 func GetGroupResources(
 	discoveryClient discovery.DiscoveryInterface,
 	groupName string,
@@ -32,7 +32,8 @@ func GetGroupResources(
 	return resources, nil
 }
 
-// GetGroupVersionResources returns all API resources for a specific group and version.
+// GetGroupVersionResources queries the API server for resources matching the specified group and version.
+// Tolerates partial errors from the discovery client to handle CRDs gracefully.
 func GetGroupVersionResources(
 	discoveryClient discovery.DiscoveryInterface,
 	groupVersion schema.GroupVersion,

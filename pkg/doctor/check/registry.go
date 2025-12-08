@@ -33,7 +33,7 @@ func (r *CheckRegistry) Register(check Check) error {
 	return nil
 }
 
-// Get retrieves a check by ID.
+// Get looks up a check by ID, returning the check and whether it exists.
 func (r *CheckRegistry) Get(id string) (Check, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

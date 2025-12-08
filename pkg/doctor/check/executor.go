@@ -11,7 +11,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
-// CheckExecution represents the result of executing a single check.
+// CheckExecution bundles a check with its execution result and any error encountered.
 type CheckExecution struct {
 	Check  Check
 	Result *DiagnosticResult

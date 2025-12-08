@@ -20,7 +20,7 @@ func (f *OutputFormat) String() string {
 	return string(*f)
 }
 
-// Set sets the output format from a string value.
+// Set implements the pflag.Value interface for OutputFormat.
 func (f *OutputFormat) Set(v string) error {
 	switch v {
 	case string(JSON), string(Table):

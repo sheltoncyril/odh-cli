@@ -123,13 +123,12 @@ func (c *Client) List(ctx context.Context, resourceType resources.ResourceType, 
 	return c.ListResources(ctx, resourceType.GVR(), opts...)
 }
 
-// GetResource retrieves a single resource by name using ResourceType
-// This is a convenience wrapper around Get that accepts ResourceType.
+// GetResource is a convenience wrapper around Get that accepts ResourceType.
 func (c *Client) GetResource(ctx context.Context, resourceType resources.ResourceType, name string, opts ...GetOption) (*unstructured.Unstructured, error) {
 	return c.Get(ctx, resourceType.GVR(), name, opts...)
 }
 
-// GetSingleton retrieves the singleton instance of a resource type (typically only one exists)
+// GetSingleton expects exactly one instance of the resource type to exist.
 // Returns error if zero or multiple instances found.
 func (c *Client) GetSingleton(ctx context.Context, resourceType resources.ResourceType) (*unstructured.Unstructured, error) {
 	items, err := c.List(ctx, resourceType)
@@ -149,22 +148,22 @@ func (c *Client) GetSingleton(ctx context.Context, resourceType resources.Resour
 	return &items[0], nil
 }
 
-// GetDataScienceCluster retrieves the DataScienceCluster singleton.
+// GetDataScienceCluster is a convenience wrapper for retrieving the cluster's DataScienceCluster resource.
 func (c *Client) GetDataScienceCluster(ctx context.Context) (*unstructured.Unstructured, error) {
 	return c.GetSingleton(ctx, resources.DataScienceCluster)
 }
 
-// GetDSCInitialization retrieves the DSCInitialization singleton.
+// GetDSCInitialization is a convenience wrapper for retrieving the cluster's DSCInitialization resource.
 func (c *Client) GetDSCInitialization(ctx context.Context) (*unstructured.Unstructured, error) {
 	return c.GetSingleton(ctx, resources.DSCInitialization)
 }
 
-// GetConfig configures resource retrieval.
+// GetConfig holds options for customizing Get operations (e.g., namespace scope).
 type GetConfig struct {
 	Namespace string
 }
 
-// GetOption is an option for configuring Get.
+// GetOption is a functional option for configuring Get operations.
 type GetOption = util.Option[GetConfig]
 
 // InNamespace specifies the namespace for the resource (optional for cluster-scoped).
@@ -174,7 +173,7 @@ func InNamespace(ns string) GetOption {
 	})
 }
 
-// Get retrieves a single resource by name.
+// Get retrieves a single resource by name, automatically handling namespace vs cluster-scoped resources.
 func (c *Client) Get(ctx context.Context, gvr schema.GroupVersionResource, name string, opts ...GetOption) (*unstructured.Unstructured, error) {
 	cfg := &GetConfig{}
 	util.ApplyOptions(cfg, opts...)

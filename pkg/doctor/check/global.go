@@ -11,7 +11,7 @@ import (
 //nolint:gochecknoglobals // Required for auto-registration pattern
 var globalRegistry = NewRegistry()
 
-// GetGlobalRegistry returns the global check registry.
+// GetGlobalRegistry provides access to the shared check registry used for auto-registration.
 func GetGlobalRegistry() *CheckRegistry {
 	return globalRegistry
 }

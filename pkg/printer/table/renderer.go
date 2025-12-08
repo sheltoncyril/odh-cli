@@ -193,13 +193,13 @@ func (r *Renderer[T]) Render() error {
 	return nil
 }
 
-// SetHeaders updates the table headers (useful for dynamic header configuration).
+// SetHeaders configures table headers dynamically after renderer creation.
 func (r *Renderer[T]) SetHeaders(headers ...string) {
 	r.headers = headers
 	r.table.Header(headers)
 }
 
-// GetHeaders returns the current headers.
+// GetHeaders returns the currently configured table headers.
 func (r *Renderer[T]) GetHeaders() []string {
 	return r.headers
 }

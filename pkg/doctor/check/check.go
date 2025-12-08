@@ -6,7 +6,7 @@ import (
 	"github.com/blang/semver/v4"
 )
 
-// CheckCategory represents the category of a check.
+// CheckCategory classifies checks into logical groups (component, service, workload, dependency).
 type CheckCategory string
 
 const (
