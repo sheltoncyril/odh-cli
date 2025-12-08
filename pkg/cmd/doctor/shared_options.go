@@ -11,9 +11,11 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"github.com/lburgazzoli/odh-cli/pkg/doctor/check"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/util/iostreams"
 )
 
 // OutputFormat represents the output format for doctor commands.
@@ -86,8 +88,8 @@ func (m MinimumSeverity) ShouldInclude(severity *check.Severity) bool {
 
 // SharedOptions contains options common to all doctor subcommands.
 type SharedOptions struct {
-	// IOStreams provides access to stdin, stdout, stderr
-	genericclioptions.IOStreams
+	// IO provides structured access to stdin, stdout, stderr with convenience methods
+	IO *iostreams.IOStreams
 
 	// ConfigFlags provides access to kubeconfig and context
 	ConfigFlags *genericclioptions.ConfigFlags
@@ -115,7 +117,7 @@ type SharedOptions struct {
 }
 
 // NewSharedOptions creates a new SharedOptions with defaults.
-func NewSharedOptions(streams genericclioptions.IOStreams) *SharedOptions {
+func NewSharedOptions(streams genericiooptions.IOStreams) *SharedOptions {
 	return &SharedOptions{
 		ConfigFlags:    genericclioptions.NewConfigFlags(true),
 		OutputFormat:   OutputFormatTable,
@@ -124,7 +126,11 @@ func NewSharedOptions(streams genericclioptions.IOStreams) *SharedOptions {
 		FailOnCritical: true,               // Exit with error on critical findings (default)
 		FailOnWarning:  false,              // Don't exit on warnings by default
 		Timeout:        DefaultTimeout,     // Default timeout to prevent hanging on slow clusters
-		IOStreams:      streams,
+		IO: &iostreams.IOStreams{
+			In:     streams.In,
+			Out:    streams.Out,
+			ErrOut: streams.ErrOut,
+		},
 	}
 }
 

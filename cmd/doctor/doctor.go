@@ -13,8 +13,9 @@ const (
 The doctor command provides diagnostic and validation tools for OpenShift AI clusters.
 
 Available subcommands:
-  lint     - Validate current cluster configuration and report issues
-  upgrade  - Assess readiness for upgrading to a target version
+  lint  - Validate current cluster configuration or assess upgrade readiness
+          Use without --version to validate current state
+          Use with --version to assess upgrade readiness to a target version
 `
 )
 
@@ -28,7 +29,6 @@ func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 
 	// Add subcommands
 	AddLintCommand(cmd, flags)
-	AddUpgradeCommand(cmd, flags)
 
 	root.AddCommand(cmd)
 }

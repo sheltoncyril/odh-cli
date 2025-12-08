@@ -2,19 +2,33 @@
 ============================================================================
 SYNC IMPACT REPORT
 ============================================================================
-Version Change: 1.13.0 → 1.14.0
-Modified Principles: None
+Version Change: 1.14.0 → 1.15.0
+Modified Principles:
+  - Principle II: Extensible Command Structure
+    - Added Command interface requirement (Complete, Validate, Run, AddFlags)
+    - Changed naming: Options → Command, NewOptions → NewCommand
+    - Changed file naming: options.go → <command>.go
+    - Commands now initialize their own SharedOptions
+  - Principle IV: Functional Options Pattern
+    - Extended to support BOTH struct initialization AND functional options
+    - Struct initialization is preferred for simplicity
+    - Functional options remain available for complex cases
+    - Options code in *_options.go files
 Added Sections:
-  - Development Standards: Code Comments
-    - Comments MUST NOT state obvious facts
-    - Comments SHOULD explain WHY, not WHAT
-    - Required only for non-obvious choices, workarounds, complex logic, public APIs
-    - Includes examples of prohibited vs good comments
+  - Development Standards: IOStreams Wrapper
+    - Commands MUST use IOStreams wrapper with utility methods
+    - Auto-formatting with Fprintf, Fprintln methods
+    - Eliminates repetitive fmt.Fprintf(o.Out, ...) patterns
+  - Development Standards: Deprecated API Avoidance
+    - Code MUST NOT use deprecated methods unless no alternative exists
+  - Development Workflow: Lint-Fix-First
+    - MUST run make lint-fix before manual issue resolution
+    - Automates formatting, import organization, and trivial fixes
 Modified Sections:
-  - Principle VI: Test-First Development: Gomega Assertions
-    - Expanded guidance to explicitly prohibit individual field assertions
-    - Added MatchFields example for multiple field validation
-    - Added clear examples of bad vs good struct testing patterns
+  - Principle XI: Command Package Isolation
+    - Updated to reflect merged lint command (no separate upgrade)
+    - Lint command supports optional --version flag for upgrade mode
+    - Checks detect behavior by comparing current vs target version
 Removed Sections: None
 Templates Requiring Updates:
   ✅ .specify/templates/plan-template.md - Generic template, gates auto-populate from constitution
@@ -23,24 +37,21 @@ Templates Requiring Updates:
   ✅ .specify/templates/agent-file-template.md - Generic template, intentionally not constitution-specific
   ✅ .specify/templates/checklist-template.md - Generic template, intentionally not constitution-specific
 Follow-up TODOs:
-  ✅ Refactor existing checks to follow package isolation pattern (Already completed):
-    - All checks in isolated packages (components/{codeflare,kserve,kueue,modelmesh})
-    - All test files co-located with implementations
-    - All imports updated across codebase
-  ✅ Move MockCheck from selector_test.go to pkg/util/test/mocks/check.go (2025-12-08)
-  ✅ Refactor inline mocks to use testify/mock (2025-12-08)
-  ✅ Refactor pkg/cmd/doctor/ structure per Principle XI (2025-12-08)
-  ✅ Remove obvious comments per Code Comments standard (2025-12-08)
-  ✅ Refactor test assertions to use MatchFields pattern (2025-12-08)
+  ✅ Implement IOStreams wrapper in pkg/util/iostreams/
+  ✅ Merge lint and upgrade commands into single lint command with optional --version
+  ✅ Refactor command structs: Options → Command, options.go → lint.go
+  ✅ Implement Command interface with AddFlags method
+  ✅ Update all commands to support both struct and functional options patterns
+  ✅ Audit codebase for deprecated API usage and replace where possible
 
-Rationale for MINOR bump (1.11.0 → 1.12.0):
-- New package organization guidance added (Diagnostic Check Package Isolation)
-- Existing checks violate new guidance (requires refactoring)
-- Backward compatible at runtime (no breaking changes to CLI)
-- Improves code organization and maintainability
-- Aligns with Package Granularity principle (focused packages)
-- Prevents check package bloat as more checks are added
-- Makes check dependencies and boundaries clearer
+Rationale for MINOR bump (1.14.0 → 1.15.0):
+- Significant command structure refactoring (Options → Command, interface introduction)
+- IOStreams wrapper improves code quality and reduces boilerplate
+- Merged command structure (lint + upgrade) simplifies user experience
+- Backward compatible at CLI level (flags and behavior preserved)
+- Breaking changes at code level (struct/function renaming) but not user-facing
+- Functional options extension supports both simple and complex use cases
+- Workflow improvements (lint-fix-first) improve developer efficiency
 ============================================================================
 -->
 
@@ -56,9 +67,49 @@ The CLI MUST function as a native kubectl plugin following kubectl UX patterns. 
 
 ### II. Extensible Command Structure
 
-All commands MUST follow the modular Cobra-based pattern separating command definition (cmd/) from business logic (pkg/cmd/). New commands MUST be independently testable without Cobra dependencies. Each command MUST implement the Complete/Validate/Run pattern for consistent lifecycle management.
+All commands MUST follow the modular Cobra-based pattern separating command definition (cmd/) from business logic (pkg/cmd/). New commands MUST be independently testable without Cobra dependencies. Each command MUST implement the Command interface for consistent lifecycle management.
 
-**Rationale**: Separation of concerns enables independent testing, code reuse, and maintains a consistent structure as the CLI grows. This pattern is standard in kubectl plugins and kubectl itself.
+**Command Interface Requirements**:
+- All command implementations MUST define a `Command` struct (NOT `Options`)
+- Constructor MUST be named `NewCommand()` (NOT `NewOptions()`)
+- Implementation file MUST be named `<command>.go` (NOT `options.go`)
+- Command MUST implement the following methods:
+  - `Complete() error` - Populate fields, create clients, parse inputs
+  - `Validate() error` - Validate all required fields and constraints
+  - `Run(ctx context.Context) error` - Execute the command logic
+  - `AddFlags(fs *pflag.FlagSet)` - Register command-specific flags
+- Command MUST initialize its own `SharedOptions` internally
+- A `Command` interface SHOULD be defined for type safety and testing
+
+**Example Structure**:
+```go
+// pkg/cmd/doctor/lint/lint.go
+package lint
+
+import "github.com/spf13/pflag"
+
+type Command struct {
+    shared        *doctor.SharedOptions
+    targetVersion string // lint-specific field
+}
+
+func NewCommand(opts CommandOptions) *Command {
+    return &Command{
+        shared:        opts.Shared,
+        targetVersion: opts.TargetVersion,
+    }
+}
+
+func (c *Command) Complete() error { /* ... */ }
+func (c *Command) Validate() error { /* ... */ }
+func (c *Command) Run(ctx context.Context) error { /* ... */ }
+func (c *Command) AddFlags(fs *pflag.FlagSet) {
+    fs.StringVar(&c.targetVersion, "version", "", "Target version for upgrade assessment")
+    // ... other flags
+}
+```
+
+**Rationale**: Separation of concerns enables independent testing, code reuse, and maintains a consistent structure as the CLI grows. The Command interface provides a clear contract for all command implementations, making the codebase more maintainable and testable. Using "Command" instead of "Options" better reflects the struct's purpose as a command executor, not just option storage. The AddFlags method centralizes flag registration, making it easier to test and maintain flag definitions. This pattern is standard in kubectl plugins and kubectl itself.
 
 ### III. Consistent Output Formats
 
@@ -66,11 +117,63 @@ All commands MUST support table (default), JSON, and YAML output formats via the
 
 **Rationale**: Different consumers need different formats. Humans need readable tables, scripts need structured JSON/YAML. Consistency across commands reduces learning curve and enables composition.
 
-### IV. Functional Options Pattern
+### IV. Flexible Initialization Patterns
 
-All struct initialization MUST use the functional options pattern with the generic `Option[T]` interface. Configuration MUST be applied via `ApplyTo(target *T)` method. Options MUST be defined in `*_options.go` or `*_option.go` files.
+All command and struct initialization MUST support BOTH struct-based initialization AND functional options patterns. Struct initialization is PREFERRED for simplicity. Functional options provide advanced configuration capabilities when needed.
 
-**Rationale**: Provides type-safe, extensible, and composable configuration. This pattern is used in k8s-controller-lib and enables backward-compatible API evolution.
+**Initialization Requirements**:
+- Commands MUST accept a struct for configuration (e.g., `NewCommand(opts CommandOptions)`)
+- Commands MAY additionally support functional options (e.g., `NewCommand(WithIO(...), WithConfigFlags(...))`)
+- Option types MUST be defined in `*_options.go` files
+- Functional option functions MUST be named `With<Property>(value)` and return an option function
+- Option functions MUST apply configuration via closure or `ApplyTo(target *T)` method
+
+**Examples**:
+
+**Struct Initialization** (PREFERRED):
+```go
+// pkg/cmd/doctor/lint/lint_options.go
+package lint
+
+type CommandOptions struct {
+    Shared        *doctor.SharedOptions
+    TargetVersion string
+}
+
+// Usage
+cmd := lint.NewCommand(lint.CommandOptions{
+    Shared:        sharedOpts,
+    TargetVersion: "3.0",
+})
+```
+
+**Functional Options** (for complex cases):
+```go
+// pkg/cmd/doctor/lint/lint_options.go
+package lint
+
+type CommandOption func(*Command)
+
+func WithTargetVersion(version string) CommandOption {
+    return func(c *Command) {
+        c.targetVersion = version
+    }
+}
+
+func WithShared(shared *doctor.SharedOptions) CommandOption {
+    return func(c *Command) {
+        c.shared = shared
+    }
+}
+
+// Usage
+cmd := lint.NewCommand(
+    lint.WithShared(sharedOpts),
+    lint.WithTargetVersion("3.0"),
+)
+```
+
+**Rationale**: Struct initialization provides simplicity and type safety for common cases. Functional options enable optional parameters, backward-compatible API evolution, and complex configuration scenarios. Supporting both patterns gives developers flexibility: use struct initialization for straightforward cases, functional options for advanced needs. This aligns with Go community practices where simple structs are preferred unless functional options provide clear benefits.
 
 ### V. Strict Error Handling
 
@@ -196,44 +299,73 @@ The doctor command MUST operate cluster-wide and scan all namespaces. Namespace 
 
 **Rationale**: OpenShift AI is a cluster-wide platform with components, services, and workloads distributed across multiple namespaces. Comprehensive cluster health assessment requires visibility into all namespaces to detect misconfigurations, permission issues, and cross-namespace dependencies. Namespace filtering would create blind spots and incomplete diagnostics. A cluster administrator running diagnostics needs to see the full picture, not a partial view. This aligns with kubectl's cluster-scoped commands (e.g., `kubectl get nodes`, `kubectl get pv`) which don't support namespace filtering because they inherently operate cluster-wide.
 
-### XI. Command Package Isolation
+### XI. Doctor Command Architecture
 
-Each command MUST reside in its own dedicated package under `pkg/cmd/<parent>/<command>`. Commands sharing a parent MUST NOT share the same package. Business logic and option types MUST be isolated per command to enable independent development, testing, and maintenance.
+The `kubectl odh doctor` command provides cluster diagnostics through a unified `lint` subcommand. The lint command supports both current-state validation (linting) and upgrade-readiness assessment (when `--version` flag is provided).
 
-**Package Structure Requirements**:
-- Command business logic MUST be in `pkg/cmd/<parent>/<command>/` (e.g., `pkg/cmd/doctor/lint/`, `pkg/cmd/doctor/upgrade/`)
-- Each command package MUST contain its own `options.go` file with the command's Options struct
-- Shared code between sibling commands MUST be factored into a parent-level package `pkg/cmd/<parent>/shared.go`
-- Cobra wrappers (command registration) MUST be in `cmd/<parent>/<command>.go` (e.g., `cmd/doctor/lint.go`, `cmd/doctor/upgrade.go`)
-- Multiple Cobra wrappers MAY coexist in `cmd/<parent>/` directory, but each MUST delegate to its own `pkg/cmd/<parent>/<command>/` package
+**Command Structure**:
+- Single `lint` subcommand in `pkg/cmd/doctor/lint/`
+- Lint command accepts optional `--version` flag to specify target version
+- When `--version` is omitted or equals current version: validates current cluster state (lint mode)
+- When `--version` differs from current version: assesses upgrade readiness to target version (upgrade mode)
+- Checks detect their execution mode by comparing `target.CurrentVersion` with `target.Version`
+- Same checks used for both modes; checks adapt behavior based on version context
 
-**Example Structure**:
+**Package Structure**:
 ```
 pkg/cmd/doctor/
-├── shared.go              # Shared options, types, utilities
+├── shared_options.go      # SharedOptions (IOStreams, ConfigFlags, output settings)
 ├── lint/
-│   ├── options.go         # LintOptions struct
-│   ├── run.go             # Lint command business logic
-│   └── options_test.go    # Lint tests
-└── upgrade/
-    ├── options.go         # UpgradeOptions struct
-    ├── run.go             # Upgrade command business logic
-    └── options_test.go    # Upgrade tests
+│   ├── lint.go            # Command struct with Complete/Validate/Run/AddFlags
+│   ├── lint_options.go    # CommandOptions struct and functional options
+│   └── lint_test.go       # Command tests
+cmd/doctor/
+├── doctor.go              # Root doctor command
+└── lint.go                # Lint subcommand registration (Cobra wrapper)
+```
+
+**Lint Command Behavior**:
+```bash
+# Lint current cluster state
+kubectl odh doctor lint
+
+# Assess upgrade readiness to version 3.0
+kubectl odh doctor lint --version 3.0
+
+# Same command, different context
+# Checks adapt based on current vs target version comparison
+```
+
+**Check Implementation Pattern**:
+```go
+func (c *Check) Run(ctx context.Context, target *check.CheckTarget) check.CheckResult {
+    // Checks detect mode by version comparison
+    isLintMode := target.Version.Version == target.CurrentVersion.Version
+    isUpgradeMode := target.Version.Version != target.CurrentVersion.Version
+
+    if isUpgradeMode {
+        // Validate upgrade-specific concerns (breaking changes, deprecations)
+        return checkUpgradeReadiness(target)
+    } else {
+        // Validate current state (configuration, availability)
+        return checkCurrentState(target)
+    }
+}
 ```
 
 **Benefits**:
-- Clear separation of concerns between commands
-- Independent versioning and evolution of command logic
-- Reduced merge conflicts when multiple developers work on different commands
-- Easier testing with isolated dependencies
-- Simpler code navigation and discoverability
+- Unified user experience: single command instead of separate `lint` and `upgrade`
+- Simpler mental model: lint validates state, `--version` changes context
+- Check code reuse: same checks handle both lint and upgrade scenarios
+- Consistent output format across both modes
+- Reduced command proliferation and documentation complexity
 
 **Prohibited**:
-- Placing multiple command implementations in a single package (e.g., `pkg/cmd/doctor/` containing both lint and upgrade)
-- Mixing command-specific logic in shared utility packages
-- Circular dependencies between sibling command packages
+- Creating separate `upgrade` subcommand (use `--version` flag on `lint` instead)
+- Duplicate checks for lint vs upgrade (checks MUST adapt to version context)
+- Hard-coding lint-only or upgrade-only logic (checks SHOULD be version-aware)
 
-**Rationale**: As CLI tools grow, command implementations become complex with unique options, validation logic, and execution flows. Isolating each command in its own package prevents tight coupling, enables parallel development, simplifies testing, and makes the codebase more maintainable. This pattern is used by kubectl, helm, and other mature CLI tools where each subcommand is independently developed. Package-level isolation enforces architectural boundaries and prevents accidental dependencies between commands.
+**Rationale**: Combining lint and upgrade into a single command with optional `--version` flag simplifies the CLI surface, reduces code duplication, and provides a more intuitive user experience. Users understand "lint validates cluster state" as a single concept; the `--version` flag simply changes the validation context (current vs target). This approach aligns with kubectl's philosophy of composable flags that modify behavior rather than proliferating subcommands. Checks that adapt to version context are more maintainable than separate check implementations.
 
 ## Development Standards
 
@@ -531,6 +663,164 @@ pkg/doctor/
 
 **Rationale**: Fine-grained packages improve code discoverability, reduce coupling, prevent import cycles, make dependencies explicit, and align with Go's philosophy of small, focused packages. Package names as domain concepts (not actions) make code read naturally (e.g., `check.Execute()` reads as "execute check", not "check execute check"). This pattern is standard in well-designed Go projects like Kubernetes, Docker, and Prometheus.
 
+###IOStreams Wrapper
+
+Commands MUST use an IOStreams wrapper utility to eliminate repetitive formatting boilerplate. The wrapper MUST provide convenience methods that automatically format and write output. Direct use of `fmt.Fprintf(o.Out, ...)` for command output is DISCOURAGED when the wrapper provides equivalent functionality.
+
+**IOStreams Wrapper Requirements**:
+- Wrapper MUST be implemented in `pkg/util/iostreams/`
+- Wrapper MUST provide methods: `Fprintf(format string, args ...any)`, `Fprintln(args ...any)`, `Errorf(format string, args ...any)`, `Errorln(args ...any)`
+- Methods MUST automatically select the correct output stream (Out vs ErrOut)
+- Formatting methods (Fprintf, Errorf) MUST use `fmt.Sprintf` when args are provided
+- Non-formatting methods (Fprintln, Errorln) MUST use `fmt.Fprintln` directly
+- SharedOptions SHOULD embed or contain an instance of the IOStreams wrapper
+
+**Example Implementation**:
+```go
+// pkg/util/iostreams/iostreams.go
+package iostreams
+
+import (
+    "fmt"
+    "io"
+)
+
+type IOStreams struct {
+    In     io.Reader
+    Out    io.Writer
+    ErrOut io.Writer
+}
+
+// Fprintf writes formatted output to Out
+func (s *IOStreams) Fprintf(format string, args ...any) {
+    if len(args) > 0 {
+        _, _ = fmt.Fprintln(s.Out, fmt.Sprintf(format, args...))
+    } else {
+        _, _ = fmt.Fprintln(s.Out, format)
+    }
+}
+
+// Fprintln writes output to Out with newline
+func (s *IOStreams) Fprintln(args ...any) {
+    _, _ = fmt.Fprintln(s.Out, args...)
+}
+
+// Errorf writes formatted error output to ErrOut
+func (s *IOStreams) Errorf(format string, args ...any) {
+    if len(args) > 0 {
+        _, _ = fmt.Fprintln(s.ErrOut, fmt.Sprintf(format, args...))
+    } else {
+        _, _ = fmt.Fprintln(s.ErrOut, format)
+    }
+}
+
+// Errorln writes error output to ErrOut with newline
+func (s *IOStreams) Errorln(args ...any) {
+    _, _ = fmt.Fprintln(s.ErrOut, args...)
+}
+```
+
+**Usage**:
+```go
+// Before (repetitive)
+_, _ = fmt.Fprintf(o.Out, "Detected version: %s\n", version)
+_, _ = fmt.Fprintf(o.ErrOut, "Error: %v\n", err)
+
+// After (clean)
+o.io.Fprintf("Detected version: %s", version)
+o.io.Errorf("Error: %v", err)
+```
+
+**Rationale**: Repetitive `fmt.Fprintf(o.Out, ...)` patterns create visual noise and make code harder to read. An IOStreams wrapper centralizes output handling, reduces boilerplate, automatically manages newlines, and provides a cleaner API for command output. This pattern aligns with DRY principles and improves code maintainability. The automatic selection of output streams (Out vs ErrOut) prevents mistakes where errors are written to stdout instead of stderr.
+
+### Deprecated API Avoidance
+
+Code MUST NOT use deprecated methods, functions, or packages unless no non-deprecated alternative exists. When using deprecated APIs is unavoidable, a comment MUST explain why and reference the tracking issue or upstream bug preventing migration.
+
+**Deprecation Detection**:
+- Use IDE deprecation warnings (GoLand, VSCode with gopls)
+- Check godoc comments for `// Deprecated:` markers
+- Review dependency changelogs when upgrading
+
+**When Deprecated API is Unavoidable**:
+- Add a comment explaining why the deprecated API must be used
+- Reference the upstream issue or limitation preventing migration
+- Create a TODO with a tracking issue for future migration
+- Document the required conditions for migrating away from the deprecated API
+
+**Examples**:
+
+**Good** (avoids deprecated API):
+```go
+// Use current API instead of deprecated NestedString
+value, err := jq.Query(obj, ".spec.field")
+```
+
+**Acceptable** (deprecated but unavoidable):
+```go
+// TODO(issue-123): Migrate to client.List() when streaming support is added
+// Deprecated client.ListWatch() required because client.List() lacks streaming
+resources, err := client.ListWatch(ctx, gvr)
+```
+
+**Bad** (deprecated without justification):
+```go
+// PROHIBITED: using deprecated API without explanation
+value, _ := unstructured.NestedString(obj.Object, "spec", "field")
+```
+
+**Rationale**: Deprecated APIs exist for a reason—they have known issues, security vulnerabilities, or better alternatives. Using deprecated code increases technical debt, creates maintenance burden, and may break in future releases. Avoiding deprecated APIs ensures the codebase stays modern, secure, and maintainable. When deprecated APIs are unavoidable, documenting the reason and creating a migration plan ensures the debt is tracked and addressed systematically.
+
+## Development Workflow
+
+### Lint-Fix-First
+
+Before manually resolving linting issues, you MUST run `make lint-fix` to automatically fix trivial issues. Manual fixes SHOULD only be applied to issues that cannot be auto-fixed.
+
+**Workflow Requirements**:
+- ALWAYS run `make lint-fix` (or equivalent) as the first step when addressing linting failures
+- Run `make lint` after auto-fix to identify remaining issues
+- Manually fix only the issues that auto-fix could not resolve
+- Commit auto-fixed changes separately from manual fixes when appropriate
+
+**Auto-Fixable Issues** (handled by lint-fix):
+- Import organization (gci)
+- Code formatting (gofmt, gofumpt)
+- Unused imports
+- Simplifiable code patterns (gosimple)
+- Some inefficient assignments (ineffassign)
+
+**Manual-Fix-Required Issues**:
+- Logic errors
+- Security vulnerabilities
+- Complex code smells
+- API usage violations
+- Custom linter failures
+
+**Example Workflow**:
+```bash
+# Step 1: Run tests and discover linting failures
+make check
+# Output: 47 linting issues found
+
+# Step 2: Auto-fix trivial issues FIRST
+make lint-fix
+# Output: Fixed 42 issues automatically
+
+# Step 3: Check remaining issues
+make lint
+# Output: 5 issues remaining
+
+# Step 4: Manually fix remaining 5 issues
+# ... edit code ...
+
+# Step 5: Verify all issues resolved
+make check
+# Output: All checks passed
+```
+
+**Rationale**: Auto-fixers resolve trivial formatting and import issues instantly, saving developer time and mental effort. Running lint-fix first prevents wasted effort manually fixing issues that could be automated. This workflow enforces consistent code style, reduces code review noise, and allows developers to focus on substantive issues that require human judgment. The separation of auto-fixed and manual changes improves commit clarity and makes code review more efficient.
+
 ## Quality Gates
 
 ### Continuous Quality Verification
@@ -575,4 +865,4 @@ Constitutional violations MUST be justified in the implementation plan's Complex
 - Phase 1 (Design): Verify command structure follows Complete/Validate/Run pattern, functional options, and fine-grained package organization (focused packages with concise domain names, avoid package bloat)
 - Phase 2 (Implementation): Verify error handling, test coverage (fake client + k3s-envtest), testify/mock for mocking (mocks in pkg/util/test/mocks), JQ-based field access for unstructured objects, centralized GVK/GVR definitions in pkg/resources/types.go, user-facing messages defined as package-level constants (no inline strings), `make check` execution after each implementation, full linting compliance, and one commit per completed task with task ID in commit message
 
-**Version**: 1.14.0 | **Ratified**: 2025-12-05 | **Last Amended**: 2025-12-07
+**Version**: 1.15.0 | **Ratified**: 2025-12-05 | **Last Amended**: 2025-12-08

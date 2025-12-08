@@ -6,20 +6,27 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/genericiooptions"
 
-	doctorcmd "github.com/lburgazzoli/odh-cli/pkg/cmd/doctor"
 	"github.com/lburgazzoli/odh-cli/pkg/cmd/doctor/lint"
 )
 
 const (
 	lintCmdName  = "lint"
-	lintCmdShort = "Validate current OpenShift AI installation"
+	lintCmdShort = "Validate current OpenShift AI installation or assess upgrade readiness"
 	lintCmdLong  = `
-Validates the current OpenShift AI installation and reports configuration issues.
+Validates the current OpenShift AI installation or assesses upgrade readiness.
 
-The lint command performs comprehensive validation across three categories:
+LINT MODE (without --version):
+  Validates the current cluster state and reports configuration issues.
+
+UPGRADE MODE (with --version):
+  Assesses upgrade readiness by comparing current version against target version.
+
+The lint command performs comprehensive validation across four categories:
   - Components: Core OpenShift AI components (Dashboard, Workbenches, etc.)
   - Services: Platform services (OAuth, monitoring, etc.)
+  - Dependencies: External dependencies (CertManager, Kueue, etc.)
   - Workloads: User-created custom resources (Notebooks, InferenceServices, etc.)
 
 Each issue is reported with:
@@ -28,8 +35,11 @@ Each issue is reported with:
   - Remediation guidance for fixing the issue
 
 Examples:
-  # Validate entire cluster
+  # Validate current cluster state
   kubectl odh doctor lint
+
+  # Assess upgrade readiness for version 3.0
+  kubectl odh doctor lint --version 3.0
 
   # Validate with JSON output
   kubectl odh doctor lint -o json
@@ -38,30 +48,36 @@ Examples:
   kubectl odh doctor lint --checks "components/*"
 `
 	lintCmdExample = `
-  # Validate entire cluster
+  # Validate current cluster state
   kubectl odh doctor lint
+
+  # Assess upgrade readiness for version 3.0
+  kubectl odh doctor lint --version 3.0
 
   # Output results in JSON format
   kubectl odh doctor lint -o json
 
   # Run only dashboard-related checks
   kubectl odh doctor lint --checks "*dashboard*"
+
+  # Check upgrade to version 3.1 with critical issues only
+  kubectl odh doctor lint --version 3.1 --severity critical
 `
 )
 
 // AddLintCommand adds the lint subcommand to the doctor command.
 func AddLintCommand(parent *cobra.Command, flags *genericclioptions.ConfigFlags) {
-	streams := genericclioptions.IOStreams{
+	streams := genericiooptions.IOStreams{
 		In:     parent.InOrStdin(),
 		Out:    parent.OutOrStdout(),
 		ErrOut: parent.ErrOrStderr(),
 	}
 
-	sharedOpts := doctorcmd.NewSharedOptions(streams)
-	opts := lint.NewOptions(sharedOpts)
+	// Create command using new pattern (FR-014: SharedOptions initialized internally)
+	command := lint.NewCommand(streams)
 
 	// Use the ConfigFlags from parent instead of creating new ones
-	sharedOpts.ConfigFlags = flags
+	command.ConfigFlags = flags
 
 	cmd := &cobra.Command{
 		Use:     lintCmdName,
@@ -70,33 +86,22 @@ func AddLintCommand(parent *cobra.Command, flags *genericclioptions.ConfigFlags)
 		Example: lintCmdExample,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// Complete phase
-			if err := opts.Complete(); err != nil {
-				return fmt.Errorf("completing lint options: %w", err)
+			if err := command.Complete(); err != nil {
+				return fmt.Errorf("completing lint command: %w", err)
 			}
 
 			// Validate phase
-			if err := opts.Validate(); err != nil {
-				return fmt.Errorf("validating lint options: %w", err)
+			if err := command.Validate(); err != nil {
+				return fmt.Errorf("validating lint command: %w", err)
 			}
 
 			// Run phase
-			return opts.Run(cmd.Context())
+			return command.Run(cmd.Context())
 		},
 	}
 
-	// Add flags
-	cmd.Flags().StringVarP((*string)(&sharedOpts.OutputFormat), "output", "o", string(doctorcmd.OutputFormatTable),
-		"Output format (table|json|yaml)")
-	cmd.Flags().StringVar(&sharedOpts.CheckSelector, "checks", "*",
-		"Glob pattern to filter which checks to run (e.g., 'components/*', '*dashboard*')")
-	cmd.Flags().StringVar((*string)(&sharedOpts.MinSeverity), "severity", "",
-		"Filter results by minimum severity level (critical|warning|info)")
-	cmd.Flags().BoolVar(&sharedOpts.FailOnCritical, "fail-on-critical", true,
-		"Exit with non-zero code if Critical findings detected")
-	cmd.Flags().BoolVar(&sharedOpts.FailOnWarning, "fail-on-warning", false,
-		"Exit with non-zero code if Warning findings detected")
-	cmd.Flags().DurationVar(&sharedOpts.Timeout, "timeout", sharedOpts.Timeout,
-		"Maximum duration for command execution (e.g., 5m, 10m)")
+	// Register flags using AddFlags method
+	command.AddFlags(cmd.Flags())
 
 	parent.AddCommand(cmd)
 }
