@@ -6,7 +6,7 @@ import (
 	"github.com/blang/semver/v4"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/lburgazzoli/odh-cli/pkg/doctor/check"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 )
 
 // MockCheck is a mock implementation of check.Check interface using testify/mock.

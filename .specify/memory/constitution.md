@@ -2,33 +2,19 @@
 ============================================================================
 SYNC IMPACT REPORT
 ============================================================================
-Version Change: 1.14.0 → 1.15.0
+Version Change: 1.15.0 → 1.16.0
 Modified Principles:
-  - Principle II: Extensible Command Structure
-    - Added Command interface requirement (Complete, Validate, Run, AddFlags)
-    - Changed naming: Options → Command, NewOptions → NewCommand
-    - Changed file naming: options.go → <command>.go
-    - Commands now initialize their own SharedOptions
-  - Principle IV: Functional Options Pattern
-    - Extended to support BOTH struct initialization AND functional options
-    - Struct initialization is preferred for simplicity
-    - Functional options remain available for complex cases
-    - Options code in *_options.go files
-Added Sections:
-  - Development Standards: IOStreams Wrapper
-    - Commands MUST use IOStreams wrapper with utility methods
-    - Auto-formatting with Fprintf, Fprintln methods
-    - Eliminates repetitive fmt.Fprintf(o.Out, ...) patterns
-  - Development Standards: Deprecated API Avoidance
-    - Code MUST NOT use deprecated methods unless no alternative exists
-  - Development Workflow: Lint-Fix-First
-    - MUST run make lint-fix before manual issue resolution
-    - Automates formatting, import organization, and trivial fixes
+  - Principle XI: Doctor Command Architecture → Lint Command Architecture
+    - Removed `kubectl odh doctor` parent command entirely
+    - Promoted `lint` to top-level: `kubectl odh lint` (was `kubectl odh doctor lint`)
+    - Renamed `--version` flag to `--target-version` for clarity
+    - Updated package structure: pkg/cmd/doctor/lint/ → pkg/cmd/lint/
+    - Updated cmd structure: cmd/doctor/lint.go → cmd/lint.go
 Modified Sections:
-  - Principle XI: Command Package Isolation
-    - Updated to reflect merged lint command (no separate upgrade)
-    - Lint command supports optional --version flag for upgrade mode
-    - Checks detect behavior by comparing current vs target version
+  - Principle II: Extensible Command Structure - Updated example paths and SharedOptions references
+  - Principle IV: Flexible Initialization Patterns - Updated example paths and SharedOptions references
+  - Development Standards: Code Organization - Added guidance for top-level vs nested commands
+  - Development Standards: Package Granularity - Updated pkg/doctor/ → pkg/lint/ in examples
 Removed Sections: None
 Templates Requiring Updates:
   ✅ .specify/templates/plan-template.md - Generic template, gates auto-populate from constitution
@@ -37,21 +23,22 @@ Templates Requiring Updates:
   ✅ .specify/templates/agent-file-template.md - Generic template, intentionally not constitution-specific
   ✅ .specify/templates/checklist-template.md - Generic template, intentionally not constitution-specific
 Follow-up TODOs:
-  ✅ Implement IOStreams wrapper in pkg/util/iostreams/
-  ✅ Merge lint and upgrade commands into single lint command with optional --version
-  ✅ Refactor command structs: Options → Command, options.go → lint.go
-  ✅ Implement Command interface with AddFlags method
-  ✅ Update all commands to support both struct and functional options patterns
-  ✅ Audit codebase for deprecated API usage and replace where possible
+  ⬜ Remove cmd/doctor/ directory and all doctor subcommand files
+  ⬜ Move cmd/doctor/lint.go → cmd/lint.go
+  ⬜ Move pkg/cmd/doctor/lint/ → pkg/cmd/lint/
+  ⬜ Move pkg/cmd/doctor/shared_options.go → pkg/cmd/lint/shared_options.go
+  ⬜ Rename all --version flags to --target-version in lint command
+  ⬜ Update all help text and examples to use `kubectl odh lint`
+  ⬜ Update all internal references from pkg/cmd/doctor to pkg/cmd/lint
+  ⬜ Update all check package paths from pkg/doctor/ to pkg/lint/
 
-Rationale for MINOR bump (1.14.0 → 1.15.0):
-- Significant command structure refactoring (Options → Command, interface introduction)
-- IOStreams wrapper improves code quality and reduces boilerplate
-- Merged command structure (lint + upgrade) simplifies user experience
-- Backward compatible at CLI level (flags and behavior preserved)
-- Breaking changes at code level (struct/function renaming) but not user-facing
-- Functional options extension supports both simple and complex use cases
-- Workflow improvements (lint-fix-first) improve developer efficiency
+Rationale for MINOR bump (1.15.0 → 1.16.0):
+- Breaking change at CLI level: command path changed from `kubectl odh doctor lint` to `kubectl odh lint`
+- Breaking change: `--version` flag renamed to `--target-version`
+- Package restructuring from doctor → lint affects import paths
+- Simplifies CLI surface by removing intermediary doctor command
+- Improves user experience with clearer flag naming and direct command access
+- No backward compatibility maintained (clean break)
 ============================================================================
 -->
 
@@ -83,13 +70,13 @@ All commands MUST follow the modular Cobra-based pattern separating command defi
 
 **Example Structure**:
 ```go
-// pkg/cmd/doctor/lint/lint.go
+// pkg/cmd/lint/lint.go
 package lint
 
 import "github.com/spf13/pflag"
 
 type Command struct {
-    shared        *doctor.SharedOptions
+    shared        *lint.SharedOptions
     targetVersion string // lint-specific field
 }
 
@@ -104,7 +91,7 @@ func (c *Command) Complete() error { /* ... */ }
 func (c *Command) Validate() error { /* ... */ }
 func (c *Command) Run(ctx context.Context) error { /* ... */ }
 func (c *Command) AddFlags(fs *pflag.FlagSet) {
-    fs.StringVar(&c.targetVersion, "version", "", "Target version for upgrade assessment")
+    fs.StringVar(&c.targetVersion, "target-version", "", "Target version for upgrade assessment")
     // ... other flags
 }
 ```
@@ -132,11 +119,11 @@ All command and struct initialization MUST support BOTH struct-based initializat
 
 **Struct Initialization** (PREFERRED):
 ```go
-// pkg/cmd/doctor/lint/lint_options.go
+// pkg/cmd/lint/lint_options.go
 package lint
 
 type CommandOptions struct {
-    Shared        *doctor.SharedOptions
+    Shared        *lint.SharedOptions
     TargetVersion string
 }
 
@@ -149,7 +136,7 @@ cmd := lint.NewCommand(lint.CommandOptions{
 
 **Functional Options** (for complex cases):
 ```go
-// pkg/cmd/doctor/lint/lint_options.go
+// pkg/cmd/lint/lint_options.go
 package lint
 
 type CommandOption func(*Command)
@@ -160,7 +147,7 @@ func WithTargetVersion(version string) CommandOption {
     }
 }
 
-func WithShared(shared *doctor.SharedOptions) CommandOption {
+func WithShared(shared *lint.SharedOptions) CommandOption {
     return func(c *Command) {
         c.shared = shared
     }
@@ -299,38 +286,36 @@ The doctor command MUST operate cluster-wide and scan all namespaces. Namespace 
 
 **Rationale**: OpenShift AI is a cluster-wide platform with components, services, and workloads distributed across multiple namespaces. Comprehensive cluster health assessment requires visibility into all namespaces to detect misconfigurations, permission issues, and cross-namespace dependencies. Namespace filtering would create blind spots and incomplete diagnostics. A cluster administrator running diagnostics needs to see the full picture, not a partial view. This aligns with kubectl's cluster-scoped commands (e.g., `kubectl get nodes`, `kubectl get pv`) which don't support namespace filtering because they inherently operate cluster-wide.
 
-### XI. Doctor Command Architecture
+### XI. Lint Command Architecture
 
-The `kubectl odh doctor` command provides cluster diagnostics through a unified `lint` subcommand. The lint command supports both current-state validation (linting) and upgrade-readiness assessment (when `--version` flag is provided).
+The `kubectl odh lint` command provides cluster diagnostics supporting both current-state validation (linting) and upgrade-readiness assessment (when `--target-version` flag is provided).
 
 **Command Structure**:
-- Single `lint` subcommand in `pkg/cmd/doctor/lint/`
-- Lint command accepts optional `--version` flag to specify target version
-- When `--version` is omitted or equals current version: validates current cluster state (lint mode)
-- When `--version` differs from current version: assesses upgrade readiness to target version (upgrade mode)
+- Top-level `lint` command in `pkg/cmd/lint/`
+- Lint command accepts optional `--target-version` flag to specify target version
+- When `--target-version` is omitted or equals current version: validates current cluster state (lint mode)
+- When `--target-version` differs from current version: assesses upgrade readiness to target version (upgrade mode)
 - Checks detect their execution mode by comparing `target.CurrentVersion` with `target.Version`
 - Same checks used for both modes; checks adapt behavior based on version context
 
 **Package Structure**:
 ```
-pkg/cmd/doctor/
+pkg/cmd/lint/
 ├── shared_options.go      # SharedOptions (IOStreams, ConfigFlags, output settings)
-├── lint/
-│   ├── lint.go            # Command struct with Complete/Validate/Run/AddFlags
-│   ├── lint_options.go    # CommandOptions struct and functional options
-│   └── lint_test.go       # Command tests
-cmd/doctor/
-├── doctor.go              # Root doctor command
-└── lint.go                # Lint subcommand registration (Cobra wrapper)
+├── lint.go                # Command struct with Complete/Validate/Run/AddFlags
+├── lint_options.go        # CommandOptions struct and functional options
+└── lint_test.go           # Command tests
+cmd/
+└── lint.go                # Lint command registration (Cobra wrapper)
 ```
 
 **Lint Command Behavior**:
 ```bash
 # Lint current cluster state
-kubectl odh doctor lint
+kubectl odh lint
 
 # Assess upgrade readiness to version 3.0
-kubectl odh doctor lint --version 3.0
+kubectl odh lint --target-version 3.0
 
 # Same command, different context
 # Checks adapt based on current vs target version comparison
@@ -354,18 +339,21 @@ func (c *Check) Run(ctx context.Context, target *check.CheckTarget) check.CheckR
 ```
 
 **Benefits**:
-- Unified user experience: single command instead of separate `lint` and `upgrade`
-- Simpler mental model: lint validates state, `--version` changes context
+- Direct access: lint is promoted to top-level command for easier access
+- Simpler mental model: lint validates state, `--target-version` changes context
+- Clear flag naming: `--target-version` explicitly communicates purpose (vs ambiguous `--version`)
 - Check code reuse: same checks handle both lint and upgrade scenarios
 - Consistent output format across both modes
-- Reduced command proliferation and documentation complexity
+- Reduced typing overhead for most commonly used diagnostic functionality
 
 **Prohibited**:
-- Creating separate `upgrade` subcommand (use `--version` flag on `lint` instead)
+- Creating separate `upgrade` command (use `--target-version` flag on `lint` instead)
+- Creating intermediate `doctor` parent command (lint is top-level)
+- Using ambiguous `--version` flag (use explicit `--target-version` instead)
 - Duplicate checks for lint vs upgrade (checks MUST adapt to version context)
 - Hard-coding lint-only or upgrade-only logic (checks SHOULD be version-aware)
 
-**Rationale**: Combining lint and upgrade into a single command with optional `--version` flag simplifies the CLI surface, reduces code duplication, and provides a more intuitive user experience. Users understand "lint validates cluster state" as a single concept; the `--version` flag simply changes the validation context (current vs target). This approach aligns with kubectl's philosophy of composable flags that modify behavior rather than proliferating subcommands. Checks that adapt to version context are more maintainable than separate check implementations.
+**Rationale**: Promoting lint to top-level simplifies the CLI surface and reduces typing for the primary diagnostic command. The `--target-version` flag name is more explicit than `--version`, making the command's intent clearer. Users understand "lint validates cluster state" as a single concept; the `--target-version` flag simply changes the validation context (current vs target). This approach aligns with kubectl's philosophy of direct command access and clear flag naming. Checks that adapt to version context are more maintainable than separate check implementations.
 
 ## Development Standards
 
@@ -377,8 +365,9 @@ Projects MUST follow the standard Go CLI structure:
 - `internal/` - Internal packages not for external use
 
 Commands MUST be organized as:
-- `cmd/<command>/<command>.go` - Minimal Cobra wrapper
-- `pkg/cmd/<command>/<command>.go` - Options struct with Complete/Validate/Run
+- `cmd/<command>.go` - Minimal Cobra wrapper (for top-level commands like lint)
+- `cmd/<parent>/<command>.go` - For nested commands (if parent command exists)
+- `pkg/cmd/<command>/<command>.go` - Command struct with Complete/Validate/Run/AddFlags
 - `pkg/<command>/` - Domain-specific logic (optional)
 
 ### Function Signatures
@@ -613,7 +602,7 @@ Packages MUST be fine-grained and organized by specific domain or functionality.
 
 **Good Package Structure**:
 ```
-pkg/doctor/
+pkg/lint/
     check/          # Check framework and execution (Check interface, CheckTarget)
         registry/   # Check registry management
     version/        # Version detection logic
@@ -635,21 +624,21 @@ pkg/doctor/
 ```
 
 **Diagnostic Check Package Isolation**:
-- Each diagnostic check MUST be in its own dedicated package under `pkg/doctor/checks/<category>/<check>/`
+- Each diagnostic check MUST be in its own dedicated package under `pkg/lint/checks/<category>/<check>/`
 - Package name MUST match the check domain (e.g., `modelmesh`, `kserve`, `dashboard`)
 - Check implementation MUST be in `<check>.go`, tests in `<check>_test.go`
-- Shared check logic MUST be in a clearly named domain-specific package under `pkg/doctor/checks/shared/`
+- Shared check logic MUST be in a clearly named domain-specific package under `pkg/lint/checks/shared/`
 - PROHIBITED: Multiple checks in the same package (e.g., `components/modelmesh.go` + `components/kserve.go`)
 
 **Examples**:
-- **Good**: `pkg/doctor/checks/components/modelmesh/modelmesh.go` - Isolated check
-- **Bad**: `pkg/doctor/checks/components/modelmesh_removal.go` - Multiple checks in same package
-- **Good**: `pkg/doctor/checks/shared/validation/fields.go` - Shared validation logic
-- **Bad**: `pkg/doctor/checks/shared.go` - Unclear domain
+- **Good**: `pkg/lint/checks/components/modelmesh/modelmesh.go` - Isolated check
+- **Bad**: `pkg/lint/checks/components/modelmesh_removal.go` - Multiple checks in same package
+- **Good**: `pkg/lint/checks/shared/validation/fields.go` - Shared validation logic
+- **Bad**: `pkg/lint/checks/shared.go` - Unclear domain
 
 **Naming Pattern**:
 - **Good**: `version.Detect()` - package name reflects domain (version), function is action
-- **Bad**: `doctor.DetectVersion()` - package is too broad, function name duplicates package purpose
+- **Bad**: `lint.DetectVersion()` - package is too broad, function name duplicates package purpose
 - **Good**: `discovery.DiscoverComponentsAndServices()` - clear domain separation
 - **Bad**: `util.DiscoverComponentsAndServices()` - "util" is meaningless
 - **Good**: `registry.Add()`, `registry.Get()`, `registry.List()`, `registry.Instance()` - focused registry package
@@ -865,4 +854,4 @@ Constitutional violations MUST be justified in the implementation plan's Complex
 - Phase 1 (Design): Verify command structure follows Complete/Validate/Run pattern, functional options, and fine-grained package organization (focused packages with concise domain names, avoid package bloat)
 - Phase 2 (Implementation): Verify error handling, test coverage (fake client + k3s-envtest), testify/mock for mocking (mocks in pkg/util/test/mocks), JQ-based field access for unstructured objects, centralized GVK/GVR definitions in pkg/resources/types.go, user-facing messages defined as package-level constants (no inline strings), `make check` execution after each implementation, full linting compliance, and one commit per completed task with task ID in commit message
 
-**Version**: 1.15.0 | **Ratified**: 2025-12-05 | **Last Amended**: 2025-12-08
+**Version**: 1.16.0 | **Ratified**: 2025-12-05 | **Last Amended**: 2025-12-09
