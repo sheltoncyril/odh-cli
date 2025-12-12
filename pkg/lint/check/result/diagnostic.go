@@ -235,7 +235,7 @@ func (r *DiagnosticResult) GetStatusString() string {
 type DiagnosticResultList struct {
 	ClusterVersion *string             `json:"clusterVersion,omitempty" yaml:"clusterVersion,omitempty"`
 	TargetVersion  *string             `json:"targetVersion,omitempty"  yaml:"targetVersion,omitempty"`
-	Results        []*DiagnosticResult `json:"results"                   yaml:"results"`
+	Results        []*DiagnosticResult `json:"results"                  yaml:"results"`
 }
 
 // NewDiagnosticResultList creates a new list.

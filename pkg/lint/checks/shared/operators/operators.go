@@ -2,6 +2,7 @@ package operators
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,7 +29,7 @@ func GetOperator(subscription *unstructured.Unstructured) (*Operator, error) {
 	}
 
 	if nameStr == "" {
-		return nil, fmt.Errorf("subscription name is empty")
+		return nil, errors.New("subscription name is empty")
 	}
 
 	op := &Operator{Name: nameStr}

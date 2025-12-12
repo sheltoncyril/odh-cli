@@ -37,17 +37,19 @@ const (
 
 // Annotation keys for diagnostic results.
 const (
-	// Component annotations
+	// AnnotationComponentManagementState is the management state for components.
 	AnnotationComponentManagementState = "component.opendatahub.io/management-state"
-	AnnotationComponentKServeState     = "component.opendatahub.io/kserve-management-state"
-	AnnotationComponentServingState    = "component.opendatahub.io/serving-management-state"
+	// AnnotationComponentKServeState is the KServe component management state.
+	AnnotationComponentKServeState = "component.opendatahub.io/kserve-management-state"
+	// AnnotationComponentServingState is the serving (serverless) management state.
+	AnnotationComponentServingState = "component.opendatahub.io/serving-management-state"
 
-	// Service annotations
+	// AnnotationServiceManagementState is the management state for services.
 	AnnotationServiceManagementState = "service.opendatahub.io/management-state"
 
-	// Check annotations
+	// AnnotationCheckTargetVersion is the target version for upgrade checks.
 	AnnotationCheckTargetVersion = "check.opendatahub.io/target-version"
 
-	// Operator annotations
+	// AnnotationOperatorInstalledVersion is the installed operator version.
 	AnnotationOperatorInstalledVersion = "operator.opendatahub.io/installed-version"
 )

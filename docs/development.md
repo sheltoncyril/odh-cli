@@ -205,6 +205,128 @@ odh-cli/
 * Prefer descriptive names over short abbreviations
 * For status constants, use clear, unambiguous names (e.g., `StatusOK`, `StatusError`, `StatusWarning`)
 
+### Command Interface Pattern
+
+All commands must implement the Command interface with four lifecycle methods:
+
+```go
+type Command interface {
+    AddFlags(fs *pflag.FlagSet)  // Register command-specific flags
+    Complete() error              // Initialize runtime state
+    Validate() error              // Verify configuration
+    Run(ctx context.Context) error // Execute business logic
+}
+```
+
+**Requirements:**
+- Command struct (NOT Options struct)
+- Constructor named `NewCommand()` (NOT `NewOptions()`)
+- Implementation file named `<command>.go` (NOT `options.go`)
+- Commands initialize their own `SharedOptions` internally
+
+See [architecture.md](architecture.md#command-lifecycle) for detailed lifecycle documentation.
+
+### IOStreams Wrapper
+
+Commands must use the IOStreams wrapper (`pkg/util/iostreams/`) to eliminate repetitive output boilerplate.
+
+**Usage:**
+```go
+// Before (repetitive)
+_, _ = fmt.Fprintf(o.Out, "Detected version: %s\n", version)
+_, _ = fmt.Fprintf(o.ErrOut, "Error: %v\n", err)
+
+// After (clean)
+o.io.Fprintf("Detected version: %s", version)
+o.io.Errorf("Error: %v", err)
+```
+
+**Methods:**
+- `Fprintf(format string, args ...any)` - Write formatted output to stdout
+- `Fprintln(args ...any)` - Write output to stdout with newline
+- `Errorf(format string, args ...any)` - Write formatted error to stderr
+- `Errorln(args ...any)` - Write error to stderr with newline
+
+### JQ-Based Field Access
+
+All operations on `unstructured.Unstructured` objects must use JQ queries via `pkg/util/jq`.
+
+**Required:**
+```go
+import "github.com/lburgazzoli/odh-cli/pkg/util/jq"
+
+result, err := jq.Query(obj, ".spec.fieldName")
+```
+
+**Prohibited:**
+Direct use of unstructured accessor methods is prohibited:
+- ❌ `unstructured.NestedString()`
+- ❌ `unstructured.NestedField()`
+- ❌ `unstructured.SetNestedField()`
+
+**Rationale:** JQ provides consistent, expressive queries that align with user-facing JQ integration and eliminate verbose nested accessor chains.
+
+For lint check examples, see [lint/writing-checks.md](lint/writing-checks.md#jq-based-field-access).
+
+### Centralized GVK/GVR Definitions
+
+All GroupVersionKind (GVK) and GroupVersionResource (GVR) references must use definitions from `pkg/resources/types.go`.
+
+**Required:**
+```go
+import "github.com/lburgazzoli/odh-cli/pkg/resources"
+
+gvk := resources.DataScienceCluster.GVK()
+gvr := resources.DataScienceCluster.GVR()
+apiVersion := resources.DataScienceCluster.APIVersion()
+```
+
+**Prohibited:**
+Direct construction of GVK/GVR structs:
+```go
+// ❌ WRONG
+gvk := schema.GroupVersionKind{
+    Group:   "datasciencecluster.opendatahub.io",
+    Version: "v1",
+    Kind:    "DataScienceCluster",
+}
+```
+
+**Rationale:** Centralized definitions eliminate string literals across the codebase, prevent typos, and provide a single source of truth for API resource references.
+
+For lint check examples, see [lint/writing-checks.md](lint/writing-checks.md#centralized-gvkgvr-usage).
+
+### High-Level Resource Operations
+
+When working with OpenShift AI resources, operate on high-level custom resources rather than low-level Kubernetes primitives.
+
+**Preferred:**
+- Component CRs (DataScienceCluster, DSCInitialization)
+- Workload CRs (Notebook, InferenceService, RayCluster, etc.)
+- Service CRs, CRDs, ClusterServiceVersions
+
+**Avoid as Primary Targets:**
+- Pod, Deployment, StatefulSet, Service
+- ConfigMap, Secret, PersistentVolume
+
+**Rationale:** OpenShift AI users interact with high-level CRs, not low-level primitives. Operations targeting low-level resources don't align with user-facing abstractions.
+
+For lint check requirements, see [lint/writing-checks.md](lint/writing-checks.md#high-level-resource-targeting).
+
+### Cluster-Wide Operations
+
+When working with OpenShift AI resources, operations typically span all namespaces rather than being constrained to a single namespace.
+
+**General pattern:**
+```go
+// List across all namespaces
+err := client.List(ctx, objectList)  // No namespace restriction
+```
+
+**Rationale:** OpenShift AI is a cluster-wide platform. Operations often require visibility into all namespaces.
+
+For lint command requirements, see [lint/writing-checks.md](lint/writing-checks.md#cluster-wide-scope).
+
 ## Testing Guidelines
 
 ### Test Framework

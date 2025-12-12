@@ -43,37 +43,59 @@ The CLI is structured using Cobra with an extensible subcommand architecture:
 
 ```
 kubectl odh
-├── <command> [-o|--output <format>] [--namespace <ns>] [command-specific flags]
+├── lint [-o|--output <format>] [--target-version <version>] [--checks <selector>]
 └── version
 ```
 
 **Common Elements:**
 - **odh** (root command): The entry point for the plugin
+- **lint**: Validates cluster configuration (current state) or upgrade readiness (with --target-version)
 - **-o, --output** (flag): Specifies the output format. Supported values: `table` (default), `json`, `yaml`
-- **--namespace** (flag): Managed via cli-runtime. Specifies the namespace for operations when applicable
+- **--target-version** (flag): Target version for upgrade assessment
+- **--checks** (flag): Filter checks by category, group, or name
 - **version**: Displays the CLI version information
 
 **Extensibility:**
 New commands can be added by implementing the command pattern with Cobra. Each command can define its own subcommands, flags, and execution logic while leveraging shared components like the output formatters and Kubernetes client.
 
+**Note:** The lint command operates cluster-wide and does not support namespace filtering via `--namespace` flag.
+
 ### Command Implementation Pattern
 
-Commands follow a consistent pattern inspired by `sample-cli-plugin`, separating command definition, options, and execution logic.
+Commands follow a consistent pattern separating command definition from business logic.
 
-#### Standard Command Structure
+#### Command Lifecycle
 
-Each command typically follows this structure:
+Each command implements a four-phase lifecycle:
 
-1. **Initialize**: The root command instantiates a `genericclioptions.ConfigFlags` object from cli-runtime to manage common kubectl flags
-2. **Options Struct**: A command-specific options struct (e.g., `CommandOptions`) holds configuration, I/O streams, `ConfigFlags`, and output format
-3. **Execution Logic**: A `Run()` method on the options struct implements the command logic
-4. **Output Formatting**: Commands use shared printer components to format output consistently
+1. **AddFlags**: Register command-specific flags
+2. **Complete**: Initialize runtime state (client, namespace, parsing)
+3. **Validate**: Verify all required options are set correctly
+4. **Run**: Execute command business logic
 
-**Typical Run Method Flow:**
-1. Gets the target namespace (if applicable) and creates a Kubernetes client from the `ConfigFlags`
-2. Executes the command-specific logic
-3. Collects and processes results
-4. Uses a printer to format results based on the specified output format
+Commands use a `Command` struct (not `Options`) with constructor `NewCommand()` (not `NewOptions()`).
+
+**Typical Structure:**
+```go
+type Command struct {
+    shared        *SharedOptions
+    targetVersion string
+}
+
+func NewCommand(opts CommandOptions) *Command {
+    return &Command{
+        shared:        opts.Shared,
+        targetVersion: opts.TargetVersion,
+    }
+}
+
+func (c *Command) AddFlags(fs *pflag.FlagSet) { /* register flags */ }
+func (c *Command) Complete() error { /* initialize client, parse inputs */ }
+func (c *Command) Validate() error { /* validate configuration */ }
+func (c *Command) Run(ctx context.Context) error { /* execute business logic */ }
+```
+
+See [architecture.md](architecture.md#command-lifecycle) for detailed lifecycle documentation.
 
 ## Output Formats
 
@@ -90,6 +112,15 @@ The JSON output is designed for scripting and integration with other tools. The 
 ### YAML Output (`-o yaml`)
 
 Similar to JSON output, the YAML format provides machine-readable output in YAML syntax, suitable for configuration files and human review.
+
+## Lint Command
+
+The `lint` command validates OpenShift AI cluster configuration and assesses upgrade readiness.
+
+**DiagnosticResult Structure and Check Framework:**
+The lint command uses a check framework with DiagnosticResult CR-like structures. For details, see:
+- [lint/architecture.md](lint/architecture.md) - Lint command architecture
+- [lint/writing-checks.md](lint/writing-checks.md) - Writing lint checks
 
 ## Project Structure
 
