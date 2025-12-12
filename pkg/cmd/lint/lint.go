@@ -53,7 +53,16 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP((*string)(&c.OutputFormat), "output", "o", string(OutputFormatTable),
 		"Output format (table|json|yaml)")
 	fs.StringVar(&c.CheckSelector, "checks", "*",
-		"Glob pattern to filter which checks to run (e.g., 'components/*', '*dashboard*')")
+		`Glob pattern to filter checks (check IDs use dots, not slashes).
+Examples:
+  --checks "components"           # All component checks (group shortcut)
+  --checks "components.*"         # All component checks (glob)
+  --checks "components.kserve.*"  # All kserve component checks
+  --checks "*removal*"            # All checks with 'removal' in ID
+  --checks "*"                    # All checks (default)
+
+Note: Check IDs use dots (e.g., components.kserve.serverless-removal).
+Use 'components.*' not 'components/*'`)
 	fs.StringVar((*string)(&c.MinSeverity), "severity", "",
 		"Filter results by minimum severity level (critical|warning|info)")
 	fs.BoolVar(&c.FailOnCritical, "fail-on-critical", true,

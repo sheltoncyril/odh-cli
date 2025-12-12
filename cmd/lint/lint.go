@@ -60,7 +60,7 @@ Examples:
   kubectl odh lint -o json
 
   # Validate only component checks
-  kubectl odh lint --checks "components/*"
+  kubectl odh lint --checks "components"
 `
 const cmdExample = `
   # Validate current cluster state
