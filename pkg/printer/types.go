@@ -14,6 +14,8 @@ const (
 	JSON OutputFormat = "json"
 	// Table specifies table output format.
 	Table OutputFormat = "table"
+	// YAML specifies YAML output format.
+	YAML OutputFormat = "yaml"
 )
 
 func (f *OutputFormat) String() string {
@@ -23,12 +25,12 @@ func (f *OutputFormat) String() string {
 // Set implements the pflag.Value interface for OutputFormat.
 func (f *OutputFormat) Set(v string) error {
 	switch v {
-	case string(JSON), string(Table):
+	case string(JSON), string(Table), string(YAML):
 		*f = OutputFormat(v)
 
 		return nil
 	default:
-		return fmt.Errorf("invalid format: %s (must be '%s' or '%s')", v, Table, JSON)
+		return fmt.Errorf("invalid format: %s (must be '%s', '%s', or '%s')", v, Table, JSON, YAML)
 	}
 }
 

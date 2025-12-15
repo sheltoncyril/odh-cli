@@ -1,7 +1,6 @@
 package lint
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -9,9 +8,6 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/olekukonko/tablewriter"
-	"github.com/olekukonko/tablewriter/tw"
-	"sigs.k8s.io/yaml"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -19,7 +15,9 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
+	printerjson "github.com/lburgazzoli/odh-cli/pkg/printer/json"
 	"github.com/lburgazzoli/odh-cli/pkg/printer/table"
+	printeryaml "github.com/lburgazzoli/odh-cli/pkg/printer/yaml"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/iostreams"
 )
@@ -314,17 +312,7 @@ func OutputTable(out io.Writer, results []check.CheckExecution, verbose bool) er
 	renderer := table.NewRenderer[CheckResultTableRow](
 		table.WithWriter[CheckResultTableRow](out),
 		table.WithHeaders[CheckResultTableRow](headers...),
-		table.WithTableOptions[CheckResultTableRow](
-			tablewriter.WithHeaderAlignment(tw.AlignLeft),
-			tablewriter.WithRendition(tw.Rendition{
-				Settings: tw.Settings{
-					Separators: tw.Separators{
-						BetweenColumns: tw.Off,
-						BetweenRows:    tw.Off,
-					},
-				},
-			}),
-		),
+		table.WithTableOptions[CheckResultTableRow](table.DefaultTableOptions...),
 	)
 
 	// Append all results to single table - one row per condition
@@ -399,11 +387,12 @@ func OutputJSON(out io.Writer, results []check.CheckExecution, clusterVersion *s
 		list.Results = append(list.Results, exec.Result)
 	}
 
-	encoder := json.NewEncoder(out)
-	encoder.SetIndent("", "  ")
+	renderer := printerjson.NewRenderer[*result.DiagnosticResultList](
+		printerjson.WithWriter[*result.DiagnosticResultList](out),
+	)
 
-	if err := encoder.Encode(list); err != nil {
-		return fmt.Errorf("encoding JSON: %w", err)
+	if err := renderer.Render(list); err != nil {
+		return fmt.Errorf("rendering JSON output: %w", err)
 	}
 
 	return nil
@@ -419,12 +408,13 @@ func OutputYAML(out io.Writer, results []check.CheckExecution, clusterVersion *s
 		list.Results = append(list.Results, exec.Result)
 	}
 
-	yamlBytes, err := yaml.Marshal(list)
-	if err != nil {
-		return fmt.Errorf("encoding YAML: %w", err)
-	}
+	renderer := printeryaml.NewRenderer[*result.DiagnosticResultList](
+		printeryaml.WithWriter[*result.DiagnosticResultList](out),
+	)
 
-	_, _ = fmt.Fprint(out, string(yamlBytes))
+	if err := renderer.Render(list); err != nil {
+		return fmt.Errorf("rendering YAML output: %w", err)
+	}
 
 	return nil
 }

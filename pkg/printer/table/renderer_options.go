@@ -5,10 +5,32 @@ import (
 	"strings"
 
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/tw"
 
 	"github.com/lburgazzoli/odh-cli/pkg/util"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 )
+
+// DefaultTableOptions provides a clean, minimal table style with left-aligned headers
+// and no borders or separators.
+//
+//nolint:gochecknoglobals // Shared default table options for consistency across commands
+var DefaultTableOptions = []tablewriter.Option{
+	tablewriter.WithHeaderAlignment(tw.AlignLeft),
+	tablewriter.WithRendition(tw.Rendition{
+		Settings: tw.Settings{
+			Separators: tw.Separators{
+				BetweenColumns: tw.Off,
+				BetweenRows:    tw.Off,
+			},
+			Lines: tw.Lines{
+				ShowTop:        tw.Off,
+				ShowBottom:     tw.Off,
+				ShowHeaderLine: tw.On,
+			},
+		},
+	}),
+}
 
 // Option is a functional option for configuring a Renderer.
 type Option[T any] = util.Option[Renderer[T]]

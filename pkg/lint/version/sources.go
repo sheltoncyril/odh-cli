@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 )
@@ -67,8 +67,9 @@ func DetectFromDSCInitialization(ctx context.Context, c *client.Client) (string,
 // Returns version string and true if found, empty string and false otherwise.
 func DetectFromOLM(ctx context.Context, c *client.Client) (string, bool, error) {
 	// List ClusterServiceVersions with label selector for OpenShift AI operator
-	csvList, err := c.List(ctx, resources.ClusterServiceVersion,
-		client.WithLabelSelector("operators.coreos.com/rhods-operator.redhat-ods-operator"))
+	csvList, err := c.OLM.OperatorsV1alpha1().ClusterServiceVersions("").List(ctx, metav1.ListOptions{
+		LabelSelector: "operators.coreos.com/rhods-operator.redhat-ods-operator",
+	})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return "", false, nil
@@ -77,18 +78,15 @@ func DetectFromOLM(ctx context.Context, c *client.Client) (string, bool, error) 
 		return "", false, fmt.Errorf("listing ClusterServiceVersion: %w", err)
 	}
 
-	if len(csvList) == 0 {
+	if len(csvList.Items) == 0 {
 		return "", false, nil
 	}
 
 	// Use the first CSV found
-	csv := &csvList[0]
+	csv := &csvList.Items[0]
 
-	// Query .spec.version using JQ
-	versionStr, err := jq.Query[string](csv, ".spec.version")
-	if err != nil {
-		return "", false, fmt.Errorf("querying .spec.version: %w", err)
-	}
+	// Access .spec.version directly
+	versionStr := csv.Spec.Version.String()
 
 	if versionStr == "" {
 		return "", false, nil

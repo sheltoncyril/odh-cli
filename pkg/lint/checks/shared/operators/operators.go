@@ -2,17 +2,15 @@ package operators
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
+	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
-	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 )
 
 // Operator represents an installed operator with its name and version.
@@ -22,25 +20,13 @@ type Operator struct {
 }
 
 // GetOperator extracts the operator name and version from a subscription.
-func GetOperator(subscription *unstructured.Unstructured) (*Operator, error) {
-	nameStr, err := jq.Query[string](subscription, ".metadata.name")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get subscription name: %w", err)
+func GetOperator(subscription *operatorsv1alpha1.Subscription) *Operator {
+	op := &Operator{
+		Name:    subscription.Name,
+		Version: subscription.Status.InstalledCSV,
 	}
 
-	if nameStr == "" {
-		return nil, errors.New("subscription name is empty")
-	}
-
-	op := &Operator{Name: nameStr}
-
-	// Get version from installedCSV
-	csvStr, err := jq.Query[string](subscription, ".status.installedCSV")
-	if err == nil && csvStr != "" {
-		op.Version = csvStr
-	}
-
-	return op, nil
+	return op
 }
 
 // ConditionBuilder is a function that creates a condition based on operator presence and version.
@@ -48,7 +34,7 @@ type ConditionBuilder func(found bool, version string) metav1.Condition
 
 // SubscriptionMatcher is a predicate function that determines if a subscription matches the desired operator.
 // It receives the entire subscription for maximum flexibility.
-type SubscriptionMatcher func(subscription *unstructured.Unstructured) bool
+type SubscriptionMatcher func(subscription *operatorsv1alpha1.Subscription) bool
 
 // CheckConfig holds configuration for operator presence checks.
 type CheckConfig struct {
@@ -128,13 +114,8 @@ func CheckOperatorPresence(
 		Name:        "installed",
 		Description: fmt.Sprintf("Reports the %s operator installation status and version", operatorKind),
 		// Default matcher: exact match on operator name
-		Matcher: func(subscription *unstructured.Unstructured) bool {
-			op, err := GetOperator(subscription)
-			if err != nil {
-				return false
-			}
-
-			return op.Name == operatorKind
+		Matcher: func(subscription *operatorsv1alpha1.Subscription) bool {
+			return subscription.Name == operatorKind
 		},
 		// Default condition builder: standard Available condition
 		ConditionBuilder: func(found bool, version string) metav1.Condition {
@@ -165,20 +146,19 @@ func CheckOperatorPresence(
 	dr := result.New(config.Group, config.Kind, config.Name, config.Description)
 
 	// List subscriptions
-	subscriptions, err := k8sClient.List(ctx, resources.Subscription)
+	subscriptions, err := k8sClient.OLM.OperatorsV1alpha1().Subscriptions("").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("listing subscriptions: %w", err)
 	}
 
 	// Find matching operator
 	var version string
-	for _, sub := range subscriptions {
-		if config.Matcher(&sub) {
+	for i := range subscriptions.Items {
+		sub := &subscriptions.Items[i]
+		if config.Matcher(sub) {
 			// Found the operator - get version
-			op, err := GetOperator(&sub)
-			if err == nil {
-				version = op.Version
-			}
+			op := GetOperator(sub)
+			version = op.Version
 
 			break
 		}

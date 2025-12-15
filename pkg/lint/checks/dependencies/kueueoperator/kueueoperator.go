@@ -5,8 +5,7 @@ import (
 	"fmt"
 
 	"github.com/blang/semver/v4"
-
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
@@ -49,11 +48,8 @@ func (c *Check) Validate(ctx context.Context, target *check.CheckTarget) (*resul
 		target.Client,
 		"kueue-operator",
 		operators.WithDescription(checkDescription),
-		operators.WithMatcher(func(subscription *unstructured.Unstructured) bool {
-			op, err := operators.GetOperator(subscription)
-			if err != nil {
-				return false
-			}
+		operators.WithMatcher(func(subscription *operatorsv1alpha1.Subscription) bool {
+			op := operators.GetOperator(subscription)
 
 			return op.Name == "kueue-operator"
 		}),

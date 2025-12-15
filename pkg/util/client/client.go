@@ -3,6 +3,8 @@ package client
 import (
 	"fmt"
 
+	olmclientset "github.com/operator-framework/operator-lifecycle-manager/pkg/api/client/clientset/versioned"
+
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -17,6 +19,7 @@ type Client struct {
 	Dynamic       dynamic.Interface
 	Discovery     discovery.DiscoveryInterface
 	APIExtensions apiextensionsclientset.Interface
+	OLM           olmclientset.Interface
 	RESTMapper    meta.RESTMapper
 }
 
@@ -42,6 +45,11 @@ func NewClient(configFlags *genericclioptions.ConfigFlags) (*Client, error) {
 		return nil, fmt.Errorf("failed to create apiextensions client: %w", err)
 	}
 
+	olmClient, err := olmclientset.NewForConfig(restConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create OLM client: %w", err)
+	}
+
 	// Create RESTMapper with caching for efficient GVK→GVR mapping
 	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(
 		memory.NewMemCacheClient(discoveryClient),
@@ -51,6 +59,7 @@ func NewClient(configFlags *genericclioptions.ConfigFlags) (*Client, error) {
 		Dynamic:       dynamicClient,
 		Discovery:     discoveryClient,
 		APIExtensions: apiExtensionsClient,
+		OLM:           olmClient,
 		RESTMapper:    restMapper,
 	}, nil
 }

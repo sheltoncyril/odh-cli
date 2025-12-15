@@ -45,5 +45,6 @@ type ActionTarget struct {
 	DryRun         bool
 	BackupPath     string
 	SkipConfirm    bool
+	Recorder       StepRecorder
 	IO             iostreams.Interface
 }

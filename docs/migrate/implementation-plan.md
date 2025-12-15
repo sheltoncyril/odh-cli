@@ -246,12 +246,12 @@ func (a *RHBOKMigrationAction) Execute(ctx, target) (*result.ActionResult, error
            "apiVersion": "operators.coreos.com/v1alpha1",
            "kind": "Subscription",
            "metadata": map[string]interface{}{
-               "name": "rhods-kueue-operator",
-               "namespace": "openshift-operators",
+               "name": "kueue-operator",
+               "namespace": "openshift-kueue-operator",
            },
            "spec": map[string]interface{}{
-               "channel": "stable",
-               "name": "rhods-kueue-operator",
+               "channel": "stable-v1.1",
+               "name": "kueue-operator",
                "source": "redhat-operators",
                "sourceNamespace": "openshift-marketplace",
            },
@@ -375,7 +375,7 @@ Actions MUST execute sequentially (never parallel) for:
 ```go
 if target.DryRun {
     step.Status = result.StepSkipped
-    step.Message = "DRY RUN: Would create Subscription rhods-kueue-operator"
+    step.Message = "DRY RUN: Would create Subscription kueue-operator"
     return step
 }
 // ... actual execution
@@ -404,12 +404,21 @@ import (
 
 ## User Experience Examples
 
+### List available migrations
+```bash
+$ kubectl odh migrate list --target-version 3.0.0
+
+ID                      NAME                          APPLICABLE  DESCRIPTION
+kueue.rhbok.migrate     Migrate Kueue to RHBOK        Yes         Migrates from OpenShift AI built-in Kueue...
+```
+
 ### Default (with confirmations)
 ```bash
-$ kubectl odh migrate --migration kueue-to-rhbok
+$ kubectl odh migrate run --migration kueue.rhbok.migrate --target-version 3.0.0
 
-Detected OpenShift AI version: 2.25.0
-Preparing migration: kueue-to-rhbok
+Current OpenShift AI version: 2.25.0
+Target OpenShift AI version: 3.0.0
+Preparing migration: kueue.rhbok.migrate
 
 Migration Steps:
 1. Install Red Hat Build of Kueue Operator
@@ -435,10 +444,11 @@ Migration completed successfully!
 
 ### With --yes flag
 ```bash
-$ kubectl odh migrate --migration kueue-to-rhbok --yes
+$ kubectl odh migrate run --migration kueue.rhbok.migrate --target-version 3.0.0 --yes
 
-Detected OpenShift AI version: 2.25.0
-Running migration: kueue-to-rhbok (confirmations skipped)
+Current OpenShift AI version: 2.25.0
+Target OpenShift AI version: 3.0.0
+Running migration: kueue.rhbok.migrate (confirmations skipped)
 
 [Step 1/3] Installing RHBOK Operator...
 ✓ RHBOK operator installed successfully
@@ -454,13 +464,13 @@ Migration completed successfully!
 
 ### With --dry-run
 ```bash
-$ kubectl odh migrate --migration kueue-to-rhbok --dry-run
+$ kubectl odh migrate run --migration kueue.rhbok.migrate --target-version 3.0.0 --dry-run
 
 DRY RUN MODE: No changes will be made to the cluster
 
 [Step 1/3] Install RHBOK Operator
-  → Would create Subscription rhods-kueue-operator in openshift-operators
-  → Would wait for CSV rhods-kueue-operator.v1.0.0 to be ready
+  → Would create Subscription kueue-operator in openshift-kueue-operator
+  → Would wait for CSV kueue-operator.v1.x.x to be ready
 
 [Step 2/3] Update DataScienceCluster
   → Would set spec.components.kueue.managementState=Unmanaged
@@ -474,9 +484,9 @@ DRY RUN complete. Use --yes to execute without prompts.
 
 ### With --prepare
 ```bash
-$ kubectl odh migrate --migration kueue-to-rhbok --prepare
+$ kubectl odh migrate run --migration kueue.rhbok.migrate --target-version 3.0.0 --prepare
 
-Running pre-flight checks for migration: kueue-to-rhbok
+Running pre-flight checks for migration: kueue.rhbok.migrate
 
 Pre-flight Validation:
 ✓ Current Kueue state verified
@@ -490,6 +500,38 @@ Backing up Kueue resources to ./backups...
 ✓ Backed up DataScienceCluster to ./backups/datasciencecluster-20251212-153045.yaml
 
 Preparation complete. Run without --prepare to execute migration.
+```
+
+### With multiple migrations
+```bash
+$ kubectl odh migrate run --migration kueue.rhbok.migrate --migration other.migration --target-version 3.0.0 --yes
+
+Current OpenShift AI version: 2.25.0
+Target OpenShift AI version: 3.0.0
+
+=== Migration 1/2: kueue.rhbok.migrate ===
+Running migration: kueue.rhbok.migrate (confirmations skipped)
+
+[Step 1/3] Installing RHBOK Operator...
+✓ RHBOK operator installed successfully
+
+[Step 2/3] Updating DataScienceCluster...
+✓ DataScienceCluster updated successfully
+
+[Step 3/3] Verifying resources preserved...
+✓ All 3 ClusterQueues preserved
+
+Migration kueue.rhbok.migrate completed successfully!
+
+=== Migration 2/2: other.migration ===
+Running migration: other.migration (confirmations skipped)
+
+[Step 1/1] Performing action...
+✓ Action completed
+
+Migration other.migration completed successfully!
+
+All migrations completed successfully!
 ```
 
 ## File Checklist

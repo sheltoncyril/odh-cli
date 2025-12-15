@@ -5,14 +5,13 @@ import (
 	"fmt"
 
 	"github.com/blang/semver/v4"
+	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/operators"
-	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 )
 
 const (
@@ -54,16 +53,16 @@ func (c *Check) Validate(ctx context.Context, target *check.CheckTarget) (*resul
 		target.Client,
 		check.DependencyServiceMeshOperatorV2,
 		operators.WithDescription(checkDescription),
-		operators.WithMatcher(func(subscription *unstructured.Unstructured) bool {
+		operators.WithMatcher(func(subscription *operatorsv1alpha1.Subscription) bool {
 			// Check if this is servicemeshoperator on v2.x channel
-			op, err := operators.GetOperator(subscription)
-			if err != nil || op.Name != "servicemeshoperator" {
+			op := operators.GetOperator(subscription)
+			if op.Name != "servicemeshoperator" {
 				return false
 			}
 
 			// Check if it's on v2.x channel (stable or v2.x)
-			channelStr, err := jq.Query[string](subscription, ".spec.channel")
-			if err != nil || channelStr == "" {
+			channelStr := subscription.Spec.Channel
+			if channelStr == "" {
 				return false
 			}
 

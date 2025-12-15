@@ -44,6 +44,8 @@ type ActionStep struct {
 	Status      StepStatus
 	Message     string
 	Timestamp   time.Time
+	Children    []ActionStep   `json:"children,omitempty" yaml:"children,omitempty"`
+	Details     map[string]any `json:"details,omitempty"  yaml:"details,omitempty"`
 }
 
 func New(
@@ -81,5 +83,7 @@ func NewStep(
 		Status:      status,
 		Message:     message,
 		Timestamp:   time.Now(),
+		Children:    []ActionStep{},
+		Details:     make(map[string]any),
 	}
 }

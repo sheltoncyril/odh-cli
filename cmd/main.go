@@ -25,6 +25,9 @@ func main() {
 	migrate.AddCommand(cmd, flags)
 
 	if err := cmd.Execute(); err != nil {
+		if _, writeErr := os.Stderr.WriteString(err.Error() + "\n"); writeErr != nil {
+			os.Exit(1)
+		}
 		os.Exit(1)
 	}
 }

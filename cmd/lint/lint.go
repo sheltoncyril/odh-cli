@@ -5,12 +5,10 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"github.com/lburgazzoli/odh-cli/pkg/cmd/lint"
-
 	// Import check packages to trigger init() auto-registration.
 	// These blank imports are REQUIRED for checks to register with the global registry.
 	// DO NOT REMOVE - they appear unused but are essential for runtime check discovery.
