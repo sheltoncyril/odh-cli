@@ -24,18 +24,10 @@ type Action interface {
 	Name() string
 	Description() string
 	Group() ActionGroup
-	CanApply(
-		currentVersion *semver.Version,
-		targetVersion *semver.Version,
-	) bool
-	Validate(
-		ctx context.Context,
-		target *ActionTarget,
-	) (*result.ActionResult, error)
-	Execute(
-		ctx context.Context,
-		target *ActionTarget,
-	) (*result.ActionResult, error)
+
+	CanApply(currentVersion *semver.Version, targetVersion *semver.Version) bool
+	Validate(ctx context.Context, target *ActionTarget) (*result.ActionResult, error)
+	Execute(ctx context.Context, target *ActionTarget) (*result.ActionResult, error)
 }
 
 type ActionTarget struct {
