@@ -16,6 +16,16 @@ LDFLAGS = -X 'github.com/lburgazzoli/odh-cli/internal/version.Version=$(VERSION)
 # Linter configuration
 LINT_TIMEOUT := 10m
 
+# Container registry configuration
+CONTAINER_REGISTRY ?= quay.io
+CONTAINER_REPO ?= $(CONTAINER_REGISTRY)/lburgazzoli/odh-cli
+CONTAINER_PLATFORMS ?= linux/amd64,linux/arm64
+CONTAINER_TAGS ?= $(VERSION)
+
+# Platform for cross-compilation (defaults to current platform)
+GOOS ?= $(shell go env GOOS)
+GOARCH ?= $(shell go env GOARCH)
+
 ## Tools
 GOLANGCI_VERSION ?= v2.6.0
 GOLANGCI ?= go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION)
@@ -30,7 +40,8 @@ SHELL = /usr/bin/env bash -o pipefail
 # Build the binary
 .PHONY: build
 build:
-	go build -ldflags "$(LDFLAGS)" -o $(BINARY_NAME) cmd/main.go
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) \
+		go build -ldflags "$(LDFLAGS)" -o $(BINARY_NAME) cmd/main.go
 
 # Run the doctor command
 .PHONY: run
@@ -79,11 +90,33 @@ check: lint vulncheck
 test:
 	go test ./...
 
+# Ensure buildx builder exists for multi-platform builds
+.PHONY: buildx-setup
+buildx-setup:
+	@docker buildx inspect multiplatform >/dev/null 2>&1 || \
+		(echo "Creating buildx builder for multi-platform builds..." && \
+		 docker buildx create --name multiplatform --driver docker-container --bootstrap --use)
+
+# Build and push container image using Docker buildx
+.PHONY: publish
+publish: buildx-setup
+	@echo "Building and pushing container image to $(CONTAINER_REPO):$(CONTAINER_TAGS)"
+	docker buildx build \
+		--builder=multiplatform \
+		--platform=$(CONTAINER_PLATFORMS) \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg COMMIT=$(COMMIT) \
+		--build-arg DATE=$(DATE) \
+		--tag=$(CONTAINER_REPO):$(CONTAINER_TAGS) \
+		--push \
+		.
+
 # Help target
 .PHONY: help
 help:
 	@echo "Available targets:"
 	@echo "  build       - Build the kubectl-odh binary"
+	@echo "  publish     - Build and push container image using Docker buildx"
 	@echo "  run         - Run the doctor command"
 	@echo "  tidy        - Tidy up Go module dependencies"
 	@echo "  clean       - Remove build artifacts and test cache"
