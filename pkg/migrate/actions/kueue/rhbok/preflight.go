@@ -2,7 +2,6 @@ package rhbok
 
 import (
 	"context"
-	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,14 +29,14 @@ func (a *RHBOKMigrationAction) checkCurrentKueueState(
 			return
 		}
 
-		step.Complete(result.StepFailed, fmt.Sprintf("Failed to get DataScienceCluster: %v", err))
+		step.Complete(result.StepFailed, "Failed to get DataScienceCluster: %v", err)
 
 		return
 	}
 
 	managementState, err := jq.Query[string](dsc, ".spec.components.kueue.managementState")
 	if err != nil {
-		step.Complete(result.StepFailed, fmt.Sprintf("Failed to query Kueue managementState: %v", err))
+		step.Complete(result.StepFailed, "Failed to query Kueue managementState: %v", err)
 
 		return
 	}
@@ -48,7 +47,7 @@ func (a *RHBOKMigrationAction) checkCurrentKueueState(
 		return
 	}
 
-	step.Complete(result.StepCompleted, fmt.Sprintf("Current Kueue state verified (managementState: %s)", managementState))
+	step.Complete(result.StepCompleted, "Current Kueue state verified (managementState: %s)", managementState)
 }
 
 func (a *RHBOKMigrationAction) checkNoRHBOKConflicts(
@@ -71,7 +70,7 @@ func (a *RHBOKMigrationAction) checkNoRHBOKConflicts(
 	}
 
 	if !apierrors.IsNotFound(err) {
-		step.Complete(result.StepFailed, fmt.Sprintf("Failed to check RHBOK subscription: %v", err))
+		step.Complete(result.StepFailed, "Failed to check RHBOK subscription: %v", err)
 
 		return
 	}
@@ -90,19 +89,19 @@ func (a *RHBOKMigrationAction) verifyKueueResources(
 
 	clusterQueues, err := target.Client.ListResources(ctx, resources.ClusterQueue.GVR())
 	if err != nil {
-		step.Complete(result.StepFailed, fmt.Sprintf("Failed to list ClusterQueues: %v", err))
+		step.Complete(result.StepFailed, "Failed to list ClusterQueues: %v", err)
 
 		return
 	}
 
 	localQueues, err := target.Client.ListResources(ctx, resources.LocalQueue.GVR())
 	if err != nil {
-		step.Complete(result.StepFailed, fmt.Sprintf("Failed to list LocalQueues: %v", err))
+		step.Complete(result.StepFailed, "Failed to list LocalQueues: %v", err)
 
 		return
 	}
 
 	step.Complete(result.StepCompleted,
-		fmt.Sprintf("Kueue resources found: %d ClusterQueues, %d LocalQueues",
-			len(clusterQueues), len(localQueues)))
+		"Kueue resources found: %d ClusterQueues, %d LocalQueues",
+		len(clusterQueues), len(localQueues))
 }

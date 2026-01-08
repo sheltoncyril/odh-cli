@@ -25,7 +25,7 @@ func backupResources(
 
 	//nolint:mnd,gosec // 0o755 is standard directory permission for backup directory
 	if err := os.MkdirAll(target.BackupPath, 0o755); err != nil {
-		step.Complete(result.StepFailed, fmt.Sprintf("Failed to create backup directory: %v", err))
+		step.Complete(result.StepFailed, "Failed to create backup directory: %v", err)
 
 		return
 	}
@@ -34,7 +34,7 @@ func backupResources(
 
 	clusterQueues, err := target.Client.ListResources(ctx, resources.ClusterQueue.GVR())
 	if err != nil {
-		step.Complete(result.StepFailed, fmt.Sprintf("Failed to list ClusterQueues: %v", err))
+		step.Complete(result.StepFailed, "Failed to list ClusterQueues: %v", err)
 
 		return
 	}
@@ -42,7 +42,7 @@ func backupResources(
 	if len(clusterQueues) > 0 {
 		cqPath := filepath.Join(target.BackupPath, fmt.Sprintf("clusterqueues-%s.yaml", timestamp))
 		if err := writeYAML(cqPath, clusterQueues); err != nil {
-			step.Complete(result.StepFailed, fmt.Sprintf("Failed to backup ClusterQueues: %v", err))
+			step.Complete(result.StepFailed, "Failed to backup ClusterQueues: %v", err)
 
 			return
 		}
@@ -51,7 +51,7 @@ func backupResources(
 
 	localQueues, err := target.Client.ListResources(ctx, resources.LocalQueue.GVR())
 	if err != nil {
-		step.Complete(result.StepFailed, fmt.Sprintf("Failed to list LocalQueues: %v", err))
+		step.Complete(result.StepFailed, "Failed to list LocalQueues: %v", err)
 
 		return
 	}
@@ -59,7 +59,7 @@ func backupResources(
 	if len(localQueues) > 0 {
 		lqPath := filepath.Join(target.BackupPath, fmt.Sprintf("localqueues-%s.yaml", timestamp))
 		if err := writeYAML(lqPath, localQueues); err != nil {
-			step.Complete(result.StepFailed, fmt.Sprintf("Failed to backup LocalQueues: %v", err))
+			step.Complete(result.StepFailed, "Failed to backup LocalQueues: %v", err)
 
 			return
 		}
@@ -68,22 +68,22 @@ func backupResources(
 
 	dsc, err := target.Client.GetDataScienceCluster(ctx)
 	if err != nil {
-		step.Complete(result.StepFailed, fmt.Sprintf("Failed to get DataScienceCluster: %v", err))
+		step.Complete(result.StepFailed, "Failed to get DataScienceCluster: %v", err)
 
 		return
 	}
 
 	dscPath := filepath.Join(target.BackupPath, fmt.Sprintf("datasciencecluster-%s.yaml", timestamp))
 	if err := writeYAML(dscPath, dsc); err != nil {
-		step.Complete(result.StepFailed, fmt.Sprintf("Failed to backup DataScienceCluster: %v", err))
+		step.Complete(result.StepFailed, "Failed to backup DataScienceCluster: %v", err)
 
 		return
 	}
 	target.IO.Errorf("✓ Backed up DataScienceCluster to %s", dscPath)
 
 	step.Complete(result.StepCompleted,
-		fmt.Sprintf("Backed up %d ClusterQueues, %d LocalQueues to %s",
-			len(clusterQueues), len(localQueues), target.BackupPath))
+		"Backed up %d ClusterQueues, %d LocalQueues to %s",
+		len(clusterQueues), len(localQueues), target.BackupPath)
 }
 
 func writeYAML(path string, data any) error {

@@ -1,6 +1,7 @@
 package action
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -72,9 +73,15 @@ func (r *stepRecorderImpl) Child(name string, description string) StepRecorder {
 }
 
 // Complete marks this step as complete with status and message.
-func (r *stepRecorderImpl) Complete(status result.StepStatus, message string) {
+// Supports printf-style formatting with variadic arguments.
+func (r *stepRecorderImpl) Complete(status result.StepStatus, messageFormat string, args ...any) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	message := messageFormat
+	if len(args) > 0 {
+		message = fmt.Sprintf(messageFormat, args...)
+	}
 
 	if r.step != nil {
 		r.step.Status = status
@@ -116,7 +123,13 @@ func (r *stepRecorderImpl) AddDetail(key string, value any) {
 }
 
 // Record adds a simple completed sub-step (convenience method).
-func (r *stepRecorderImpl) Record(name string, message string, status result.StepStatus) {
+// Supports printf-style formatting with variadic arguments.
+func (r *stepRecorderImpl) Record(name string, messageFormat string, status result.StepStatus, args ...any) {
+	message := messageFormat
+	if len(args) > 0 {
+		message = fmt.Sprintf(messageFormat, args...)
+	}
+
 	child := r.Child(name, message)
 	child.Complete(status, message)
 }
