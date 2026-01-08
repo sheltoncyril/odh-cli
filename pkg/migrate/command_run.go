@@ -96,7 +96,7 @@ func (c *RunCommand) Run(ctx context.Context) error {
 	}
 
 	targetVersionInfo := &version.ClusterVersion{
-		Version:    c.TargetVersion,
+		Version:    c.parsedTargetVersion.String(),
 		Source:     version.SourceManual,
 		Confidence: version.ConfidenceHigh,
 	}

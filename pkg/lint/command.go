@@ -268,7 +268,7 @@ func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *version.Cl
 	// For upgrade assessment, we run all checks against the TARGET version
 	// This allows version-specific checks to determine if they're applicable
 	targetVersionInfo := &version.ClusterVersion{
-		Version:    c.TargetVersion,
+		Version:    c.parsedTargetVersion.String(),
 		Source:     version.SourceManual,
 		Confidence: version.ConfidenceHigh,
 	}
