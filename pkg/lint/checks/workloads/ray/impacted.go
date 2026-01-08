@@ -125,10 +125,7 @@ func (c *ImpactedWorkloadsCheck) populateImpactedObjects(
 
 	for _, r := range impactedClusters {
 		obj := metav1.PartialObjectMetadata{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: resources.RayCluster.APIVersion(),
-				Kind:       resources.RayCluster.Kind,
-			},
+			TypeMeta: resources.RayCluster.TypeMeta(),
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: r.namespace,
 				Name:      r.name,

@@ -1,6 +1,7 @@
 package resources
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -42,6 +43,14 @@ func (r ResourceType) APIVersion() string {
 	}
 
 	return r.Group + "/" + r.Version
+}
+
+// TypeMeta returns a metav1.TypeMeta for this resource type.
+func (r ResourceType) TypeMeta() metav1.TypeMeta {
+	return metav1.TypeMeta{
+		APIVersion: r.APIVersion(),
+		Kind:       r.Kind,
+	}
 }
 
 // Centralized resource type definitions (Principle VIII)

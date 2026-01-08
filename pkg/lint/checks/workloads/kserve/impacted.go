@@ -167,10 +167,7 @@ func (c *ImpactedWorkloadsCheck) populateImpactedObjects(
 	// Add InferenceServices
 	for _, r := range impactedISVCs {
 		obj := metav1.PartialObjectMetadata{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: resources.InferenceService.APIVersion(),
-				Kind:       resources.InferenceService.Kind,
-			},
+			TypeMeta: resources.InferenceService.TypeMeta(),
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: r.namespace,
 				Name:      r.name,
@@ -185,10 +182,7 @@ func (c *ImpactedWorkloadsCheck) populateImpactedObjects(
 	// Add ServingRuntimes
 	for _, r := range impactedSRs {
 		obj := metav1.PartialObjectMetadata{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: resources.ServingRuntime.APIVersion(),
-				Kind:       resources.ServingRuntime.Kind,
-			},
+			TypeMeta: resources.ServingRuntime.TypeMeta(),
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: r.namespace,
 				Name:      r.name,
