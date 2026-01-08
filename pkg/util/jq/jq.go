@@ -2,6 +2,7 @@ package jq
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -110,4 +111,67 @@ func Query[T any](value any, jqQuery string) (T, error) {
 	}
 
 	return typed, nil
+}
+
+// Transform applies a JQ update expression to the object, modifying it in place.
+// Supports printf-style formatting with variadic arguments.
+//
+// Examples:
+//
+//	jq.Transform(obj, ".spec.foo = %q", "bar")
+//	jq.Transform(obj, ".metadata.annotations = %s", annotationsJSON)
+//	jq.Transform(obj, `.spec.components.kueue.managementState = "Unmanaged"`)
+func Transform(obj any, jqExpressionFormat string, args ...any) error {
+	// Format the expression if args provided
+	jqExpression := jqExpressionFormat
+	if len(args) > 0 {
+		jqExpression = fmt.Sprintf(jqExpressionFormat, args...)
+	}
+
+	// Convert obj to JQ-compatible format
+	normalizedValue, err := convertValue(obj)
+	if err != nil {
+		return fmt.Errorf("failed to normalize object: %w", err)
+	}
+
+	// Parse JQ expression
+	compiledQuery, err := gojq.Parse(jqExpression)
+	if err != nil {
+		return fmt.Errorf("failed to parse jq expression: %w", err)
+	}
+
+	// Run the expression
+	iter := compiledQuery.Run(normalizedValue)
+
+	result, ok := iter.Next()
+	if !ok {
+		return errors.New("transform returned no result")
+	}
+
+	// Check for errors
+	if err, isErr := result.(error); isErr {
+		return fmt.Errorf("transform error: %w", err)
+	}
+
+	// Update the original object with the result
+	return updateObject(obj, result)
+}
+
+// updateObject updates the original object with the JQ result.
+func updateObject(original any, result any) error {
+	resultMap, ok := result.(map[string]any)
+	if !ok {
+		return fmt.Errorf("transform result is not a map: %T", result)
+	}
+
+	switch v := original.(type) {
+	case *unstructured.Unstructured:
+		v.Object = resultMap
+
+		return nil
+	case unstructured.Unstructured:
+		return errors.New("cannot modify unstructured.Unstructured by value, use pointer")
+	default:
+		return fmt.Errorf("unsupported object type for update: %T", original)
+	}
 }

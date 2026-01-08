@@ -2,6 +2,7 @@ package rhbok
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -10,7 +11,6 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/lburgazzoli/odh-cli/pkg/migrate/action"
@@ -216,7 +216,16 @@ func (a *RHBOKMigrationAction) preserveKueueConfig(
 
 	annotations[configMapAnnotationKey] = configMapAnnotationValue
 
-	if err := unstructured.SetNestedField(configMap.Object, annotations, "metadata", "annotations"); err != nil {
+	annotationsJSON, err := json.Marshal(annotations)
+	if err != nil {
+		annotateStep.Complete(result.StepFailed,
+			fmt.Sprintf("Failed to marshal annotations: %v", err))
+		step.Complete(result.StepFailed, "Failed to annotate ConfigMap")
+
+		return
+	}
+
+	if err := jq.Transform(configMap, ".metadata.annotations = %s", annotationsJSON); err != nil {
 		annotateStep.Complete(result.StepFailed,
 			fmt.Sprintf("Failed to set annotations: %v", err))
 		step.Complete(result.StepFailed, "Failed to annotate ConfigMap")
@@ -315,8 +324,8 @@ func (a *RHBOKMigrationAction) updateDataScienceCluster(
 	}
 
 	// Check if already set to Unmanaged
-	currentState, found, err := unstructured.NestedString(dsc.Object, "spec", "components", "kueue", "managementState")
-	if err == nil && found && currentState == managementStateUnmanaged {
+	currentState, err := jq.Query[string](dsc, ".spec.components.kueue.managementState")
+	if err == nil && currentState == managementStateUnmanaged {
 		step.Complete(result.StepSkipped, "DataScienceCluster Kueue already set to Unmanaged")
 
 		return
@@ -354,7 +363,7 @@ func (a *RHBOKMigrationAction) updateDataScienceCluster(
 		}
 
 		// Apply the change
-		if err := unstructured.SetNestedField(latestDSC.Object, managementStateUnmanaged, "spec", "components", "kueue", "managementState"); err != nil {
+		if err := jq.Transform(latestDSC, ".spec.components.kueue.managementState = %q", managementStateUnmanaged); err != nil {
 			return false, fmt.Errorf("failed to set managementState: %w", err)
 		}
 
