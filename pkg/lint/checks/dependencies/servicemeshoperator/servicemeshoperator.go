@@ -12,6 +12,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/operators"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 )
 
 const (
@@ -71,20 +72,10 @@ func (c *Check) Validate(ctx context.Context, target *check.CheckTarget) (*resul
 		operators.WithConditionBuilder(func(found bool, version string) metav1.Condition {
 			// Inverted logic: NOT finding the operator is good
 			if !found {
-				return check.NewCondition(
-					check.ConditionTypeCompatible,
-					metav1.ConditionTrue,
-					check.ReasonVersionCompatible,
-					"Service Mesh Operator v2 is not installed - ready for RHOAI 3.x upgrade",
-				)
+				return results.NewCompatibilitySuccess("Service Mesh Operator v2 is not installed - ready for RHOAI 3.x upgrade")
 			}
 
-			return check.NewCondition(
-				check.ConditionTypeCompatible,
-				metav1.ConditionFalse,
-				check.ReasonVersionIncompatible,
-				fmt.Sprintf("Service Mesh Operator v2 (%s) is installed but RHOAI 3.x requires v3", version),
-			)
+			return results.NewCompatibilityFailure("Service Mesh Operator v2 (%s) is installed but RHOAI 3.x requires v3", version)
 		}),
 	)
 	if err != nil {

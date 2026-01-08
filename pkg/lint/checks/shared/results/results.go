@@ -45,26 +45,58 @@ func DSCInitializationNotFound(group string, kind string, name string, descripti
 // If a condition with the same type already exists, it updates it.
 // If no condition with that type exists, it adds a new one.
 // This allows checks to potentially have multiple conditions in the future.
-func SetCondition(
-	dr *result.DiagnosticResult,
-	conditionType string,
-	status metav1.ConditionStatus,
-	reason string,
-	message string,
-) {
-	newCondition := check.NewCondition(conditionType, status, reason, message)
-
+func SetCondition(dr *result.DiagnosticResult, condition metav1.Condition) {
 	// Find and update existing condition of this type
 	for i := range dr.Status.Conditions {
-		if dr.Status.Conditions[i].Type == conditionType {
-			dr.Status.Conditions[i] = newCondition
+		if dr.Status.Conditions[i].Type == condition.Type {
+			dr.Status.Conditions[i] = condition
 
 			return
 		}
 	}
 
 	// No existing condition found, append new one
-	dr.Status.Conditions = append(dr.Status.Conditions, newCondition)
+	dr.Status.Conditions = append(dr.Status.Conditions, condition)
+}
+
+// NewCompatibilitySuccess creates a success condition for version compatibility checks.
+func NewCompatibilitySuccess(format string, args ...any) metav1.Condition {
+	return check.NewCondition(
+		check.ConditionTypeCompatible,
+		metav1.ConditionTrue,
+		check.ReasonVersionCompatible,
+		fmt.Sprintf(format, args...),
+	)
+}
+
+// NewCompatibilityFailure creates a failure condition for version compatibility checks.
+func NewCompatibilityFailure(format string, args ...any) metav1.Condition {
+	return check.NewCondition(
+		check.ConditionTypeCompatible,
+		metav1.ConditionFalse,
+		check.ReasonVersionIncompatible,
+		fmt.Sprintf(format, args...),
+	)
+}
+
+// NewAvailabilitySuccess creates a success condition for resource availability checks.
+func NewAvailabilitySuccess(format string, args ...any) metav1.Condition {
+	return check.NewCondition(
+		check.ConditionTypeAvailable,
+		metav1.ConditionTrue,
+		check.ReasonResourceFound,
+		fmt.Sprintf(format, args...),
+	)
+}
+
+// NewAvailabilityFailure creates a failure condition for resource availability checks.
+func NewAvailabilityFailure(format string, args ...any) metav1.Condition {
+	return check.NewCondition(
+		check.ConditionTypeAvailable,
+		metav1.ConditionFalse,
+		check.ReasonResourceNotFound,
+		fmt.Sprintf(format, args...),
+	)
 }
 
 // SetCompatibilitySuccessf sets a success condition for version compatibility checks.
@@ -74,11 +106,7 @@ func SetCondition(
 //
 //	SetCompatibilitySuccessf(dr, "State: %s is compatible with RHOAI %s", state, version)
 func SetCompatibilitySuccessf(dr *result.DiagnosticResult, format string, args ...any) {
-	SetCondition(dr,
-		check.ConditionTypeCompatible,
-		metav1.ConditionTrue,
-		check.ReasonVersionCompatible,
-		fmt.Sprintf(format, args...))
+	SetCondition(dr, NewCompatibilitySuccess(format, args...))
 }
 
 // SetCompatibilityFailuref sets a failure condition for version compatibility checks.
@@ -88,11 +116,7 @@ func SetCompatibilitySuccessf(dr *result.DiagnosticResult, format string, args .
 //
 //	SetCompatibilityFailuref(dr, "State: %s is incompatible with RHOAI %s", state, version)
 func SetCompatibilityFailuref(dr *result.DiagnosticResult, format string, args ...any) {
-	SetCondition(dr,
-		check.ConditionTypeCompatible,
-		metav1.ConditionFalse,
-		check.ReasonVersionIncompatible,
-		fmt.Sprintf(format, args...))
+	SetCondition(dr, NewCompatibilityFailure(format, args...))
 }
 
 // SetAvailabilitySuccessf sets a success condition for resource availability checks.
@@ -102,11 +126,7 @@ func SetCompatibilityFailuref(dr *result.DiagnosticResult, format string, args .
 //
 //	SetAvailabilitySuccessf(dr, "Found %d resources", count)
 func SetAvailabilitySuccessf(dr *result.DiagnosticResult, format string, args ...any) {
-	SetCondition(dr,
-		check.ConditionTypeAvailable,
-		metav1.ConditionTrue,
-		check.ReasonResourceFound,
-		fmt.Sprintf(format, args...))
+	SetCondition(dr, NewAvailabilitySuccess(format, args...))
 }
 
 // SetAvailabilityFailuref sets a failure condition for resource availability checks.
@@ -116,36 +136,35 @@ func SetAvailabilitySuccessf(dr *result.DiagnosticResult, format string, args ..
 //
 //	SetAvailabilityFailuref(dr, "Resource %s not found", name)
 func SetAvailabilityFailuref(dr *result.DiagnosticResult, format string, args ...any) {
-	SetCondition(dr,
-		check.ConditionTypeAvailable,
+	SetCondition(dr, NewAvailabilityFailure(format, args...))
+}
+
+// NewConfiguredFailure creates a failure condition for component/service configuration checks.
+func NewConfiguredFailure(format string, args ...any) metav1.Condition {
+	return check.NewCondition(
+		check.ConditionTypeConfigured,
 		metav1.ConditionFalse,
 		check.ReasonResourceNotFound,
-		fmt.Sprintf(format, args...))
+		fmt.Sprintf(format, args...),
+	)
 }
 
 // SetComponentNotConfigured sets a condition indicating a component is not configured in DataScienceCluster.
 func SetComponentNotConfigured(dr *result.DiagnosticResult, componentName string) {
-	SetCondition(dr,
-		check.ConditionTypeConfigured,
-		metav1.ConditionFalse,
-		check.ReasonResourceNotFound,
-		componentName+" component is not configured in DataScienceCluster")
+	SetCondition(dr, NewConfiguredFailure("%s component is not configured in DataScienceCluster", componentName))
 }
 
 // SetServiceNotConfigured sets a condition indicating a service is not configured in DSCInitialization.
 func SetServiceNotConfigured(dr *result.DiagnosticResult, serviceName string) {
-	SetCondition(dr,
-		check.ConditionTypeConfigured,
-		metav1.ConditionFalse,
-		check.ReasonResourceNotFound,
-		serviceName+" is not configured in DSCInitialization")
+	SetCondition(dr, NewConfiguredFailure("%s is not configured in DSCInitialization", serviceName))
 }
 
 // SetComponentNotManaged sets a condition indicating a component exists but is not managed.
 func SetComponentNotManaged(dr *result.DiagnosticResult, componentName string, state string) {
-	SetCondition(dr,
+	SetCondition(dr, check.NewCondition(
 		check.ConditionTypeConfigured,
 		metav1.ConditionFalse,
 		"ComponentNotManaged",
-		fmt.Sprintf("%s component is not managed (state: %s)", componentName, state))
+		fmt.Sprintf("%s component is not managed (state: %s)", componentName, state),
+	))
 }

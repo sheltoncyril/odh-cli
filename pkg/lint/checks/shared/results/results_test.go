@@ -17,7 +17,7 @@ func TestSetCondition_AddNew(t *testing.T) {
 	g := NewWithT(t)
 
 	dr := result.New("component", "test", "check", "description")
-	results.SetCondition(dr, check.ConditionTypeCompatible, metav1.ConditionTrue, "TestReason", "test message")
+	results.SetCondition(dr, check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionTrue, "TestReason", "test message"))
 
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 	g.Expect(dr.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
@@ -34,11 +34,11 @@ func TestSetCondition_UpdateExisting(t *testing.T) {
 	dr := result.New("component", "test", "check", "description")
 
 	// First call adds new condition
-	results.SetCondition(dr, check.ConditionTypeCompatible, metav1.ConditionTrue, "reason1", "message1")
+	results.SetCondition(dr, check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionTrue, "reason1", "message1"))
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 
 	// Second call with same type updates existing
-	results.SetCondition(dr, check.ConditionTypeCompatible, metav1.ConditionFalse, "reason2", "message2")
+	results.SetCondition(dr, check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionFalse, "reason2", "message2"))
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 	g.Expect(dr.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
 		"Status":  Equal(metav1.ConditionFalse),
@@ -53,15 +53,15 @@ func TestSetCondition_MultipleConditionTypes(t *testing.T) {
 	dr := result.New("component", "test", "check", "description")
 
 	// Add first condition type
-	results.SetCondition(dr, check.ConditionTypeCompatible, metav1.ConditionTrue, "reason1", "message1")
+	results.SetCondition(dr, check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionTrue, "reason1", "message1"))
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 
 	// Add different condition type
-	results.SetCondition(dr, check.ConditionTypeAvailable, metav1.ConditionTrue, "reason2", "message2")
+	results.SetCondition(dr, check.NewCondition(check.ConditionTypeAvailable, metav1.ConditionTrue, "reason2", "message2"))
 	g.Expect(dr.Status.Conditions).To(HaveLen(2))
 
 	// Update first condition type
-	results.SetCondition(dr, check.ConditionTypeCompatible, metav1.ConditionFalse, "reason3", "message3")
+	results.SetCondition(dr, check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionFalse, "reason3", "message3"))
 	g.Expect(dr.Status.Conditions).To(HaveLen(2))
 
 	// Verify both conditions exist with correct values

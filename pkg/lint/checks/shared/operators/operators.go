@@ -10,6 +10,7 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 )
 
@@ -120,20 +121,10 @@ func CheckOperatorPresence(
 		// Default condition builder: standard Available condition
 		ConditionBuilder: func(found bool, version string) metav1.Condition {
 			if !found {
-				return check.NewCondition(
-					check.ConditionTypeAvailable,
-					metav1.ConditionFalse,
-					check.ReasonResourceNotFound,
-					operatorKind+" operator is not installed",
-				)
+				return results.NewAvailabilityFailure("%s operator is not installed", operatorKind)
 			}
 
-			return check.NewCondition(
-				check.ConditionTypeAvailable,
-				metav1.ConditionTrue,
-				check.ReasonResourceFound,
-				fmt.Sprintf("%s operator installed: %s", operatorKind, version),
-			)
+			return results.NewAvailabilitySuccess("%s operator installed: %s", operatorKind, version)
 		},
 	}
 
