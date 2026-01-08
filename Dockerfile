@@ -39,6 +39,10 @@ RUN make build \
 # Runtime stage
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
+# Set default KUBECONFIG path for container usage
+# Users can override this with -e KUBECONFIG=<path> when running the container
+ENV KUBECONFIG=/kubeconfig
+
 # Copy binary from builder (cross-compiled for target platform)
 COPY --from=builder /workspace/bin/kubectl-odh /usr/local/bin/kubectl-odh
 

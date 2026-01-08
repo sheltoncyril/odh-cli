@@ -8,6 +8,40 @@ For development guidelines, coding conventions, and contribution practices, see 
 
 CLI tool for ODH (Open Data Hub) and RHOAI (Red Hat OpenShift AI) for interacting with ODH/RHOAI deployments on Kubernetes. The CLI is designed as a kubectl plugin to provide a familiar kubectl-like experience.
 
+## Installation and Usage
+
+### Docker Container
+
+The CLI is available as a container image with multi-platform support (linux/amd64, linux/arm64).
+
+**Default Configuration:**
+The container sets `KUBECONFIG=/kubeconfig` by default. Mount your local kubeconfig to this path:
+
+```bash
+docker run --rm -ti \
+  -v $KUBECONFIG:/kubeconfig \
+  quay.io/lburgazzoli/odh-cli:latest lint
+```
+
+**Custom Path:**
+Override the KUBECONFIG environment variable if needed:
+
+```bash
+docker run --rm -ti \
+  -v $KUBECONFIG:/custom/path \
+  -e KUBECONFIG=/custom/path \
+  quay.io/lburgazzoli/odh-cli:latest lint
+```
+
+### kubectl Plugin
+
+Install the `kubectl-odh` binary to your PATH for kubectl integration:
+
+```bash
+kubectl odh lint
+kubectl odh version
+```
+
 ## Key Architecture Decisions
 
 ### Core Principles
