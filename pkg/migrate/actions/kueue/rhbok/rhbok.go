@@ -91,7 +91,6 @@ func (a *RHBOKMigrationAction) Validate(
 	a.checkCurrentKueueState(ctx, target)
 	a.checkNoRHBOKConflicts(ctx, target)
 	a.verifyKueueResources(ctx, target)
-	backupResources(ctx, target)
 
 	rootRecorder, ok := target.Recorder.(action.RootRecorder)
 	if !ok {
