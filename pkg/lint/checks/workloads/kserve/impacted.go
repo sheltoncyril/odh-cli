@@ -8,6 +8,8 @@ import (
 
 	"github.com/blang/semver/v4"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
@@ -90,6 +92,9 @@ func (c *ImpactedWorkloadsCheck) Validate(
 		return dr, nil
 	}
 
+	// Populate ImpactedObjects with PartialObjectMetadata
+	c.populateImpactedObjects(dr, impactedISVCs, impactedSRs)
+
 	message := c.buildImpactMessage(impactedISVCs, impactedSRs)
 	results.SetCompatibilityFailuref(dr, "%s", message)
 
@@ -151,37 +156,92 @@ func (c *ImpactedWorkloadsCheck) findImpactedServingRuntimes(
 	return impacted, nil
 }
 
+func (c *ImpactedWorkloadsCheck) populateImpactedObjects(
+	dr *result.DiagnosticResult,
+	impactedISVCs []impactedResource,
+	impactedSRs []impactedResource,
+) {
+	totalCount := len(impactedISVCs) + len(impactedSRs)
+	dr.ImpactedObjects = make([]metav1.PartialObjectMetadata, 0, totalCount)
+
+	// Add InferenceServices
+	for _, r := range impactedISVCs {
+		obj := metav1.PartialObjectMetadata{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: resources.InferenceService.APIVersion(),
+				Kind:       resources.InferenceService.Kind,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: r.namespace,
+				Name:      r.name,
+				Annotations: map[string]string{
+					annotationDeploymentMode: r.deploymentMode,
+				},
+			},
+		}
+		dr.ImpactedObjects = append(dr.ImpactedObjects, obj)
+	}
+
+	// Add ServingRuntimes
+	for _, r := range impactedSRs {
+		obj := metav1.PartialObjectMetadata{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: resources.ServingRuntime.APIVersion(),
+				Kind:       resources.ServingRuntime.Kind,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: r.namespace,
+				Name:      r.name,
+				Annotations: map[string]string{
+					annotationDeploymentMode: r.deploymentMode,
+				},
+			},
+		}
+		dr.ImpactedObjects = append(dr.ImpactedObjects, obj)
+	}
+}
+
 func (c *ImpactedWorkloadsCheck) buildImpactMessage(
 	impactedISVCs []impactedResource,
 	impactedSRs []impactedResource,
 ) string {
-	var parts []string
+	totalCount := len(impactedISVCs) + len(impactedSRs)
 
-	if len(impactedISVCs) > 0 {
-		resourceStrs := make([]string, len(impactedISVCs))
-		for i, r := range impactedISVCs {
-			resourceStrs[i] = fmt.Sprintf("%s/%s (%s)", r.namespace, r.name, r.deploymentMode)
+	// Count deployment modes for InferenceServices
+	serverlessCount := 0
+	modelMeshCount := 0
+	for _, r := range impactedISVCs {
+		switch r.deploymentMode {
+		case deploymentModeServerless:
+			serverlessCount++
+		case deploymentModeModelMesh:
+			modelMeshCount++
 		}
-		parts = append(parts, fmt.Sprintf(
-			"%d InferenceService(s): %s",
-			len(impactedISVCs),
-			strings.Join(resourceStrs, ", "),
-		))
 	}
 
-	if len(impactedSRs) > 0 {
-		resourceStrs := make([]string, len(impactedSRs))
-		for i, r := range impactedSRs {
-			resourceStrs[i] = fmt.Sprintf("%s/%s (%s)", r.namespace, r.name, r.deploymentMode)
-		}
-		parts = append(parts, fmt.Sprintf(
-			"%d ServingRuntime(s): %s",
-			len(impactedSRs),
-			strings.Join(resourceStrs, ", "),
-		))
+	// Add ModelMesh ServingRuntimes to ModelMesh count
+	modelMeshCount += len(impactedSRs)
+
+	// Build summary message with counts
+	msg := fmt.Sprintf("Found %d deprecated KServe workload(s)", totalCount)
+
+	// Add breakdown by deployment mode
+	if len(impactedISVCs) > 0 && len(impactedSRs) > 0 {
+		msg += fmt.Sprintf(" (%d InferenceService(s), %d ServingRuntime(s))", len(impactedISVCs), len(impactedSRs))
 	}
 
-	return "Found deprecated KServe workloads that will be impacted: " + strings.Join(parts, "; ")
+	if serverlessCount > 0 || modelMeshCount > 0 {
+		var modeParts []string
+		if serverlessCount > 0 {
+			modeParts = append(modeParts, fmt.Sprintf("%d Serverless", serverlessCount))
+		}
+		if modelMeshCount > 0 {
+			modeParts = append(modeParts, fmt.Sprintf("%d ModelMesh", modelMeshCount))
+		}
+		msg += " [" + strings.Join(modeParts, ", ") + "]"
+	}
+
+	return msg
 }
 
 // Register the check in the global registry.

@@ -51,6 +51,11 @@ type DiagnosticResult struct {
 
 	// Status contains the condition-based validation results
 	Status DiagnosticStatus `json:"status" yaml:"status"`
+
+	// ImpactedObjects contains references to resources impacted by this diagnostic.
+	// Uses PartialObjectMetadata to store minimal object info with optional annotations
+	// for additional context (e.g., deployment mode, configuration details).
+	ImpactedObjects []metav1.PartialObjectMetadata `json:"impactedObjects,omitempty" yaml:"impactedObjects,omitempty"`
 }
 
 // isValidAnnotationKey validates that an annotation key follows the domain/key format.

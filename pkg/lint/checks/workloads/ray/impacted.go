@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
-	"strings"
 
 	"github.com/blang/semver/v4"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
@@ -82,6 +83,9 @@ func (c *ImpactedWorkloadsCheck) Validate(
 		return dr, nil
 	}
 
+	// Populate ImpactedObjects with PartialObjectMetadata
+	c.populateImpactedObjects(dr, impactedClusters)
+
 	message := c.buildImpactMessage(impactedClusters)
 	results.SetCompatibilityFailuref(dr, "%s", message)
 
@@ -113,18 +117,36 @@ func (c *ImpactedWorkloadsCheck) findImpactedRayClusters(
 	return impacted, nil
 }
 
+func (c *ImpactedWorkloadsCheck) populateImpactedObjects(
+	dr *result.DiagnosticResult,
+	impactedClusters []impactedResource,
+) {
+	dr.ImpactedObjects = make([]metav1.PartialObjectMetadata, 0, len(impactedClusters))
+
+	for _, r := range impactedClusters {
+		obj := metav1.PartialObjectMetadata{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: resources.RayCluster.APIVersion(),
+				Kind:       resources.RayCluster.Kind,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: r.namespace,
+				Name:      r.name,
+				Annotations: map[string]string{
+					"managed-by": "CodeFlare",
+				},
+			},
+		}
+		dr.ImpactedObjects = append(dr.ImpactedObjects, obj)
+	}
+}
+
 func (c *ImpactedWorkloadsCheck) buildImpactMessage(
 	impactedClusters []impactedResource,
 ) string {
-	resourceStrs := make([]string, len(impactedClusters))
-	for i, r := range impactedClusters {
-		resourceStrs[i] = fmt.Sprintf("%s/%s (CodeFlare-managed)", r.namespace, r.name)
-	}
-
 	return fmt.Sprintf(
-		"Found %d CodeFlare-managed RayCluster(s) that will be impacted (CodeFlare not available in RHOAI 3.x): %s",
+		"Found %d CodeFlare-managed RayCluster(s) that will be impacted (CodeFlare not available in RHOAI 3.x)",
 		len(impactedClusters),
-		strings.Join(resourceStrs, ", "),
 	)
 }
 
