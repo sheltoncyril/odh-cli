@@ -101,13 +101,18 @@ buildx-setup:
 .PHONY: publish
 publish: buildx-setup
 	@echo "Building and pushing container image to $(CONTAINER_REPO):$(CONTAINER_TAGS)"
+	@TAGS="$(CONTAINER_TAGS)"; \
+	TAG_ARGS=""; \
+	for tag in $${TAGS//,/ }; do \
+		TAG_ARGS="$$TAG_ARGS --tag=$(CONTAINER_REPO):$$tag"; \
+	done; \
 	docker buildx build \
 		--builder=multiplatform \
 		--platform=$(CONTAINER_PLATFORMS) \
 		--build-arg VERSION=$(VERSION) \
 		--build-arg COMMIT=$(COMMIT) \
 		--build-arg DATE=$(DATE) \
-		--tag=$(CONTAINER_REPO):$(CONTAINER_TAGS) \
+		$$TAG_ARGS \
 		--push \
 		.
 
