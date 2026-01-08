@@ -1,0 +1,75 @@
+version: 2
+
+project_name: kubectl-odh
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: kubectl-odh
+    main: ./cmd/main.go
+    binary: kubectl-odh
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+      - goos: darwin
+        goarch: amd64
+    ldflags:
+      - -X 'github.com/lburgazzoli/odh-cli/internal/version.Version={{.Version}}'
+      - -X 'github.com/lburgazzoli/odh-cli/internal/version.Commit={{.Commit}}'
+      - -X 'github.com/lburgazzoli/odh-cli/internal/version.Date={{.Date}}'
+
+archives:
+  - format: tar.gz
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - LICENSE*
+      - README*
+      - CHANGELOG*
+
+checksum:
+  name_template: '{{ .ProjectName }}_{{ .Version }}_checksums.txt'
+  algorithm: sha256
+
+release:
+  draft: false
+  prerelease: auto
+  mode: append
+  header: |
+    ## Release {{ .Tag }}
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - '^chore:'
+      - typo
+  groups:
+    - title: Features
+      regexp: '^feat.*'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^fix.*'
+      order: 1
+    - title: Refactoring
+      regexp: '^refactor.*'
+      order: 2
+    - title: Other Changes
+      order: 999
