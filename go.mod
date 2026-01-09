@@ -8,7 +8,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/itchyny/gojq v0.12.18
 	github.com/olekukonko/tablewriter v1.1.2
-	github.com/onsi/gomega v1.38.3
+	github.com/onsi/gomega v1.39.0
 	github.com/operator-framework/api v0.37.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
