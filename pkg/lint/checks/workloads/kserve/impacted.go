@@ -4,17 +4,17 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/blang/semver/v4"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
+	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 )
 
 const (
@@ -23,10 +23,15 @@ const (
 	deploymentModeServerless = "Serverless"
 )
 
-type impactedResource struct {
-	namespace      string
-	name           string
-	deploymentMode string
+const (
+	ConditionTypeServerlessISVCCompatible = "ServerlessInferenceServicesCompatible"
+	ConditionTypeModelMeshISVCCompatible  = "ModelMeshInferenceServicesCompatible"
+	ConditionTypeModelMeshSRCompatible    = "ModelMeshServingRuntimesCompatible"
+)
+
+type impactedInferenceServices struct {
+	serverless []types.NamespacedName
+	modelMesh  []types.NamespacedName
 }
 
 // ImpactedWorkloadsCheck lists InferenceServices and ServingRuntimes using deprecated deployment modes.
@@ -71,32 +76,32 @@ func (c *ImpactedWorkloadsCheck) Validate(
 		dr.Annotations[check.AnnotationCheckTargetVersion] = target.Version.Version
 	}
 
-	// Find impacted InferenceServices
-	impactedISVCs, err := c.findImpactedInferenceServices(ctx, target)
+	// Find impacted workloads by category
+	isvcsByMode, err := c.findImpactedInferenceServices(ctx, target)
 	if err != nil {
 		return nil, err
 	}
 
-	// Find impacted ServingRuntimes
 	impactedSRs, err := c.findImpactedServingRuntimes(ctx, target)
 	if err != nil {
 		return nil, err
 	}
 
-	totalImpacted := len(impactedISVCs) + len(impactedSRs)
+	// Calculate totals
+	totalImpacted := len(isvcsByMode.serverless) + len(isvcsByMode.modelMesh) + len(impactedSRs)
 	dr.Annotations[check.AnnotationImpactedWorkloadCount] = strconv.Itoa(totalImpacted)
 
-	if totalImpacted == 0 {
-		results.SetCompatibilitySuccessf(dr, "No InferenceServices or ServingRuntimes using deprecated deployment modes found - ready for RHOAI 3.x upgrade")
+	// ALWAYS add all three conditions (even for zero counts per user requirement)
+	dr.Status.Conditions = append(dr.Status.Conditions,
+		c.newServerlessISVCCondition(len(isvcsByMode.serverless)),
+		c.newModelMeshISVCCondition(len(isvcsByMode.modelMesh)),
+		c.newModelMeshSRCondition(len(impactedSRs)),
+	)
 
-		return dr, nil
+	// Populate ImpactedObjects if any workloads found
+	if totalImpacted > 0 {
+		c.populateImpactedObjects(dr, isvcsByMode, impactedSRs)
 	}
-
-	// Populate ImpactedObjects with PartialObjectMetadata
-	c.populateImpactedObjects(dr, impactedISVCs, impactedSRs)
-
-	message := c.buildImpactMessage(impactedISVCs, impactedSRs)
-	results.SetCompatibilityFailuref(dr, "%s", message)
 
 	return dr, nil
 }
@@ -104,138 +109,164 @@ func (c *ImpactedWorkloadsCheck) Validate(
 func (c *ImpactedWorkloadsCheck) findImpactedInferenceServices(
 	ctx context.Context,
 	target *check.CheckTarget,
-) ([]impactedResource, error) {
+) (impactedInferenceServices, error) {
 	inferenceServices, err := target.Client.ListMetadata(ctx, resources.InferenceService)
 	if err != nil {
-		return nil, fmt.Errorf("listing InferenceServices: %w", err)
+		return impactedInferenceServices{}, fmt.Errorf("listing InferenceServices: %w", err)
 	}
 
-	var impacted []impactedResource
+	var isvcs impactedInferenceServices
 
 	for _, isvc := range inferenceServices {
 		annotations := isvc.GetAnnotations()
-
 		mode := annotations[annotationDeploymentMode]
-		if mode == deploymentModeModelMesh || mode == deploymentModeServerless {
-			impacted = append(impacted, impactedResource{
-				namespace:      isvc.GetNamespace(),
-				name:           isvc.GetName(),
-				deploymentMode: mode,
-			})
+
+		namespacedName := types.NamespacedName{
+			Namespace: isvc.GetNamespace(),
+			Name:      isvc.GetName(),
+		}
+
+		switch mode {
+		case deploymentModeServerless:
+			isvcs.serverless = append(isvcs.serverless, namespacedName)
+		case deploymentModeModelMesh:
+			isvcs.modelMesh = append(isvcs.modelMesh, namespacedName)
 		}
 	}
 
-	return impacted, nil
+	return isvcs, nil
 }
 
 func (c *ImpactedWorkloadsCheck) findImpactedServingRuntimes(
 	ctx context.Context,
 	target *check.CheckTarget,
-) ([]impactedResource, error) {
-	servingRuntimes, err := target.Client.ListMetadata(ctx, resources.ServingRuntime)
+) ([]types.NamespacedName, error) {
+	servingRuntimes, err := target.Client.List(ctx, resources.ServingRuntime)
 	if err != nil {
 		return nil, fmt.Errorf("listing ServingRuntimes: %w", err)
 	}
 
-	var impacted []impactedResource
+	var impacted []types.NamespacedName
 
 	for _, sr := range servingRuntimes {
-		annotations := sr.GetAnnotations()
-
-		mode := annotations[annotationDeploymentMode]
-		// Only check for ModelMesh on ServingRuntimes (not Serverless)
-		if mode == deploymentModeModelMesh {
-			impacted = append(impacted, impactedResource{
-				namespace:      sr.GetNamespace(),
-				name:           sr.GetName(),
-				deploymentMode: mode,
-			})
+		// Check for ModelMesh using .spec.multiModel field
+		multiModel, err := jq.Query[bool](&sr, ".spec.multiModel")
+		if err != nil || !multiModel {
+			continue
 		}
+
+		impacted = append(impacted, types.NamespacedName{
+			Namespace: sr.GetNamespace(),
+			Name:      sr.GetName(),
+		})
 	}
 
 	return impacted, nil
 }
 
+func (c *ImpactedWorkloadsCheck) newServerlessISVCCondition(count int) metav1.Condition {
+	if count > 0 {
+		return check.NewCondition(
+			ConditionTypeServerlessISVCCompatible,
+			metav1.ConditionFalse,
+			check.ReasonVersionIncompatible,
+			fmt.Sprintf("Found %d Serverless InferenceService(s) - will be impacted in RHOAI 3.x", count),
+		)
+	}
+
+	return check.NewCondition(
+		ConditionTypeServerlessISVCCompatible,
+		metav1.ConditionTrue,
+		check.ReasonVersionCompatible,
+		"No Serverless InferenceService(s) found - ready for RHOAI 3.x upgrade",
+	)
+}
+
+func (c *ImpactedWorkloadsCheck) newModelMeshISVCCondition(count int) metav1.Condition {
+	if count > 0 {
+		return check.NewCondition(
+			ConditionTypeModelMeshISVCCompatible,
+			metav1.ConditionFalse,
+			check.ReasonVersionIncompatible,
+			fmt.Sprintf("Found %d ModelMesh InferenceService(s) - will be impacted in RHOAI 3.x", count),
+		)
+	}
+
+	return check.NewCondition(
+		ConditionTypeModelMeshISVCCompatible,
+		metav1.ConditionTrue,
+		check.ReasonVersionCompatible,
+		"No ModelMesh InferenceService(s) found - ready for RHOAI 3.x upgrade",
+	)
+}
+
+func (c *ImpactedWorkloadsCheck) newModelMeshSRCondition(count int) metav1.Condition {
+	if count > 0 {
+		return check.NewCondition(
+			ConditionTypeModelMeshSRCompatible,
+			metav1.ConditionFalse,
+			check.ReasonVersionIncompatible,
+			fmt.Sprintf("Found %d ModelMesh ServingRuntime(s) - will be impacted in RHOAI 3.x", count),
+		)
+	}
+
+	return check.NewCondition(
+		ConditionTypeModelMeshSRCompatible,
+		metav1.ConditionTrue,
+		check.ReasonVersionCompatible,
+		"No ModelMesh ServingRuntime(s) found - ready for RHOAI 3.x upgrade",
+	)
+}
+
 func (c *ImpactedWorkloadsCheck) populateImpactedObjects(
 	dr *result.DiagnosticResult,
-	impactedISVCs []impactedResource,
-	impactedSRs []impactedResource,
+	isvcsByMode impactedInferenceServices,
+	impactedSRs []types.NamespacedName,
 ) {
-	totalCount := len(impactedISVCs) + len(impactedSRs)
+	totalCount := len(isvcsByMode.serverless) + len(isvcsByMode.modelMesh) + len(impactedSRs)
 	dr.ImpactedObjects = make([]metav1.PartialObjectMetadata, 0, totalCount)
 
-	// Add InferenceServices
-	for _, r := range impactedISVCs {
+	// Add Serverless InferenceServices
+	for _, r := range isvcsByMode.serverless {
 		obj := metav1.PartialObjectMetadata{
 			TypeMeta: resources.InferenceService.TypeMeta(),
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: r.namespace,
-				Name:      r.name,
+				Namespace: r.Namespace,
+				Name:      r.Name,
 				Annotations: map[string]string{
-					annotationDeploymentMode: r.deploymentMode,
+					annotationDeploymentMode: deploymentModeServerless,
 				},
 			},
 		}
 		dr.ImpactedObjects = append(dr.ImpactedObjects, obj)
 	}
 
-	// Add ServingRuntimes
+	// Add ModelMesh InferenceServices
+	for _, r := range isvcsByMode.modelMesh {
+		obj := metav1.PartialObjectMetadata{
+			TypeMeta: resources.InferenceService.TypeMeta(),
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: r.Namespace,
+				Name:      r.Name,
+				Annotations: map[string]string{
+					annotationDeploymentMode: deploymentModeModelMesh,
+				},
+			},
+		}
+		dr.ImpactedObjects = append(dr.ImpactedObjects, obj)
+	}
+
+	// Add ServingRuntimes (no annotations - they use .spec.multiModel)
 	for _, r := range impactedSRs {
 		obj := metav1.PartialObjectMetadata{
 			TypeMeta: resources.ServingRuntime.TypeMeta(),
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: r.namespace,
-				Name:      r.name,
-				Annotations: map[string]string{
-					annotationDeploymentMode: r.deploymentMode,
-				},
+				Namespace: r.Namespace,
+				Name:      r.Name,
 			},
 		}
 		dr.ImpactedObjects = append(dr.ImpactedObjects, obj)
 	}
-}
-
-func (c *ImpactedWorkloadsCheck) buildImpactMessage(
-	impactedISVCs []impactedResource,
-	impactedSRs []impactedResource,
-) string {
-	totalCount := len(impactedISVCs) + len(impactedSRs)
-
-	// Count deployment modes for InferenceServices
-	serverlessCount := 0
-	modelMeshCount := 0
-	for _, r := range impactedISVCs {
-		switch r.deploymentMode {
-		case deploymentModeServerless:
-			serverlessCount++
-		case deploymentModeModelMesh:
-			modelMeshCount++
-		}
-	}
-
-	// Add ModelMesh ServingRuntimes to ModelMesh count
-	modelMeshCount += len(impactedSRs)
-
-	// Build summary message with counts
-	msg := fmt.Sprintf("Found %d deprecated KServe workload(s)", totalCount)
-
-	// Add breakdown by deployment mode
-	if len(impactedISVCs) > 0 && len(impactedSRs) > 0 {
-		msg += fmt.Sprintf(" (%d InferenceService(s), %d ServingRuntime(s))", len(impactedISVCs), len(impactedSRs))
-	}
-
-	if serverlessCount > 0 || modelMeshCount > 0 {
-		var modeParts []string
-		if serverlessCount > 0 {
-			modeParts = append(modeParts, fmt.Sprintf("%d Serverless", serverlessCount))
-		}
-		if modelMeshCount > 0 {
-			modeParts = append(modeParts, fmt.Sprintf("%d ModelMesh", modelMeshCount))
-		}
-		msg += " [" + strings.Join(modeParts, ", ") + "]"
-	}
-
-	return msg
 }
 
 // Register the check in the global registry.
