@@ -212,8 +212,7 @@ func WaitForCSV(
 				return false, nil
 			}
 
-			for i := range csvList.Items {
-				csv := &csvList.Items[i]
+			for _, csv := range csvList.Items {
 				if strings.HasPrefix(csv.Name, csvNamePrefix) && csv.Status.Phase == csvPhaseSucceeded {
 					return true, nil
 				}
