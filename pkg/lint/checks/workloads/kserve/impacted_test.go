@@ -80,12 +80,24 @@ func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions).To(HaveLen(3))
 	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeCompatible),
+		"Type":    Equal("ServerlessInferenceServicesCompatible"),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
-		"Message": ContainSubstring("No InferenceServices or ServingRuntimes using deprecated deployment modes found"),
+		"Message": ContainSubstring("No Serverless InferenceService(s) found"),
+	}))
+	g.Expect(result.Status.Conditions[1]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal("ModelMeshInferenceServicesCompatible"),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal(check.ReasonVersionCompatible),
+		"Message": ContainSubstring("No ModelMesh InferenceService(s) found"),
+	}))
+	g.Expect(result.Status.Conditions[2]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal("ModelMeshServingRuntimesCompatible"),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal(check.ReasonVersionCompatible),
+		"Message": ContainSubstring("No ModelMesh ServingRuntime(s) found"),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
 }
@@ -129,12 +141,24 @@ func TestImpactedWorkloadsCheck_ModelMeshInferenceService(t *testing.T) {
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions).To(HaveLen(3))
 	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeCompatible),
+		"Type":    Equal("ServerlessInferenceServicesCompatible"),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal(check.ReasonVersionCompatible),
+		"Message": ContainSubstring("No Serverless InferenceService(s) found"),
+	}))
+	g.Expect(result.Status.Conditions[1]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal("ModelMeshInferenceServicesCompatible"),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),
-		"Message": And(ContainSubstring("Found 1 deprecated KServe workload(s)"), ContainSubstring("[1 ModelMesh]")),
+		"Message": ContainSubstring("Found 1 ModelMesh InferenceService(s)"),
+	}))
+	g.Expect(result.Status.Conditions[2]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal("ModelMeshServingRuntimesCompatible"),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal(check.ReasonVersionCompatible),
+		"Message": ContainSubstring("No ModelMesh ServingRuntime(s) found"),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 }
@@ -178,12 +202,24 @@ func TestImpactedWorkloadsCheck_ServerlessInferenceService(t *testing.T) {
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions).To(HaveLen(3))
 	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeCompatible),
+		"Type":    Equal("ServerlessInferenceServicesCompatible"),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),
-		"Message": And(ContainSubstring("Found 1 deprecated KServe workload(s)"), ContainSubstring("[1 Serverless]")),
+		"Message": ContainSubstring("Found 1 Serverless InferenceService(s)"),
+	}))
+	g.Expect(result.Status.Conditions[1]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal("ModelMeshInferenceServicesCompatible"),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal(check.ReasonVersionCompatible),
+		"Message": ContainSubstring("No ModelMesh InferenceService(s) found"),
+	}))
+	g.Expect(result.Status.Conditions[2]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal("ModelMeshServingRuntimesCompatible"),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal(check.ReasonVersionCompatible),
+		"Message": ContainSubstring("No ModelMesh ServingRuntime(s) found"),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 }
@@ -199,9 +235,9 @@ func TestImpactedWorkloadsCheck_ModelMeshServingRuntime(t *testing.T) {
 			"metadata": map[string]any{
 				"name":      "my-runtime",
 				"namespace": "test-ns",
-				"annotations": map[string]any{
-					annotationDeploymentMode: "ModelMesh",
-				},
+			},
+			"spec": map[string]any{
+				"multiModel": true,
 			},
 		},
 	}
@@ -227,12 +263,24 @@ func TestImpactedWorkloadsCheck_ModelMeshServingRuntime(t *testing.T) {
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions).To(HaveLen(3))
 	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeCompatible),
+		"Type":    Equal("ServerlessInferenceServicesCompatible"),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal(check.ReasonVersionCompatible),
+		"Message": ContainSubstring("No Serverless InferenceService(s) found"),
+	}))
+	g.Expect(result.Status.Conditions[1]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal("ModelMeshInferenceServicesCompatible"),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal(check.ReasonVersionCompatible),
+		"Message": ContainSubstring("No ModelMesh InferenceService(s) found"),
+	}))
+	g.Expect(result.Status.Conditions[2]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal("ModelMeshServingRuntimesCompatible"),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),
-		"Message": And(ContainSubstring("Found 1 deprecated KServe workload(s)"), ContainSubstring("[1 ModelMesh]")),
+		"Message": ContainSubstring("Found 1 ModelMesh ServingRuntime(s)"),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 }
@@ -241,7 +289,7 @@ func TestImpactedWorkloadsCheck_ServerlessServingRuntime_NotFlagged(t *testing.T
 	g := NewWithT(t)
 	ctx := context.Background()
 
-	// ServingRuntime with Serverless should NOT be flagged
+	// ServingRuntime without multiModel should NOT be flagged
 	sr := &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": resources.ServingRuntime.APIVersion(),
@@ -249,9 +297,9 @@ func TestImpactedWorkloadsCheck_ServerlessServingRuntime_NotFlagged(t *testing.T
 			"metadata": map[string]any{
 				"name":      "serverless-runtime",
 				"namespace": "test-ns",
-				"annotations": map[string]any{
-					annotationDeploymentMode: "Serverless",
-				},
+			},
+			"spec": map[string]any{
+				"multiModel": false,
 			},
 		},
 	}
@@ -277,9 +325,17 @@ func TestImpactedWorkloadsCheck_ServerlessServingRuntime_NotFlagged(t *testing.T
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions).To(HaveLen(3))
 	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
-		"Type":   Equal(check.ConditionTypeCompatible),
+		"Type":   Equal("ServerlessInferenceServicesCompatible"),
+		"Status": Equal(metav1.ConditionTrue),
+	}))
+	g.Expect(result.Status.Conditions[1]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal("ModelMeshInferenceServicesCompatible"),
+		"Status": Equal(metav1.ConditionTrue),
+	}))
+	g.Expect(result.Status.Conditions[2]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal("ModelMeshServingRuntimesCompatible"),
 		"Status": Equal(metav1.ConditionTrue),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
@@ -324,9 +380,17 @@ func TestImpactedWorkloadsCheck_RawDeploymentAnnotation(t *testing.T) {
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions).To(HaveLen(3))
 	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
-		"Type":   Equal(check.ConditionTypeCompatible),
+		"Type":   Equal("ServerlessInferenceServicesCompatible"),
+		"Status": Equal(metav1.ConditionTrue),
+	}))
+	g.Expect(result.Status.Conditions[1]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal("ModelMeshInferenceServicesCompatible"),
+		"Status": Equal(metav1.ConditionTrue),
+	}))
+	g.Expect(result.Status.Conditions[2]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal("ModelMeshServingRuntimesCompatible"),
 		"Status": Equal(metav1.ConditionTrue),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
@@ -371,9 +435,17 @@ func TestImpactedWorkloadsCheck_NoAnnotation(t *testing.T) {
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions).To(HaveLen(3))
 	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
-		"Type":   Equal(check.ConditionTypeCompatible),
+		"Type":   Equal("ServerlessInferenceServicesCompatible"),
+		"Status": Equal(metav1.ConditionTrue),
+	}))
+	g.Expect(result.Status.Conditions[1]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal("ModelMeshInferenceServicesCompatible"),
+		"Status": Equal(metav1.ConditionTrue),
+	}))
+	g.Expect(result.Status.Conditions[2]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal("ModelMeshServingRuntimesCompatible"),
 		"Status": Equal(metav1.ConditionTrue),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
@@ -432,9 +504,9 @@ func TestImpactedWorkloadsCheck_MixedWorkloads(t *testing.T) {
 			"metadata": map[string]any{
 				"name":      "modelmesh-runtime",
 				"namespace": "ns4",
-				"annotations": map[string]any{
-					annotationDeploymentMode: "ModelMesh",
-				},
+			},
+			"spec": map[string]any{
+				"multiModel": true,
 			},
 		},
 	}
@@ -460,16 +532,24 @@ func TestImpactedWorkloadsCheck_MixedWorkloads(t *testing.T) {
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions).To(HaveLen(3))
 	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
-		"Type":   Equal(check.ConditionTypeCompatible),
-		"Status": Equal(metav1.ConditionFalse),
-		"Reason": Equal(check.ReasonVersionIncompatible),
-		"Message": And(
-			ContainSubstring("Found 3 deprecated KServe workload(s)"),
-			ContainSubstring("(2 InferenceService(s), 1 ServingRuntime(s))"),
-			ContainSubstring("[1 Serverless, 2 ModelMesh]"),
-		),
+		"Type":    Equal("ServerlessInferenceServicesCompatible"),
+		"Status":  Equal(metav1.ConditionFalse),
+		"Reason":  Equal(check.ReasonVersionIncompatible),
+		"Message": ContainSubstring("Found 1 Serverless InferenceService(s)"),
+	}))
+	g.Expect(result.Status.Conditions[1]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal("ModelMeshInferenceServicesCompatible"),
+		"Status":  Equal(metav1.ConditionFalse),
+		"Reason":  Equal(check.ReasonVersionIncompatible),
+		"Message": ContainSubstring("Found 1 ModelMesh InferenceService(s)"),
+	}))
+	g.Expect(result.Status.Conditions[2]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal("ModelMeshServingRuntimesCompatible"),
+		"Status":  Equal(metav1.ConditionFalse),
+		"Reason":  Equal(check.ReasonVersionIncompatible),
+		"Message": ContainSubstring("Found 1 ModelMesh ServingRuntime(s)"),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "3"))
 }
