@@ -146,7 +146,7 @@ func (c *ImpactedWorkloadsCheck) findImpactedServingRuntimes(
 		return nil, fmt.Errorf("listing ServingRuntimes: %w", err)
 	}
 
-	var impacted []types.NamespacedName
+	impacted := make([]types.NamespacedName, 0, len(servingRuntimes))
 
 	for _, sr := range servingRuntimes {
 		// Check for ModelMesh using .spec.multiModel field

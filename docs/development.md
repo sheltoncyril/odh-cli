@@ -206,6 +206,74 @@ odh-cli/
 * For status constants, use clear, unambiguous names (e.g., `StatusOK`, `StatusError`, `StatusWarning`)
 * Avoid package name repetition in type names (e.g., use `client.Client`, NOT `client.ClientClient`)
 
+### Blank Imports for Auto-Registration
+
+**CRITICAL:** Blank imports (imports prefixed with `_`) MUST NOT be removed from command entry points, as they are essential for the auto-registration pattern used by checks, migrations, and other pluggable components.
+
+**How Auto-Registration Works:**
+
+The project uses Go's `init()` function mechanism for automatic component registration:
+
+1. Each check/migration package defines an `init()` function that registers itself with a global registry
+2. Blank imports in command entry points trigger these `init()` functions at program startup
+3. Without the blank imports, the `init()` functions never execute and components remain unregistered
+
+**Files with Required Blank Imports:**
+
+- `cmd/lint/lint.go` - Registers all lint checks
+- `cmd/migrate/migrate.go` - Registers all migration actions
+- Any future command that uses auto-registration
+
+**Example from `cmd/lint/lint.go`:**
+
+```go
+//nolint:gci // Blank imports required for check registration - DO NOT REMOVE
+import (
+    "fmt"
+
+    "github.com/spf13/cobra"
+
+    "k8s.io/cli-runtime/pkg/genericclioptions"
+    "k8s.io/cli-runtime/pkg/genericiooptions"
+
+    lintpkg "github.com/lburgazzoli/odh-cli/pkg/lint"
+    // Import check packages to trigger init() auto-registration.
+    // These blank imports are REQUIRED for checks to register with the global registry.
+    // DO NOT REMOVE - they appear unused but are essential for runtime check discovery.
+    _ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/kserve"
+    _ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/modelmesh"
+    // ... additional check packages
+)
+```
+
+**Why Blank Imports Appear Unused:**
+
+- IDEs and linters may flag these as unused because the packages aren't referenced directly in code
+- The `//nolint:gci` directive suppresses import grouping/ordering linter warnings
+- Extensive comments explain why removal would break functionality
+- The `init()` side-effect is invisible to static analysis
+
+**Verification:**
+
+If blank imports are accidentally removed:
+- Compilation succeeds (no syntax errors)
+- Build succeeds
+- Runtime behavior is broken: checks/migrations won't be registered and won't execute
+- Users will see empty check lists or "no checks found" errors
+
+**Guidelines:**
+
+- ✅ **ALWAYS** preserve blank imports in command entry points
+- ✅ **ALWAYS** include clear comments explaining why they cannot be removed
+- ✅ **ALWAYS** use `//nolint:gci` directive to prevent import ordering changes
+- ❌ **NEVER** remove blank imports even if they appear unused
+- ❌ **NEVER** run automated import cleanup tools (like `goimports -w`) on these files without reviewing changes
+- ❌ **NEVER** accept IDE suggestions to remove "unused" imports in these files
+
+**Related Architecture:**
+
+See [lint/architecture.md](lint/architecture.md#auto-registration) for details on the check registration system and [design.md](design.md#extensibility) for the architectural rationale behind auto-registration.
+
 ### Code Comments
 
 Comments MUST explain **WHY**, not **WHAT**. Code should be self-documenting through clear naming and structure.
