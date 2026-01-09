@@ -121,7 +121,7 @@ func Query[T any](value any, jqQuery string) (T, error) {
 //	jq.Transform(obj, ".spec.foo = %q", "bar")
 //	jq.Transform(obj, ".metadata.annotations = %s", annotationsJSON)
 //	jq.Transform(obj, `.spec.components.kueue.managementState = "Unmanaged"`)
-func Transform(obj any, jqExpressionFormat string, args ...any) error {
+func Transform(obj *unstructured.Unstructured, jqExpressionFormat string, args ...any) error {
 	// Format the expression if args provided
 	jqExpression := jqExpressionFormat
 	if len(args) > 0 {
@@ -154,24 +154,12 @@ func Transform(obj any, jqExpressionFormat string, args ...any) error {
 	}
 
 	// Update the original object with the result
-	return updateObject(obj, result)
-}
-
-// updateObject updates the original object with the JQ result.
-func updateObject(original any, result any) error {
 	resultMap, ok := result.(map[string]any)
 	if !ok {
 		return fmt.Errorf("transform result is not a map: %T", result)
 	}
 
-	switch v := original.(type) {
-	case *unstructured.Unstructured:
-		v.Object = resultMap
+	obj.Object = resultMap
 
-		return nil
-	case unstructured.Unstructured:
-		return errors.New("cannot modify unstructured.Unstructured by value, use pointer")
-	default:
-		return fmt.Errorf("unsupported object type for update: %T", original)
-	}
+	return nil
 }

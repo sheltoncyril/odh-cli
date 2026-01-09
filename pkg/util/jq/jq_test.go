@@ -109,20 +109,6 @@ func TestTransform_InvalidExpression(t *testing.T) {
 	g.Expect(err.Error()).To(ContainSubstring("failed to parse jq expression"))
 }
 
-func TestTransform_NonPointer(t *testing.T) {
-	g := NewWithT(t)
-
-	obj := unstructured.Unstructured{
-		Object: map[string]any{
-			"spec": map[string]any{},
-		},
-	}
-
-	err := jq.Transform(obj, `.spec.foo = "bar"`)
-	g.Expect(err).To(HaveOccurred())
-	g.Expect(err.Error()).To(ContainSubstring("cannot modify unstructured.Unstructured by value"))
-}
-
 func TestQuery_String(t *testing.T) {
 	g := NewWithT(t)
 
