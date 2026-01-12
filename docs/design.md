@@ -20,7 +20,7 @@ The container sets `KUBECONFIG=/kubeconfig` by default. Mount your local kubecon
 ```bash
 docker run --rm -ti \
   -v $KUBECONFIG:/kubeconfig \
-  quay.io/lburgazzoli/odh-cli:latest lint
+  quay.io/lburgazzoli/odh-cli:latest lint --target-version 3.3.0
 ```
 
 **Custom Path:**
@@ -30,7 +30,7 @@ Override the KUBECONFIG environment variable if needed:
 docker run --rm -ti \
   -v $KUBECONFIG:/custom/path \
   -e KUBECONFIG=/custom/path \
-  quay.io/lburgazzoli/odh-cli:latest lint
+  quay.io/lburgazzoli/odh-cli:latest lint --target-version 3.3.0
 ```
 
 ### kubectl Plugin
@@ -38,7 +38,7 @@ docker run --rm -ti \
 Install the `kubectl-odh` binary to your PATH for kubectl integration:
 
 ```bash
-kubectl odh lint
+kubectl odh lint --target-version 3.3.0
 kubectl odh version
 ```
 

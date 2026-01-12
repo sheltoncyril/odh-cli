@@ -11,7 +11,7 @@ Run the CLI using the pre-built container image:
 ```bash
 podman run --rm -ti \
   -v $KUBECONFIG:/kubeconfig \
-  quay.io/lburgazzoli/odh-cli:latest lint
+  quay.io/lburgazzoli/odh-cli:latest lint --target-version 3.3.0
 ```
 
 The container has `KUBECONFIG=/kubeconfig` set by default, so you just need to mount your kubeconfig to that path.
@@ -30,7 +30,7 @@ Install the `kubectl-odh` binary to your PATH:
 # Download from releases
 # Place in PATH as kubectl-odh
 # Use with kubectl
-kubectl odh lint
+kubectl odh lint --target-version 3.3.0
 kubectl odh version
 ```
 
