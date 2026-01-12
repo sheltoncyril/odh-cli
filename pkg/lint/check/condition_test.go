@@ -285,7 +285,7 @@ func TestNewCondition_CreatesValidCondition(t *testing.T) {
 		"All requirements validated successfully",
 	)
 
-	g.Expect(condition).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(condition.Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeValidated),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonRequirementsMet),
@@ -320,7 +320,7 @@ func TestNewCondition_FailureCondition(t *testing.T) {
 		"Resource not found in cluster",
 	)
 
-	g.Expect(condition).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(condition.Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeAvailable),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonResourceNotFound),
@@ -338,7 +338,7 @@ func TestNewCondition_UnknownCondition(t *testing.T) {
 		"Check execution failed: timeout",
 	)
 
-	g.Expect(condition).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(condition.Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeValidated),
 		"Status":  Equal(metav1.ConditionUnknown),
 		"Reason":  Equal(check.ReasonCheckExecutionFailed),
@@ -399,10 +399,10 @@ func TestNewCondition_UsedInDiagnosticResult(t *testing.T) {
 	)
 
 	g.Expect(dr.Status.Conditions).To(HaveLen(2))
-	g.Expect(dr.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type": Equal(check.ConditionTypeAvailable),
 	}))
-	g.Expect(dr.Status.Conditions[1]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(dr.Status.Conditions[1].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type": Equal(check.ConditionTypeReady),
 	}))
 
@@ -423,7 +423,7 @@ func TestNewCondition_WithSingleFormatArg(t *testing.T) {
 		5,
 	)
 
-	g.Expect(condition).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(condition.Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeCompatible),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),
@@ -444,7 +444,7 @@ func TestNewCondition_WithMultipleFormatArgs(t *testing.T) {
 		"3.x",
 	)
 
-	g.Expect(condition).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(condition.Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeCompatible),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),
@@ -462,7 +462,7 @@ func TestNewCondition_WithNoFormatArgs(t *testing.T) {
 		"All requirements validated successfully",
 	)
 
-	g.Expect(condition).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(condition.Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeValidated),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonRequirementsMet),
@@ -481,7 +481,7 @@ func TestNewCondition_WithStringFormatArg(t *testing.T) {
 		"my-deployment",
 	)
 
-	g.Expect(condition).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(condition.Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeAvailable),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonResourceNotFound),
@@ -502,7 +502,7 @@ func TestNewCondition_WithErrorFormatArg(t *testing.T) {
 		testErr,
 	)
 
-	g.Expect(condition).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(condition.Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeValidated),
 		"Status":  Equal(metav1.ConditionUnknown),
 		"Reason":  Equal(check.ReasonCheckExecutionFailed),

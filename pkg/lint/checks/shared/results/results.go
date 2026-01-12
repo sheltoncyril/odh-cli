@@ -13,7 +13,7 @@ import (
 // This is used by component checks that require DSC to exist.
 func DataScienceClusterNotFound(group string, kind string, name string, description string) *result.DiagnosticResult {
 	dr := result.New(group, kind, name, description)
-	dr.Status.Conditions = []metav1.Condition{
+	dr.Status.Conditions = []result.Condition{
 		check.NewCondition(
 			check.ConditionTypeAvailable,
 			metav1.ConditionFalse,
@@ -29,7 +29,7 @@ func DataScienceClusterNotFound(group string, kind string, name string, descript
 // This is used by service checks that require DSCInitialization to exist.
 func DSCInitializationNotFound(group string, kind string, name string, description string) *result.DiagnosticResult {
 	dr := result.New(group, kind, name, description)
-	dr.Status.Conditions = []metav1.Condition{
+	dr.Status.Conditions = []result.Condition{
 		check.NewCondition(
 			check.ConditionTypeAvailable,
 			metav1.ConditionFalse,
@@ -45,7 +45,7 @@ func DSCInitializationNotFound(group string, kind string, name string, descripti
 // If a condition with the same type already exists, it updates it.
 // If no condition with that type exists, it adds a new one.
 // This allows checks to potentially have multiple conditions in the future.
-func SetCondition(dr *result.DiagnosticResult, condition metav1.Condition) {
+func SetCondition(dr *result.DiagnosticResult, condition result.Condition) {
 	// Find and update existing condition of this type
 	for i := range dr.Status.Conditions {
 		if dr.Status.Conditions[i].Type == condition.Type {
@@ -60,7 +60,7 @@ func SetCondition(dr *result.DiagnosticResult, condition metav1.Condition) {
 }
 
 // NewCompatibilitySuccess creates a success condition for version compatibility checks.
-func NewCompatibilitySuccess(format string, args ...any) metav1.Condition {
+func NewCompatibilitySuccess(format string, args ...any) result.Condition {
 	return check.NewCondition(
 		check.ConditionTypeCompatible,
 		metav1.ConditionTrue,
@@ -70,7 +70,7 @@ func NewCompatibilitySuccess(format string, args ...any) metav1.Condition {
 }
 
 // NewCompatibilityFailure creates a failure condition for version compatibility checks.
-func NewCompatibilityFailure(format string, args ...any) metav1.Condition {
+func NewCompatibilityFailure(format string, args ...any) result.Condition {
 	return check.NewCondition(
 		check.ConditionTypeCompatible,
 		metav1.ConditionFalse,
@@ -80,7 +80,7 @@ func NewCompatibilityFailure(format string, args ...any) metav1.Condition {
 }
 
 // NewAvailabilitySuccess creates a success condition for resource availability checks.
-func NewAvailabilitySuccess(format string, args ...any) metav1.Condition {
+func NewAvailabilitySuccess(format string, args ...any) result.Condition {
 	return check.NewCondition(
 		check.ConditionTypeAvailable,
 		metav1.ConditionTrue,
@@ -90,7 +90,7 @@ func NewAvailabilitySuccess(format string, args ...any) metav1.Condition {
 }
 
 // NewAvailabilityFailure creates a failure condition for resource availability checks.
-func NewAvailabilityFailure(format string, args ...any) metav1.Condition {
+func NewAvailabilityFailure(format string, args ...any) result.Condition {
 	return check.NewCondition(
 		check.ConditionTypeAvailable,
 		metav1.ConditionFalse,
@@ -140,7 +140,7 @@ func SetAvailabilityFailuref(dr *result.DiagnosticResult, format string, args ..
 }
 
 // NewConfiguredFailure creates a failure condition for component/service configuration checks.
-func NewConfiguredFailure(format string, args ...any) metav1.Condition {
+func NewConfiguredFailure(format string, args ...any) result.Condition {
 	return check.NewCondition(
 		check.ConditionTypeConfigured,
 		metav1.ConditionFalse,

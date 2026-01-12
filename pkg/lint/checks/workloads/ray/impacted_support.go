@@ -16,7 +16,7 @@ func newWorkloadCompatibilityCondition(
 	conditionType string,
 	count int,
 	workloadDescription string,
-) metav1.Condition {
+) result.Condition {
 	if count > 0 {
 		return check.NewCondition(
 			conditionType,
@@ -37,7 +37,7 @@ func newWorkloadCompatibilityCondition(
 	)
 }
 
-func newCodeFlareRayClusterCondition(count int) metav1.Condition {
+func newCodeFlareRayClusterCondition(count int) result.Condition {
 	return newWorkloadCompatibilityCondition(
 		ConditionTypeCodeFlareRayClusterCompatible,
 		count,

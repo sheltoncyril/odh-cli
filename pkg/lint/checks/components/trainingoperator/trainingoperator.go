@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
@@ -67,9 +68,15 @@ func (c *DeprecationCheck) Validate(
 	}
 
 	if managementStateStr == check.ManagementStateManaged || managementStateStr == check.ManagementStateUnmanaged {
-		results.SetCompatibilityFailuref(dr,
+		// Use warning severity instead of critical (this is advisory, not blocking)
+		results.SetCondition(dr, check.NewConditionWithSeverity(
+			check.ConditionTypeCompatible,
+			metav1.ConditionFalse,
+			check.ReasonVersionIncompatible,
+			result.SeverityWarning,
 			"TrainingOperator (Kubeflow Training Operator v1) is enabled (state: %s) but is deprecated in RHOAI 3.3 and will be replaced by Trainer v2 in a future release",
-			managementStateStr)
+			managementStateStr,
+		))
 
 		return dr, nil
 	}

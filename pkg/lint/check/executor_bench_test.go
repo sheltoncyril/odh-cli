@@ -172,7 +172,7 @@ func (c *benchmarkCheck) Validate(_ context.Context, _ check.Target) (*result.Di
 		c.id,
 		c.Description(),
 	)
-	dr.Status.Conditions = []metav1.Condition{
+	dr.Status.Conditions = []result.Condition{
 		check.NewCondition(
 			check.ConditionTypeValidated,
 			metav1.ConditionTrue,

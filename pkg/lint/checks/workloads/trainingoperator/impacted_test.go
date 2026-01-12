@@ -13,6 +13,7 @@ import (
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
+	resultpkg "github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/trainingoperator"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
@@ -48,7 +49,7 @@ func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(trainingoperator.ConditionTypePyTorchJobsCompatible),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
@@ -98,12 +99,13 @@ func TestImpactedWorkloadsCheck_ActiveJobs(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(trainingoperator.ConditionTypePyTorchJobsCompatible),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),
 		"Message": And(ContainSubstring("Found 1 active PyTorchJob(s)"), ContainSubstring("deprecated TrainingOperator")),
 	}))
+	g.Expect(result.Status.Conditions[0].Severity).To(Equal(resultpkg.SeverityWarning))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(1))
 	g.Expect(result.ImpactedObjects[0].Annotations).To(HaveKeyWithValue("status", "active"))
@@ -150,7 +152,7 @@ func TestImpactedWorkloadsCheck_CompletedJobsSucceeded(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(trainingoperator.ConditionTypePyTorchJobsCompatible),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
@@ -202,7 +204,7 @@ func TestImpactedWorkloadsCheck_CompletedJobsFailed(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(trainingoperator.ConditionTypePyTorchJobsCompatible),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
@@ -298,12 +300,13 @@ func TestImpactedWorkloadsCheck_MixedActiveAndCompleted(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(trainingoperator.ConditionTypePyTorchJobsCompatible),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),
 		"Message": And(ContainSubstring("Found 3 PyTorchJob(s)"), ContainSubstring("2 active"), ContainSubstring("1 completed")),
 	}))
+	g.Expect(result.Status.Conditions[0].Severity).To(Equal(resultpkg.SeverityWarning))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "3"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(3))
 }
@@ -341,10 +344,11 @@ func TestImpactedWorkloadsCheck_JobWithoutStatus(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal(trainingoperator.ConditionTypePyTorchJobsCompatible),
 		"Status": Equal(metav1.ConditionFalse),
 	}))
+	g.Expect(result.Status.Conditions[0].Severity).To(Equal(resultpkg.SeverityWarning))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(1))
 	g.Expect(result.ImpactedObjects[0].Annotations).To(HaveKeyWithValue("status", "active"))

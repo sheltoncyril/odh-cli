@@ -16,7 +16,7 @@ func newWorkloadCompatibilityCondition(
 	conditionType string,
 	count int,
 	workloadDescription string,
-) metav1.Condition {
+) result.Condition {
 	if count > 0 {
 		return check.NewCondition(
 			conditionType,
@@ -37,7 +37,7 @@ func newWorkloadCompatibilityCondition(
 	)
 }
 
-func newServerlessISVCCondition(count int) metav1.Condition {
+func newServerlessISVCCondition(count int) result.Condition {
 	return newWorkloadCompatibilityCondition(
 		ConditionTypeServerlessISVCCompatible,
 		count,
@@ -45,7 +45,7 @@ func newServerlessISVCCondition(count int) metav1.Condition {
 	)
 }
 
-func newModelMeshISVCCondition(count int) metav1.Condition {
+func newModelMeshISVCCondition(count int) result.Condition {
 	return newWorkloadCompatibilityCondition(
 		ConditionTypeModelMeshISVCCompatible,
 		count,
@@ -53,7 +53,7 @@ func newModelMeshISVCCondition(count int) metav1.Condition {
 	)
 }
 
-func newModelMeshSRCondition(count int) metav1.Condition {
+func newModelMeshSRCondition(count int) result.Condition {
 	return newWorkloadCompatibilityCondition(
 		ConditionTypeModelMeshSRCompatible,
 		count,

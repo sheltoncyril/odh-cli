@@ -373,20 +373,55 @@ func FlattenResults(resultsByGroup map[check.CheckGroup][]check.CheckExecution) 
 	return flattened
 }
 
+// getSeverityString determines the severity string from a condition.
+// For Status=False, uses explicit severity if set (allows overriding critical to warning).
+// For other statuses, always derives from status.
+func getSeverityString(
+	condition *result.Condition,
+	critStr string,
+	warnStr string,
+	infoStr string,
+) string {
+	switch condition.Status {
+	case metav1.ConditionFalse:
+		// For failures, check if explicit severity is set to override default critical
+		if condition.Severity != "" {
+			switch condition.Severity {
+			case result.SeverityCritical:
+				return critStr
+			case result.SeverityWarning:
+				return warnStr
+			case result.SeverityInfo:
+				return infoStr
+			}
+		}
+
+		return critStr
+	case metav1.ConditionTrue:
+		return infoStr
+	case metav1.ConditionUnknown:
+		return warnStr
+	}
+
+	return infoStr
+}
+
 // OutputTable is a shared function for outputting check results in table format.
 //
 //nolint:revive // verbose boolean is clear and appropriate for controlling output detail level
 func OutputTable(out io.Writer, results []check.CheckExecution, verbose bool) error {
 	totalChecks := 0
 	totalPassed := 0
+	totalWarnings := 0
 	totalFailed := 0
 
 	// Pre-compute color formatters
 	var (
 		statusPass   = color.New(color.FgGreen).Sprint("✓")
+		statusWarn   = color.New(color.FgYellow).Sprint("⚠")
 		statusFail   = color.New(color.FgRed).Sprint("✗")
 		severityCrit = color.New(color.FgRed).Sprint("critical")
-		severityWarn = color.New(color.FgYellow).Sprint("warning")
+		severityWarn = color.New(color.FgYellow).Add(color.Bold).Sprint("warning") // Bold yellow (orange-ish)
 		severityInfo = color.New(color.FgCyan).Sprint("info")
 	)
 
@@ -412,26 +447,25 @@ func OutputTable(out io.Writer, results []check.CheckExecution, verbose bool) er
 		for _, condition := range exec.Result.Status.Conditions {
 			totalChecks++
 
-			// Determine status symbol based on condition status
+			// Determine severity first (uses explicit severity if set for Status=False)
+			severity := getSeverityString(&condition, severityCrit, severityWarn, severityInfo)
+
+			// Determine status symbol and count based on severity
 			var status string
-			if condition.Status == metav1.ConditionFalse || condition.Status == metav1.ConditionUnknown {
+
+			switch severity {
+			case severityCrit:
+				// Critical severity = failed check
 				status = statusFail
 				totalFailed++
-			} else {
+			case severityWarn:
+				// Warning severity = warning (not counted as failure)
+				status = statusWarn
+				totalWarnings++
+			default:
+				// Info/success
 				status = statusPass
 				totalPassed++
-			}
-
-			// Determine severity from condition status
-			var severity string
-
-			switch condition.Status {
-			case metav1.ConditionFalse:
-				severity = severityCrit
-			case metav1.ConditionTrue:
-				severity = severityInfo
-			case metav1.ConditionUnknown:
-				severity = severityWarn
 			}
 
 			msg := condition.Message
@@ -462,7 +496,7 @@ func OutputTable(out io.Writer, results []check.CheckExecution, verbose bool) er
 
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, "Summary:")
-	_, _ = fmt.Fprintf(out, "  Total: %d | Passed: %d | Failed: %d\n", totalChecks, totalPassed, totalFailed)
+	_, _ = fmt.Fprintf(out, "  Total: %d | Passed: %d | Warnings: %d | Failed: %d\n", totalChecks, totalPassed, totalWarnings, totalFailed)
 
 	return nil
 }

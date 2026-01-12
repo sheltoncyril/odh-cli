@@ -79,19 +79,19 @@ func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(3))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ServerlessInferenceServicesCompatible"),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
 		"Message": ContainSubstring("No Serverless InferenceService(s) found"),
 	}))
-	g.Expect(result.Status.Conditions[1]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[1].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ModelMeshInferenceServicesCompatible"),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
 		"Message": ContainSubstring("No ModelMesh InferenceService(s) found"),
 	}))
-	g.Expect(result.Status.Conditions[2]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[2].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ModelMeshServingRuntimesCompatible"),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
@@ -139,19 +139,19 @@ func TestImpactedWorkloadsCheck_ModelMeshInferenceService(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(3))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ServerlessInferenceServicesCompatible"),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
 		"Message": ContainSubstring("No Serverless InferenceService(s) found"),
 	}))
-	g.Expect(result.Status.Conditions[1]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[1].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ModelMeshInferenceServicesCompatible"),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),
 		"Message": ContainSubstring("Found 1 ModelMesh InferenceService(s)"),
 	}))
-	g.Expect(result.Status.Conditions[2]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[2].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ModelMeshServingRuntimesCompatible"),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
@@ -199,19 +199,19 @@ func TestImpactedWorkloadsCheck_ServerlessInferenceService(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(3))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ServerlessInferenceServicesCompatible"),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),
 		"Message": ContainSubstring("Found 1 Serverless InferenceService(s)"),
 	}))
-	g.Expect(result.Status.Conditions[1]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[1].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ModelMeshInferenceServicesCompatible"),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
 		"Message": ContainSubstring("No ModelMesh InferenceService(s) found"),
 	}))
-	g.Expect(result.Status.Conditions[2]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[2].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ModelMeshServingRuntimesCompatible"),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
@@ -259,19 +259,19 @@ func TestImpactedWorkloadsCheck_ModelMeshServingRuntime(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(3))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ServerlessInferenceServicesCompatible"),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
 		"Message": ContainSubstring("No Serverless InferenceService(s) found"),
 	}))
-	g.Expect(result.Status.Conditions[1]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[1].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ModelMeshInferenceServicesCompatible"),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
 		"Message": ContainSubstring("No ModelMesh InferenceService(s) found"),
 	}))
-	g.Expect(result.Status.Conditions[2]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[2].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ModelMeshServingRuntimesCompatible"),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),
@@ -320,15 +320,15 @@ func TestImpactedWorkloadsCheck_ServerlessServingRuntime_NotFlagged(t *testing.T
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(3))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal("ServerlessInferenceServicesCompatible"),
 		"Status": Equal(metav1.ConditionTrue),
 	}))
-	g.Expect(result.Status.Conditions[1]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[1].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal("ModelMeshInferenceServicesCompatible"),
 		"Status": Equal(metav1.ConditionTrue),
 	}))
-	g.Expect(result.Status.Conditions[2]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[2].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal("ModelMeshServingRuntimesCompatible"),
 		"Status": Equal(metav1.ConditionTrue),
 	}))
@@ -374,15 +374,15 @@ func TestImpactedWorkloadsCheck_RawDeploymentAnnotation(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(3))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal("ServerlessInferenceServicesCompatible"),
 		"Status": Equal(metav1.ConditionTrue),
 	}))
-	g.Expect(result.Status.Conditions[1]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[1].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal("ModelMeshInferenceServicesCompatible"),
 		"Status": Equal(metav1.ConditionTrue),
 	}))
-	g.Expect(result.Status.Conditions[2]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[2].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal("ModelMeshServingRuntimesCompatible"),
 		"Status": Equal(metav1.ConditionTrue),
 	}))
@@ -428,15 +428,15 @@ func TestImpactedWorkloadsCheck_NoAnnotation(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(3))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal("ServerlessInferenceServicesCompatible"),
 		"Status": Equal(metav1.ConditionTrue),
 	}))
-	g.Expect(result.Status.Conditions[1]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[1].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal("ModelMeshInferenceServicesCompatible"),
 		"Status": Equal(metav1.ConditionTrue),
 	}))
-	g.Expect(result.Status.Conditions[2]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[2].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal("ModelMeshServingRuntimesCompatible"),
 		"Status": Equal(metav1.ConditionTrue),
 	}))
@@ -524,19 +524,19 @@ func TestImpactedWorkloadsCheck_MixedWorkloads(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(3))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ServerlessInferenceServicesCompatible"),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),
 		"Message": ContainSubstring("Found 1 Serverless InferenceService(s)"),
 	}))
-	g.Expect(result.Status.Conditions[1]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[1].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ModelMeshInferenceServicesCompatible"),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),
 		"Message": ContainSubstring("Found 1 ModelMesh InferenceService(s)"),
 	}))
-	g.Expect(result.Status.Conditions[2]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[2].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ModelMeshServingRuntimesCompatible"),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),

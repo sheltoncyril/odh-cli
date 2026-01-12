@@ -111,7 +111,7 @@ func (e *Executor) executeCheck(ctx context.Context, target Target, check Check)
 			check.Description(),
 		)
 
-		var condition metav1.Condition
+		var condition result.Condition
 		if reason == ReasonCheckExecutionFailed && message == "" {
 			condition = NewCondition(
 				ConditionTypeValidated,
@@ -129,7 +129,7 @@ func (e *Executor) executeCheck(ctx context.Context, target Target, check Check)
 			)
 		}
 
-		errorResult.Status.Conditions = []metav1.Condition{condition}
+		errorResult.Status.Conditions = []result.Condition{condition}
 
 		return CheckExecution{
 			Check:  check,
@@ -146,7 +146,7 @@ func (e *Executor) executeCheck(ctx context.Context, target Target, check Check)
 			check.Name(),
 			check.Description(),
 		)
-		invalidResult.Status.Conditions = []metav1.Condition{
+		invalidResult.Status.Conditions = []result.Condition{
 			NewCondition(
 				ConditionTypeValidated,
 				metav1.ConditionUnknown,

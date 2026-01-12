@@ -74,13 +74,13 @@ func TestDiagnosticResult_WithSingleCondition(t *testing.T) {
 		"Validates KServe version compatibility",
 	)
 
-	dr.Status.Conditions = append(dr.Status.Conditions, metav1.Condition{
+	dr.Status.Conditions = append(dr.Status.Conditions, result.Condition{Condition: metav1.Condition{
 		Type:               check.ConditionTypeValidated,
 		Status:             metav1.ConditionTrue,
 		Reason:             check.ReasonRequirementsMet,
 		Message:            "All version requirements met",
 		LastTransitionTime: metav1.Now(),
-	})
+	}})
 
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 	g.Expect(dr.Status.Conditions[0].Type).To(Equal(check.ConditionTypeValidated))
@@ -98,28 +98,28 @@ func TestDiagnosticResult_WithMultipleConditions(t *testing.T) {
 		"Validates authentication service readiness",
 	)
 
-	dr.Status.Conditions = []metav1.Condition{
-		{
+	dr.Status.Conditions = []result.Condition{
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeAvailable,
 			Status:             metav1.ConditionTrue,
 			Reason:             check.ReasonResourceFound,
 			Message:            "Authentication service deployment found",
 			LastTransitionTime: metav1.Now(),
-		},
-		{
+		}},
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeReady,
 			Status:             metav1.ConditionTrue,
 			Reason:             "PodsReady",
 			Message:            "All auth service pods are ready (3/3)",
 			LastTransitionTime: metav1.Now(),
-		},
-		{
+		}},
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeConfigured,
 			Status:             metav1.ConditionTrue,
 			Reason:             "ConfigValid",
 			Message:            "Authentication provider configuration is valid",
 			LastTransitionTime: metav1.Now(),
-		},
+		}},
 	}
 
 	g.Expect(dr.Status.Conditions).To(HaveLen(3))
@@ -138,13 +138,13 @@ func TestDiagnosticResult_Validate_Success(t *testing.T) {
 		"Validates KServe version compatibility",
 	)
 
-	dr.Status.Conditions = append(dr.Status.Conditions, metav1.Condition{
+	dr.Status.Conditions = append(dr.Status.Conditions, result.Condition{Condition: metav1.Condition{
 		Type:               check.ConditionTypeValidated,
 		Status:             metav1.ConditionTrue,
 		Reason:             check.ReasonRequirementsMet,
 		Message:            "All version requirements met",
 		LastTransitionTime: metav1.Now(),
-	})
+	}})
 
 	err := dr.Validate()
 	g.Expect(err).ToNot(HaveOccurred())
@@ -160,13 +160,13 @@ func TestDiagnosticResult_Validate_EmptyGroup(t *testing.T) {
 		"Validates KServe version compatibility",
 	)
 
-	dr.Status.Conditions = append(dr.Status.Conditions, metav1.Condition{
+	dr.Status.Conditions = append(dr.Status.Conditions, result.Condition{Condition: metav1.Condition{
 		Type:               check.ConditionTypeValidated,
 		Status:             metav1.ConditionTrue,
 		Reason:             check.ReasonRequirementsMet,
 		Message:            "All version requirements met",
 		LastTransitionTime: metav1.Now(),
-	})
+	}})
 
 	err := dr.Validate()
 	g.Expect(err).To(HaveOccurred())
@@ -183,13 +183,13 @@ func TestDiagnosticResult_Validate_EmptyKind(t *testing.T) {
 		"Validates KServe version compatibility",
 	)
 
-	dr.Status.Conditions = append(dr.Status.Conditions, metav1.Condition{
+	dr.Status.Conditions = append(dr.Status.Conditions, result.Condition{Condition: metav1.Condition{
 		Type:               check.ConditionTypeValidated,
 		Status:             metav1.ConditionTrue,
 		Reason:             check.ReasonRequirementsMet,
 		Message:            "All version requirements met",
 		LastTransitionTime: metav1.Now(),
-	})
+	}})
 
 	err := dr.Validate()
 	g.Expect(err).To(HaveOccurred())
@@ -206,13 +206,13 @@ func TestDiagnosticResult_Validate_EmptyName(t *testing.T) {
 		"Validates KServe version compatibility",
 	)
 
-	dr.Status.Conditions = append(dr.Status.Conditions, metav1.Condition{
+	dr.Status.Conditions = append(dr.Status.Conditions, result.Condition{Condition: metav1.Condition{
 		Type:               check.ConditionTypeValidated,
 		Status:             metav1.ConditionTrue,
 		Reason:             check.ReasonRequirementsMet,
 		Message:            "All version requirements met",
 		LastTransitionTime: metav1.Now(),
-	})
+	}})
 
 	err := dr.Validate()
 	g.Expect(err).To(HaveOccurred())
@@ -245,13 +245,13 @@ func TestDiagnosticResult_Validate_EmptyConditionType(t *testing.T) {
 		"Validates KServe version compatibility",
 	)
 
-	dr.Status.Conditions = append(dr.Status.Conditions, metav1.Condition{
+	dr.Status.Conditions = append(dr.Status.Conditions, result.Condition{Condition: metav1.Condition{
 		Type:               "",
 		Status:             metav1.ConditionTrue,
 		Reason:             check.ReasonRequirementsMet,
 		Message:            "All version requirements met",
 		LastTransitionTime: metav1.Now(),
-	})
+	}})
 
 	err := dr.Validate()
 	g.Expect(err).To(HaveOccurred())
@@ -268,13 +268,13 @@ func TestDiagnosticResult_Validate_InvalidConditionStatus(t *testing.T) {
 		"Validates KServe version compatibility",
 	)
 
-	dr.Status.Conditions = append(dr.Status.Conditions, metav1.Condition{
+	dr.Status.Conditions = append(dr.Status.Conditions, result.Condition{Condition: metav1.Condition{
 		Type:               check.ConditionTypeValidated,
 		Status:             "Invalid",
 		Reason:             check.ReasonRequirementsMet,
 		Message:            "All version requirements met",
 		LastTransitionTime: metav1.Now(),
-	})
+	}})
 
 	err := dr.Validate()
 	g.Expect(err).To(HaveOccurred())
@@ -291,13 +291,13 @@ func TestDiagnosticResult_Validate_EmptyConditionReason(t *testing.T) {
 		"Validates KServe version compatibility",
 	)
 
-	dr.Status.Conditions = append(dr.Status.Conditions, metav1.Condition{
+	dr.Status.Conditions = append(dr.Status.Conditions, result.Condition{Condition: metav1.Condition{
 		Type:               check.ConditionTypeValidated,
 		Status:             metav1.ConditionTrue,
 		Reason:             "",
 		Message:            "All version requirements met",
 		LastTransitionTime: metav1.Now(),
-	})
+	}})
 
 	err := dr.Validate()
 	g.Expect(err).To(HaveOccurred())
@@ -317,28 +317,28 @@ func TestMultipleConditions_OrderedByExecutionSequence(t *testing.T) {
 	)
 
 	// Conditions should be added in execution order
-	dr.Status.Conditions = []metav1.Condition{
-		{
+	dr.Status.Conditions = []result.Condition{
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeAvailable,
 			Status:             metav1.ConditionTrue,
 			Reason:             check.ReasonResourceFound,
 			Message:            "Step 1: Resource found",
 			LastTransitionTime: metav1.Now(),
-		},
-		{
+		}},
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeReady,
 			Status:             metav1.ConditionTrue,
 			Reason:             "PodsReady",
 			Message:            "Step 2: Pods ready",
 			LastTransitionTime: metav1.Now(),
-		},
-		{
+		}},
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeConfigured,
 			Status:             metav1.ConditionTrue,
 			Reason:             check.ReasonConfigurationValid,
 			Message:            "Step 3: Configuration valid",
 			LastTransitionTime: metav1.Now(),
-		},
+		}},
 	}
 
 	g.Expect(dr.Status.Conditions).To(HaveLen(3))
@@ -357,28 +357,28 @@ func TestMultipleConditions_MixedStatusValues(t *testing.T) {
 		"Validates KServe health",
 	)
 
-	dr.Status.Conditions = []metav1.Condition{
-		{
+	dr.Status.Conditions = []result.Condition{
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeAvailable,
 			Status:             metav1.ConditionTrue,
 			Reason:             check.ReasonResourceFound,
 			Message:            "KServe deployment found",
 			LastTransitionTime: metav1.Now(),
-		},
-		{
+		}},
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeReady,
 			Status:             metav1.ConditionFalse,
 			Reason:             "PodsNotReady",
 			Message:            "2 of 3 pods not ready",
 			LastTransitionTime: metav1.Now(),
-		},
-		{
+		}},
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeConfigured,
 			Status:             metav1.ConditionTrue,
 			Reason:             check.ReasonConfigurationValid,
 			Message:            "Configuration is valid",
 			LastTransitionTime: metav1.Now(),
-		},
+		}},
 	}
 
 	g.Expect(dr.Status.Conditions).To(HaveLen(3))
@@ -397,28 +397,28 @@ func TestMultipleConditions_AllPassing(t *testing.T) {
 		"Validates KServe readiness",
 	)
 
-	dr.Status.Conditions = []metav1.Condition{
-		{
+	dr.Status.Conditions = []result.Condition{
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeAvailable,
 			Status:             metav1.ConditionTrue,
 			Reason:             check.ReasonResourceFound,
 			Message:            "Deployment found",
 			LastTransitionTime: metav1.Now(),
-		},
-		{
+		}},
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeReady,
 			Status:             metav1.ConditionTrue,
 			Reason:             "PodsReady",
 			Message:            "All pods ready",
 			LastTransitionTime: metav1.Now(),
-		},
-		{
+		}},
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeConfigured,
 			Status:             metav1.ConditionTrue,
 			Reason:             check.ReasonConfigurationValid,
 			Message:            "Configuration valid",
 			LastTransitionTime: metav1.Now(),
-		},
+		}},
 	}
 
 	allPassing := true
@@ -443,28 +443,28 @@ func TestMultipleConditions_AllFailing(t *testing.T) {
 		"Validates KServe readiness",
 	)
 
-	dr.Status.Conditions = []metav1.Condition{
-		{
+	dr.Status.Conditions = []result.Condition{
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeAvailable,
 			Status:             metav1.ConditionFalse,
 			Reason:             check.ReasonResourceNotFound,
 			Message:            "Deployment not found",
 			LastTransitionTime: metav1.Now(),
-		},
-		{
+		}},
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeReady,
 			Status:             metav1.ConditionFalse,
 			Reason:             "PodsNotReady",
 			Message:            "No pods ready",
 			LastTransitionTime: metav1.Now(),
-		},
-		{
+		}},
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeConfigured,
 			Status:             metav1.ConditionFalse,
 			Reason:             check.ReasonConfigurationInvalid,
 			Message:            "Configuration invalid",
 			LastTransitionTime: metav1.Now(),
-		},
+		}},
 	}
 
 	allFailing := true
@@ -489,28 +489,28 @@ func TestMultipleConditions_WithUnknownStatus(t *testing.T) {
 		"Validates KServe health",
 	)
 
-	dr.Status.Conditions = []metav1.Condition{
-		{
+	dr.Status.Conditions = []result.Condition{
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeAvailable,
 			Status:             metav1.ConditionTrue,
 			Reason:             check.ReasonResourceFound,
 			Message:            "Deployment found",
 			LastTransitionTime: metav1.Now(),
-		},
-		{
+		}},
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeReady,
 			Status:             metav1.ConditionUnknown,
 			Reason:             check.ReasonCheckExecutionFailed,
 			Message:            "Failed to query pod status",
 			LastTransitionTime: metav1.Now(),
-		},
-		{
+		}},
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeConfigured,
 			Status:             metav1.ConditionTrue,
 			Reason:             check.ReasonConfigurationValid,
 			Message:            "Configuration valid",
 			LastTransitionTime: metav1.Now(),
-		},
+		}},
 	}
 
 	hasUnknown := false
@@ -539,33 +539,33 @@ func TestMultipleConditions_AppendingNewConditions(t *testing.T) {
 	g.Expect(dr.Status.Conditions).To(BeEmpty())
 
 	// Add conditions incrementally
-	dr.Status.Conditions = append(dr.Status.Conditions, metav1.Condition{
+	dr.Status.Conditions = append(dr.Status.Conditions, result.Condition{Condition: metav1.Condition{
 		Type:               check.ConditionTypeAvailable,
 		Status:             metav1.ConditionTrue,
 		Reason:             check.ReasonResourceFound,
 		Message:            "First condition",
 		LastTransitionTime: metav1.Now(),
-	})
+	}})
 
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 
-	dr.Status.Conditions = append(dr.Status.Conditions, metav1.Condition{
+	dr.Status.Conditions = append(dr.Status.Conditions, result.Condition{Condition: metav1.Condition{
 		Type:               check.ConditionTypeReady,
 		Status:             metav1.ConditionTrue,
 		Reason:             "PodsReady",
 		Message:            "Second condition",
 		LastTransitionTime: metav1.Now(),
-	})
+	}})
 
 	g.Expect(dr.Status.Conditions).To(HaveLen(2))
 
-	dr.Status.Conditions = append(dr.Status.Conditions, metav1.Condition{
+	dr.Status.Conditions = append(dr.Status.Conditions, result.Condition{Condition: metav1.Condition{
 		Type:               check.ConditionTypeConfigured,
 		Status:             metav1.ConditionTrue,
 		Reason:             check.ReasonConfigurationValid,
 		Message:            "Third condition",
 		LastTransitionTime: metav1.Now(),
-	})
+	}})
 
 	g.Expect(dr.Status.Conditions).To(HaveLen(3))
 }
@@ -580,21 +580,21 @@ func TestMultipleConditions_ValidationSucceedsWithMultiple(t *testing.T) {
 		"Multi-condition validation",
 	)
 
-	dr.Status.Conditions = []metav1.Condition{
-		{
+	dr.Status.Conditions = []result.Condition{
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeAvailable,
 			Status:             metav1.ConditionTrue,
 			Reason:             check.ReasonResourceFound,
 			Message:            "Available",
 			LastTransitionTime: metav1.Now(),
-		},
-		{
+		}},
+		{Condition: metav1.Condition{
 			Type:               check.ConditionTypeReady,
 			Status:             metav1.ConditionTrue,
 			Reason:             "PodsReady",
 			Message:            "Ready",
 			LastTransitionTime: metav1.Now(),
-		},
+		}},
 	}
 
 	err := dr.Validate()
@@ -657,13 +657,13 @@ func TestDiagnosticResult_ValidateAnnotationFormat(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			dr := result.New("components", "kserve", "version", "Test annotation validation")
 			dr.Annotations = tt.annotations
-			dr.Status.Conditions = append(dr.Status.Conditions, metav1.Condition{
+			dr.Status.Conditions = append(dr.Status.Conditions, result.Condition{Condition: metav1.Condition{
 				Type:               check.ConditionTypeValidated,
 				Status:             metav1.ConditionTrue,
 				Reason:             check.ReasonRequirementsMet,
 				Message:            "Test condition",
 				LastTransitionTime: metav1.Now(),
-			})
+			}})
 
 			err := dr.Validate()
 			if tt.shouldError {
@@ -714,13 +714,13 @@ func TestDiagnosticResult_ValidateRequiredFieldsWithAnnotations(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			dr := result.New(tt.group, tt.kind, tt.drName, "Test validation")
 			dr.Annotations["valid.domain.io/key"] = "value"
-			dr.Status.Conditions = append(dr.Status.Conditions, metav1.Condition{
+			dr.Status.Conditions = append(dr.Status.Conditions, result.Condition{Condition: metav1.Condition{
 				Type:               check.ConditionTypeValidated,
 				Status:             metav1.ConditionTrue,
 				Reason:             check.ReasonRequirementsMet,
 				Message:            "Test condition",
 				LastTransitionTime: metav1.Now(),
-			})
+			}})
 
 			err := dr.Validate()
 			g.Expect(err).To(HaveOccurred())

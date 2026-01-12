@@ -4,9 +4,12 @@ import (
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 )
 
-// NewCondition creates a new metav1.Condition with the current timestamp.
+// NewCondition creates a new Condition with the current timestamp.
+// Severity is left empty and will be derived from Status by GetSeverity().
 //
 // This helper ensures LastTransitionTime is automatically set to the current time,
 // providing consistent condition creation across all checks.
@@ -39,17 +42,56 @@ func NewCondition(
 	reason string,
 	message string,
 	args ...any,
-) metav1.Condition {
+) result.Condition {
 	if len(args) > 0 {
 		message = fmt.Sprintf(message, args...)
 	}
 
-	return metav1.Condition{
-		Type:               conditionType,
-		Status:             status,
-		Reason:             reason,
-		Message:            message,
-		LastTransitionTime: metav1.Now(),
+	return result.Condition{
+		Condition: metav1.Condition{
+			Type:               conditionType,
+			Status:             status,
+			Reason:             reason,
+			Message:            message,
+			LastTransitionTime: metav1.Now(),
+		},
+	}
+}
+
+// NewConditionWithSeverity creates a new Condition with explicit severity.
+// Use this when you want to override the default severity derived from Status.
+// For example, to create a Failed status (False) with warning severity instead of critical.
+//
+// Example usage:
+//
+//	condition := check.NewConditionWithSeverity(
+//	    check.ConditionTypeCompatible,
+//	    metav1.ConditionFalse,
+//	    check.ReasonVersionIncompatible,
+//	    result.SeverityWarning,  // Override default critical severity
+//	    "Component deprecated but upgrade can proceed",
+//	)
+func NewConditionWithSeverity(
+	conditionType string,
+	status metav1.ConditionStatus,
+	reason string,
+	severity result.Severity,
+	message string,
+	args ...any,
+) result.Condition {
+	if len(args) > 0 {
+		message = fmt.Sprintf(message, args...)
+	}
+
+	return result.Condition{
+		Condition: metav1.Condition{
+			Type:               conditionType,
+			Status:             status,
+			Reason:             reason,
+			Message:            message,
+			LastTransitionTime: metav1.Now(),
+		},
+		Severity: severity,
 	}
 }
 

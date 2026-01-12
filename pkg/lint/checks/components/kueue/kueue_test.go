@@ -49,7 +49,7 @@ func TestKueueManagedRemovalCheck_NoDSC(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeAvailable),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonResourceNotFound),
@@ -97,7 +97,7 @@ func TestKueueManagedRemovalCheck_NotConfigured(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeConfigured),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonResourceNotFound),
@@ -145,7 +145,7 @@ func TestKueueManagedRemovalCheck_ManagedBlocking(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeCompatible),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),
@@ -197,7 +197,7 @@ func TestKueueManagedRemovalCheck_UnmanagedAllowed(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeCompatible),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
@@ -246,7 +246,7 @@ func TestKueueManagedRemovalCheck_RemovedAllowed(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeCompatible),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),

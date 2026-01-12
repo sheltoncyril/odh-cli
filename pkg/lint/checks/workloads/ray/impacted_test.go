@@ -78,7 +78,7 @@ func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(ray.ConditionTypeCodeFlareRayClusterCompatible),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
@@ -126,7 +126,7 @@ func TestImpactedWorkloadsCheck_WithCodeFlareFinalizer(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal(ray.ConditionTypeCodeFlareRayClusterCompatible),
 		"Status": Equal(metav1.ConditionFalse),
 		"Reason": Equal(check.ReasonVersionIncompatible),
@@ -177,7 +177,7 @@ func TestImpactedWorkloadsCheck_WithoutCodeFlareFinalizer(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal(ray.ConditionTypeCodeFlareRayClusterCompatible),
 		"Status": Equal(metav1.ConditionTrue),
 	}))
@@ -220,7 +220,7 @@ func TestImpactedWorkloadsCheck_NoFinalizers(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal(ray.ConditionTypeCodeFlareRayClusterCompatible),
 		"Status": Equal(metav1.ConditionTrue),
 	}))
@@ -298,7 +298,7 @@ func TestImpactedWorkloadsCheck_MultipleClusters(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal(ray.ConditionTypeCodeFlareRayClusterCompatible),
 		"Status": Equal(metav1.ConditionFalse),
 		"Reason": Equal(check.ReasonVersionIncompatible),

@@ -14,7 +14,7 @@ import (
 func newPyTorchJobCondition(
 	activeCount int,
 	completedCount int,
-) metav1.Condition {
+) result.Condition {
 	totalCount := activeCount + completedCount
 
 	if totalCount == 0 {
@@ -27,10 +27,11 @@ func newPyTorchJobCondition(
 	}
 
 	if activeCount > 0 && completedCount > 0 {
-		return check.NewCondition(
+		return check.NewConditionWithSeverity(
 			ConditionTypePyTorchJobsCompatible,
 			metav1.ConditionFalse,
 			check.ReasonVersionIncompatible,
+			result.SeverityWarning,
 			"Found %d PyTorchJob(s) (%d active, %d completed) - workloads use deprecated TrainingOperator (Kubeflow v1) which will be replaced by Trainer v2",
 			totalCount,
 			activeCount,
@@ -39,10 +40,11 @@ func newPyTorchJobCondition(
 	}
 
 	if activeCount > 0 {
-		return check.NewCondition(
+		return check.NewConditionWithSeverity(
 			ConditionTypePyTorchJobsCompatible,
 			metav1.ConditionFalse,
 			check.ReasonVersionIncompatible,
+			result.SeverityWarning,
 			"Found %d active PyTorchJob(s) - workloads use deprecated TrainingOperator (Kubeflow v1) which will be replaced by Trainer v2",
 			activeCount,
 		)

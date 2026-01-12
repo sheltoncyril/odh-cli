@@ -112,7 +112,7 @@ func TestDiagnosticCR_AnnotationValidation(t *testing.T) {
 		"opendatahub.io/version":    "2.25.0",
 		"test.example.com/check-id": "test-123",
 	}
-	dr.Status.Conditions = []metav1.Condition{
+	dr.Status.Conditions = []result.Condition{
 		check.NewCondition(
 			check.ConditionTypeAvailable,
 			metav1.ConditionTrue,
@@ -173,7 +173,7 @@ func (c *testDiagnosticCheck) Validate(_ context.Context, _ check.Target) (*resu
 	dr.Annotations["test.opendatahub.io/purpose"] = "integration-testing"
 
 	// Add multiple conditions to test multi-condition support
-	dr.Status.Conditions = []metav1.Condition{
+	dr.Status.Conditions = []result.Condition{
 		check.NewCondition(
 			check.ConditionTypeAvailable,
 			metav1.ConditionTrue,

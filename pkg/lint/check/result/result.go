@@ -10,15 +10,37 @@ import (
 
 const (
 	// Validation error messages.
-	errMsgGroupEmpty              = "group must not be empty"
-	errMsgKindEmpty               = "kind must not be empty"
-	errMsgNameEmpty               = "name must not be empty"
-	errMsgConditionsEmpty         = "status.conditions must contain at least one condition"
-	errMsgConditionTypeEmpty      = "condition with empty type found"
-	errMsgConditionReasonEmpty    = "condition %q has empty reason"
-	errMsgConditionInvalidStatus  = "condition %q has invalid status (must be True, False, or Unknown)"
-	errMsgAnnotationInvalidFormat = "annotation key %q must be in domain/key format (e.g., openshiftai.io/version)"
+	errMsgGroupEmpty               = "group must not be empty"
+	errMsgKindEmpty                = "kind must not be empty"
+	errMsgNameEmpty                = "name must not be empty"
+	errMsgConditionsEmpty          = "status.conditions must contain at least one condition"
+	errMsgConditionTypeEmpty       = "condition with empty type found"
+	errMsgConditionReasonEmpty     = "condition %q has empty reason"
+	errMsgConditionInvalidStatus   = "condition %q has invalid status (must be True, False, or Unknown)"
+	errMsgAnnotationInvalidFormat  = "annotation key %q must be in domain/key format (e.g., openshiftai.io/version)"
+	errMsgConditionInvalidSeverity = "condition %q has invalid severity (must be critical, warning, or info)"
 )
+
+// Severity represents the impact level of a diagnostic condition.
+type Severity string
+
+// Severity levels for diagnostic conditions.
+const (
+	SeverityCritical Severity = "critical"
+	SeverityWarning  Severity = "warning"
+	SeverityInfo     Severity = "" // Empty string to omit from output (omitempty)
+)
+
+// Condition represents a diagnostic condition with severity level.
+// It embeds metav1.Condition and adds a Severity field to indicate
+// the impact level of the condition result.
+type Condition struct {
+	metav1.Condition `json:",inline" yaml:",inline"`
+
+	// Severity indicates the impact level: "critical", "warning", or "info".
+	// If empty, severity is derived from Status (False=critical, Unknown=warning, True=info).
+	Severity Severity `json:"severity,omitempty" yaml:"severity,omitempty"`
+}
 
 // DiagnosticSpec describes what the check validates.
 type DiagnosticSpec struct {
@@ -29,7 +51,7 @@ type DiagnosticSpec struct {
 // DiagnosticStatus contains the condition-based validation results.
 type DiagnosticStatus struct {
 	// Conditions is an array of validation conditions ordered by execution sequence
-	Conditions []metav1.Condition `json:"conditions" yaml:"conditions"`
+	Conditions []Condition `json:"conditions" yaml:"conditions"`
 }
 
 // DiagnosticResult represents a diagnostic check result with flattened metadata fields.
@@ -83,6 +105,29 @@ func isValidAnnotationKey(key string) bool {
 	return true
 }
 
+// validateCondition validates a single condition.
+func validateCondition(condition *Condition) error {
+	if condition.Type == "" {
+		return errors.New(errMsgConditionTypeEmpty)
+	}
+	if condition.Status != metav1.ConditionTrue &&
+		condition.Status != metav1.ConditionFalse &&
+		condition.Status != metav1.ConditionUnknown {
+		return fmt.Errorf(errMsgConditionInvalidStatus, condition.Type)
+	}
+	if condition.Reason == "" {
+		return fmt.Errorf(errMsgConditionReasonEmpty, condition.Type)
+	}
+	// Validate severity if provided (empty string is valid for SeverityInfo)
+	if condition.Severity != SeverityCritical &&
+		condition.Severity != SeverityWarning &&
+		condition.Severity != SeverityInfo {
+		return fmt.Errorf(errMsgConditionInvalidSeverity, condition.Type)
+	}
+
+	return nil
+}
+
 // Validate checks if the diagnostic result is valid.
 func (r *DiagnosticResult) Validate() error {
 	// Validate flattened metadata fields
@@ -110,18 +155,8 @@ func (r *DiagnosticResult) Validate() error {
 
 	// Validate each condition
 	for i := range r.Status.Conditions {
-		condition := &r.Status.Conditions[i]
-
-		if condition.Type == "" {
-			return errors.New(errMsgConditionTypeEmpty)
-		}
-		if condition.Status != metav1.ConditionTrue &&
-			condition.Status != metav1.ConditionFalse &&
-			condition.Status != metav1.ConditionUnknown {
-			return fmt.Errorf(errMsgConditionInvalidStatus, condition.Type)
-		}
-		if condition.Reason == "" {
-			return fmt.Errorf(errMsgConditionReasonEmpty, condition.Type)
+		if err := validateCondition(&r.Status.Conditions[i]); err != nil {
+			return err
 		}
 	}
 
@@ -144,7 +179,7 @@ func New(
 			Description: description,
 		},
 		Status: DiagnosticStatus{
-			Conditions: []metav1.Condition{},
+			Conditions: []Condition{},
 		},
 	}
 }
@@ -169,43 +204,61 @@ func (r *DiagnosticResult) GetMessage() string {
 	return r.Status.Conditions[0].Message
 }
 
-// GetSeverity returns the severity level based on condition statuses.
-// Critical: Any ConditionFalse (indicates a failure)
-// Warning: Any ConditionUnknown (indicates an error or inability to determine)
-// Info: All ConditionTrue (indicates success/informational)
+// GetSeverity returns the severity level based on condition severities.
+// If a condition has an explicit Severity field set, that value is used.
+// Otherwise, severity is derived from the condition status:
+// Critical: ConditionFalse (indicates a failure)
+// Warning: ConditionUnknown (indicates an error or inability to determine)
+// Info: ConditionTrue (indicates success/informational)
+// Returns the highest severity found across all conditions (critical > warning > info).
 // Returns nil if there are no conditions.
 func (r *DiagnosticResult) GetSeverity() *string {
 	if len(r.Status.Conditions) == 0 {
 		return nil
 	}
 
-	var hasFalse bool
-	var hasUnknown bool
+	var hasCritical bool
+	var hasWarning bool
 
 	for _, cond := range r.Status.Conditions {
-		switch cond.Status {
-		case metav1.ConditionFalse:
-			hasFalse = true
-		case metav1.ConditionUnknown:
-			hasUnknown = true
-		case metav1.ConditionTrue:
-			hasFalse = false
-			hasUnknown = false
-		default:
-			continue
+		severity := cond.Severity
+		// If severity not explicitly set, derive from status
+		if severity == "" {
+			switch cond.Status {
+			case metav1.ConditionFalse:
+				severity = SeverityCritical
+			case metav1.ConditionUnknown:
+				severity = SeverityWarning
+			case metav1.ConditionTrue:
+				severity = SeverityInfo
+			default:
+				continue
+			}
+		}
+
+		// Track highest severity (critical > warning > info)
+		switch severity {
+		case SeverityCritical:
+			hasCritical = true
+		case SeverityWarning:
+			hasWarning = true
+		case SeverityInfo:
+			// Info severity doesn't affect flags (lowest priority)
 		}
 	}
 
-	var severity string
-	if hasFalse {
-		severity = "critical"
-	} else if hasUnknown {
-		severity = "warning"
+	var result Severity
+	if hasCritical {
+		result = SeverityCritical
+	} else if hasWarning {
+		result = SeverityWarning
 	} else {
-		severity = "info"
+		result = SeverityInfo
 	}
 
-	return &severity
+	resultStr := string(result)
+
+	return &resultStr
 }
 
 // GetRemediation returns remediation guidance.

@@ -6,8 +6,6 @@ import (
 
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/operators"
@@ -65,7 +63,7 @@ func (c *Check) Validate(ctx context.Context, target check.Target) (*result.Diag
 
 			return channelStr == "stable" || channelStr == "v2.x"
 		}),
-		operators.WithConditionBuilder(func(found bool, version string) metav1.Condition {
+		operators.WithConditionBuilder(func(found bool, version string) result.Condition {
 			// Inverted logic: NOT finding the operator is good
 			if !found {
 				return results.NewCompatibilitySuccess("Service Mesh Operator v2 is not installed - ready for RHOAI 3.x upgrade")

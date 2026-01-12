@@ -31,7 +31,7 @@ func GetOperator(subscription *operatorsv1alpha1.Subscription) *Operator {
 }
 
 // ConditionBuilder is a function that creates a condition based on operator presence and version.
-type ConditionBuilder func(found bool, version string) metav1.Condition
+type ConditionBuilder func(found bool, version string) result.Condition
 
 // SubscriptionMatcher is a predicate function that determines if a subscription matches the desired operator.
 // It receives the entire subscription for maximum flexibility.
@@ -119,7 +119,7 @@ func CheckOperatorPresence(
 			return subscription.Name == operatorKind
 		},
 		// Default condition builder: standard Available condition
-		ConditionBuilder: func(found bool, version string) metav1.Condition {
+		ConditionBuilder: func(found bool, version string) result.Condition {
 			if !found {
 				return results.NewAvailabilityFailure("%s operator is not installed", operatorKind)
 			}
@@ -141,7 +141,7 @@ func CheckOperatorPresence(
 		// Use the custom condition builder if provided, otherwise treat as "not found"
 		condition := config.ConditionBuilder(false, "")
 		condition.Message = "OLM client not available"
-		dr.Status.Conditions = []metav1.Condition{condition}
+		dr.Status.Conditions = []result.Condition{condition}
 
 		return dr, nil
 	}
@@ -167,7 +167,7 @@ func CheckOperatorPresence(
 
 	// Build condition
 	condition := config.ConditionBuilder(version != "", version)
-	dr.Status.Conditions = []metav1.Condition{condition}
+	dr.Status.Conditions = []result.Condition{condition}
 
 	// Store version in annotations if found
 	if version != "" {
