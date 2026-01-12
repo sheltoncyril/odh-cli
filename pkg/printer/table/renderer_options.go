@@ -11,14 +11,20 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 )
 
+const (
+	// DefaultMaxRowWidth is the default maximum width for table row cells.
+	// Messages longer than this will be wrapped at word boundaries.
+	DefaultMaxRowWidth = 100
+)
+
 // DefaultTableOptions provides a clean, minimal table style with left-aligned headers
 // and no borders or separators.
 //
 //nolint:gochecknoglobals // Shared default table options for consistency across commands
 var DefaultTableOptions = []tablewriter.Option{
 	tablewriter.WithHeaderAlignment(tw.AlignLeft),
-	tablewriter.WithRowAutoWrap(tw.WrapNormal), // Enable word-wrapping for row content
-	tablewriter.WithRowMaxWidth(100),           // Limit row cells to 100 characters
+	tablewriter.WithRowAutoWrap(tw.WrapNormal),      // Enable word-wrapping for row content
+	tablewriter.WithRowMaxWidth(DefaultMaxRowWidth), // Limit row cells to max width
 	tablewriter.WithRendition(tw.Rendition{
 		Settings: tw.Settings{
 			Separators: tw.Separators{

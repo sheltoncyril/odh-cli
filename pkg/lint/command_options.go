@@ -36,17 +36,17 @@ const (
 
 //nolint:gochecknoglobals
 var (
-	// Table output symbols
+	// Table output symbols.
 	statusPass = color.New(color.FgGreen).Sprint("✓")
 	statusWarn = color.New(color.FgYellow).Sprint("⚠")
 	statusFail = color.New(color.FgRed).Sprint("✗")
 
-	// Severity level formatting
+	// Severity level formatting.
 	severityCrit = color.New(color.FgRed).Sprint("critical")
 	severityWarn = color.New(color.FgYellow).Add(color.Bold).Sprint("warning") // Bold yellow (orange-ish)
 	severityInfo = color.New(color.FgCyan).Sprint("info")
 
-	// Table headers
+	// Table headers.
 	tableHeaders = []string{"STATUS", "GROUP", "KIND", "CHECK", "SEVERITY", "MESSAGE"}
 )
 
@@ -464,15 +464,13 @@ func OutputTable(out io.Writer, results []check.CheckExecution) error {
 				totalPassed++
 			}
 
-			msg := condition.Message
-
 			row := CheckResultTableRow{
 				Status:      status,
 				Group:       exec.Result.Group,
 				Kind:        exec.Result.Kind,
 				Check:       exec.Result.Name,
 				Severity:    severity,
-				Message:     msg,
+				Message:     condition.Message,
 				Description: exec.Result.Spec.Description,
 			}
 
