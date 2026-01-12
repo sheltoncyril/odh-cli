@@ -3,9 +3,6 @@ package action
 import (
 	"context"
 	"fmt"
-	"strings"
-
-	"github.com/blang/semver/v4"
 
 	"github.com/lburgazzoli/odh-cli/pkg/migrate/action/result"
 )
@@ -56,22 +53,8 @@ func (e *Executor) executeActions(
 ) []ActionExecution {
 	results := make([]ActionExecution, 0, len(actions))
 
-	var currentVer, targetVer *semver.Version
-	if target.CurrentVersion != nil && target.CurrentVersion.Version != "" {
-		parsed, err := semver.Parse(strings.TrimPrefix(target.CurrentVersion.Version, "v"))
-		if err == nil {
-			currentVer = &parsed
-		}
-	}
-	if target.TargetVersion != nil && target.TargetVersion.Version != "" {
-		parsed, err := semver.Parse(strings.TrimPrefix(target.TargetVersion.Version, "v"))
-		if err == nil {
-			targetVer = &parsed
-		}
-	}
-
 	for _, action := range actions {
-		if !action.CanApply(currentVer, targetVer) {
+		if !action.CanApply(target) {
 			continue
 		}
 

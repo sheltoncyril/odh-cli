@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/blang/semver/v4"
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,12 +39,8 @@ func (c *Check) Group() check.CheckGroup {
 	return check.GroupDependency
 }
 
-func (c *Check) CanApply(currentVersion *semver.Version, targetVersion *semver.Version) bool {
-	if currentVersion == nil || targetVersion == nil {
-		return false
-	}
-
-	return currentVersion.Major == 2 && targetVersion.Major >= 3
+func (c *Check) CanApply(target *check.CheckTarget) bool {
+	return check.IsUpgradeFrom2xTo3x(target)
 }
 
 func (c *Check) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {

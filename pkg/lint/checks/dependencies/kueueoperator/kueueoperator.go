@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/blang/semver/v4"
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/operators"
+	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 )
 
 const (
@@ -36,8 +36,31 @@ func (c *Check) Group() check.CheckGroup {
 	return check.GroupDependency
 }
 
-func (c *Check) CanApply(_ *semver.Version, _ *semver.Version) bool {
-	return true
+// CanApply returns whether this check should run for the given target.
+// This check only applies when the kueue component is enabled in DataScienceCluster.
+func (c *Check) CanApply(target *check.CheckTarget) bool {
+	if target == nil || target.Client == nil {
+		return false
+	}
+
+	// Query DataScienceCluster to check if kueue component is enabled
+	ctx := context.Background()
+	dsc, err := target.Client.GetDataScienceCluster(ctx)
+	if err != nil {
+		// If DSC doesn't exist or error querying, don't apply check
+		return false
+	}
+
+	// Check kueue management state using JQ
+	managementState, err := jq.Query[string](dsc, ".spec.components.kueue.managementState")
+	if err != nil || managementState == "" {
+		// Kueue not configured, check doesn't apply
+		return false
+	}
+
+	// Check applies if kueue is Managed or Unmanaged (not Removed)
+	return managementState == check.ManagementStateManaged ||
+		managementState == check.ManagementStateUnmanaged
 }
 
 func (c *Check) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {

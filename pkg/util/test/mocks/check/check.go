@@ -3,7 +3,6 @@ package mocks
 import (
 	"context"
 
-	"github.com/blang/semver/v4"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
@@ -48,8 +47,8 @@ func (m *MockCheck) Group() check.CheckGroup {
 	return group
 }
 
-func (m *MockCheck) CanApply(currentVersion *semver.Version, targetVersion *semver.Version) bool {
-	args := m.Called(currentVersion, targetVersion)
+func (m *MockCheck) CanApply(target *check.CheckTarget) bool {
+	args := m.Called(target)
 
 	return args.Bool(0)
 }

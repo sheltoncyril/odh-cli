@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/blang/semver/v4"
-
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
@@ -51,17 +49,10 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 	}
 }
 
-// CanApply returns whether this check should run for the given versions.
-// This check only applies when upgrading FROM 2.x TO 3.x.
-func (c *ImpactedWorkloadsCheck) CanApply(
-	currentVersion *semver.Version,
-	targetVersion *semver.Version,
-) bool {
-	if currentVersion == nil || targetVersion == nil {
-		return false
-	}
-
-	return currentVersion.Major == 2 && targetVersion.Major >= 3
+// CanApply returns whether this check should run for the given target.
+// Only applies when upgrading FROM 2.x TO 3.x since KServe workloads may be impacted.
+func (c *ImpactedWorkloadsCheck) CanApply(target *check.CheckTarget) bool {
+	return check.IsUpgradeFrom2xTo3x(target)
 }
 
 // Validate executes the check against the provided target.
@@ -72,7 +63,7 @@ func (c *ImpactedWorkloadsCheck) Validate(
 	dr := c.NewResult()
 
 	if target.Version != nil {
-		dr.Annotations[check.AnnotationCheckTargetVersion] = target.Version.Version
+		dr.Annotations[check.AnnotationCheckTargetVersion] = target.Version.String()
 	}
 
 	// Find impacted workloads by category

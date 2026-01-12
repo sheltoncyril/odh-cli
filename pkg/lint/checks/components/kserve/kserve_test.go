@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/blang/semver/v4"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -14,7 +16,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/kserve"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
-	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -37,11 +38,10 @@ func TestKServeServerlessRemovalCheck_NoDSC(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0", // Targeting 3.x upgrade
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	kserveCheck := &kserve.ServerlessRemovalCheck{}
@@ -86,11 +86,10 @@ func TestKServeServerlessRemovalCheck_KServeNotConfigured(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	kserveCheck := &kserve.ServerlessRemovalCheck{}
@@ -135,11 +134,10 @@ func TestKServeServerlessRemovalCheck_KServeNotManaged(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	kserveCheck := &kserve.ServerlessRemovalCheck{}
@@ -186,11 +184,10 @@ func TestKServeServerlessRemovalCheck_ServerlessNotConfigured(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	kserveCheck := &kserve.ServerlessRemovalCheck{}
@@ -239,11 +236,10 @@ func TestKServeServerlessRemovalCheck_ServerlessManagedBlocking(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	kserveCheck := &kserve.ServerlessRemovalCheck{}
@@ -296,11 +292,10 @@ func TestKServeServerlessRemovalCheck_ServerlessUnmanagedBlocking(t *testing.T) 
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("3.1.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.1.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	kserveCheck := &kserve.ServerlessRemovalCheck{}
@@ -349,11 +344,10 @@ func TestKServeServerlessRemovalCheck_ServerlessRemovedReady(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	kserveCheck := &kserve.ServerlessRemovalCheck{}

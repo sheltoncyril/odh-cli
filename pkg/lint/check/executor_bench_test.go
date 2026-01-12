@@ -13,7 +13,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
-	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
 // BenchmarkExecuteSelective_FullSuite benchmarks execution of all checks.
@@ -27,9 +26,10 @@ func BenchmarkExecuteSelective_FullSuite(b *testing.B) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("2.17.0")
 	target := &check.CheckTarget{
 		Client:   c,
-		Version:  &version.ClusterVersion{Version: "2.17.0"},
+		Version:  &ver,
 		Resource: nil,
 	}
 
@@ -54,9 +54,10 @@ func BenchmarkExecuteSelective_GroupFilter(b *testing.B) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("2.17.0")
 	target := &check.CheckTarget{
 		Client:   c,
-		Version:  &version.ClusterVersion{Version: "2.17.0"},
+		Version:  &ver,
 		Resource: nil,
 	}
 
@@ -81,9 +82,10 @@ func BenchmarkExecuteSelective_SingleCheck(b *testing.B) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("2.17.0")
 	target := &check.CheckTarget{
 		Client:   c,
-		Version:  &version.ClusterVersion{Version: "2.17.0"},
+		Version:  &ver,
 		Resource: nil,
 	}
 
@@ -159,7 +161,7 @@ func (c *benchmarkCheck) Group() check.CheckGroup {
 	return c.group
 }
 
-func (c *benchmarkCheck) CanApply(currentVersion *semver.Version, targetVersion *semver.Version) bool {
+func (c *benchmarkCheck) CanApply(_ *check.CheckTarget) bool {
 	return true // Always applicable
 }
 

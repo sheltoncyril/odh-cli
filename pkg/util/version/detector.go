@@ -5,62 +5,49 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/blang/semver/v4"
+
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 )
 
 // Detect performs priority-based version detection from multiple sources
 // Priority order: DataScienceCluster > DSCInitialization > OLM
-// Returns ClusterVersion or error if version cannot be determined from any source.
-func Detect(ctx context.Context, c *client.Client) (*ClusterVersion, error) {
+// Returns parsed semver.Version or error if version cannot be determined from any source.
+func Detect(ctx context.Context, c *client.Client) (*semver.Version, error) {
 	// Priority 1: DataScienceCluster
-	if version, found, err := DetectFromDataScienceCluster(ctx, c); err != nil {
+	if versionStr, found, err := DetectFromDataScienceCluster(ctx, c); err != nil {
 		return nil, fmt.Errorf("detecting from DataScienceCluster: %w", err)
 	} else if found {
-		branch, err := VersionToBranch(version)
+		ver, err := semver.Parse(versionStr)
 		if err != nil {
-			return nil, fmt.Errorf("mapping version to branch: %w", err)
+			return nil, fmt.Errorf("parsing version %q: %w", versionStr, err)
 		}
 
-		return &ClusterVersion{
-			Version:    version,
-			Source:     SourceDataScienceCluster,
-			Confidence: ConfidenceHigh,
-			Branch:     branch,
-		}, nil
+		return &ver, nil
 	}
 
 	// Priority 2: DSCInitialization
-	if version, found, err := DetectFromDSCInitialization(ctx, c); err != nil {
+	if versionStr, found, err := DetectFromDSCInitialization(ctx, c); err != nil {
 		return nil, fmt.Errorf("detecting from DSCInitialization: %w", err)
 	} else if found {
-		branch, err := VersionToBranch(version)
+		ver, err := semver.Parse(versionStr)
 		if err != nil {
-			return nil, fmt.Errorf("mapping version to branch: %w", err)
+			return nil, fmt.Errorf("parsing version %q: %w", versionStr, err)
 		}
 
-		return &ClusterVersion{
-			Version:    version,
-			Source:     SourceDSCInitialization,
-			Confidence: ConfidenceHigh,
-			Branch:     branch,
-		}, nil
+		return &ver, nil
 	}
 
 	// Priority 3: OLM
-	if version, found, err := DetectFromOLM(ctx, c); err != nil {
+	if versionStr, found, err := DetectFromOLM(ctx, c); err != nil {
 		return nil, fmt.Errorf("detecting from OLM: %w", err)
 	} else if found {
-		branch, err := VersionToBranch(version)
+		ver, err := semver.Parse(versionStr)
 		if err != nil {
-			return nil, fmt.Errorf("mapping version to branch: %w", err)
+			return nil, fmt.Errorf("parsing version %q: %w", versionStr, err)
 		}
 
-		return &ClusterVersion{
-			Version:    version,
-			Source:     SourceOLM,
-			Confidence: ConfidenceMedium,
-			Branch:     branch,
-		}, nil
+		return &ver, nil
 	}
 
 	// No version found from any source

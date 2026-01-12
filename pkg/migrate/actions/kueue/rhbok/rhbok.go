@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/blang/semver/v4"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -73,15 +71,12 @@ func (a *RHBOKMigrationAction) Group() action.ActionGroup {
 	return action.GroupMigration
 }
 
-func (a *RHBOKMigrationAction) CanApply(
-	currentVersion *semver.Version,
-	_ *semver.Version,
-) bool {
-	if currentVersion == nil {
+func (a *RHBOKMigrationAction) CanApply(target *action.ActionTarget) bool {
+	if target == nil || target.CurrentVersion == nil {
 		return false
 	}
 
-	return currentVersion.Major == 2 && currentVersion.Minor >= 25
+	return target.CurrentVersion.Major == 2 && target.CurrentVersion.Minor >= 25
 }
 
 func (a *RHBOKMigrationAction) Validate(

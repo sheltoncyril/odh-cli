@@ -23,7 +23,6 @@ type RunCommand struct {
 	DryRun        bool
 	Prepare       bool
 	Yes           bool
-	BackupPath    string
 	MigrationIDs  []string
 	TargetVersion string
 
@@ -35,7 +34,6 @@ func NewRunCommand(streams genericiooptions.IOStreams) *RunCommand {
 
 	return &RunCommand{
 		SharedOptions: shared,
-		BackupPath:    "./backups",
 	}
 }
 
@@ -45,7 +43,6 @@ func (c *RunCommand) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&c.DryRun, "dry-run", false, flagDescRunDryRun)
 	fs.BoolVar(&c.Prepare, "prepare", false, flagDescRunPrepare)
 	fs.BoolVarP(&c.Yes, "yes", "y", false, flagDescRunYes)
-	fs.StringVar(&c.BackupPath, "backup-path", c.BackupPath, flagDescRunBackupPath)
 	fs.StringArrayVarP(&c.MigrationIDs, "migration", "m", []string{}, flagDescRunMigration)
 	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescRunTargetVersion)
 }
@@ -95,25 +92,19 @@ func (c *RunCommand) Run(ctx context.Context) error {
 		return fmt.Errorf("detecting cluster version: %w", err)
 	}
 
-	targetVersionInfo := &version.ClusterVersion{
-		Version:    c.parsedTargetVersion.String(),
-		Source:     version.SourceManual,
-		Confidence: version.ConfidenceHigh,
-	}
-
 	registry := action.GetGlobalRegistry()
 
 	if c.Prepare {
-		return c.runPrepareMode(ctx, currentVersion, targetVersionInfo, registry)
+		return c.runPrepareMode(ctx, currentVersion, c.parsedTargetVersion, registry)
 	}
 
-	return c.runMigrationMode(ctx, currentVersion, targetVersionInfo, registry)
+	return c.runMigrationMode(ctx, currentVersion, c.parsedTargetVersion, registry)
 }
 
 func (c *RunCommand) runPrepareMode(
 	ctx context.Context,
-	currentVersion *version.ClusterVersion,
-	targetVersionInfo *version.ClusterVersion,
+	currentVersion *semver.Version,
+	targetVersion *semver.Version,
 	registry *action.ActionRegistry,
 ) error {
 	for _, migrationID := range c.MigrationIDs {
@@ -131,9 +122,8 @@ func (c *RunCommand) runPrepareMode(
 		target := &action.ActionTarget{
 			Client:         c.Client,
 			CurrentVersion: currentVersion,
-			TargetVersion:  targetVersionInfo,
+			TargetVersion:  targetVersion,
 			DryRun:         c.DryRun,
-			BackupPath:     c.BackupPath,
 			SkipConfirm:    c.Yes,
 			Recorder:       recorder,
 			IO:             c.IO,
@@ -155,12 +145,12 @@ func (c *RunCommand) runPrepareMode(
 
 func (c *RunCommand) runMigrationMode(
 	ctx context.Context,
-	currentVersion *version.ClusterVersion,
-	targetVersionInfo *version.ClusterVersion,
+	currentVersion *semver.Version,
+	targetVersion *semver.Version,
 	registry *action.ActionRegistry,
 ) error {
-	c.IO.Errorf("Current OpenShift AI version: %s", currentVersion.Version)
-	c.IO.Errorf("Target OpenShift AI version: %s\n", targetVersionInfo.Version)
+	c.IO.Errorf("Current OpenShift AI version: %s", currentVersion.String())
+	c.IO.Errorf("Target OpenShift AI version: %s\n", targetVersion.String())
 
 	for idx, migrationID := range c.MigrationIDs {
 		if len(c.MigrationIDs) > 1 {
@@ -179,9 +169,8 @@ func (c *RunCommand) runMigrationMode(
 		target := &action.ActionTarget{
 			Client:         c.Client,
 			CurrentVersion: currentVersion,
-			TargetVersion:  targetVersionInfo,
+			TargetVersion:  targetVersion,
 			DryRun:         c.DryRun,
-			BackupPath:     c.BackupPath,
 			SkipConfirm:    c.Yes,
 			Recorder:       recorder,
 			IO:             c.IO,

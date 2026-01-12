@@ -14,7 +14,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
-	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 
 	. "github.com/onsi/gomega"
 )
@@ -54,18 +53,11 @@ func TestDiagnosticCR_EndToEndExecution(t *testing.T) {
 
 	// Create executor and target
 	executor := check.NewExecutor(registry)
+	ver := semver.MustParse("2.25.0")
 	target := &check.CheckTarget{
-		Client: k8sClient,
-		Version: &version.ClusterVersion{
-			Version:    "2.25.0",
-			Source:     version.SourceDataScienceCluster,
-			Confidence: version.ConfidenceHigh,
-		},
-		CurrentVersion: &version.ClusterVersion{
-			Version:    "2.25.0",
-			Source:     version.SourceDataScienceCluster,
-			Confidence: version.ConfidenceHigh,
-		},
+		Client:         k8sClient,
+		Version:        &ver,
+		CurrentVersion: &ver,
 	}
 
 	// Execute check
@@ -165,7 +157,7 @@ func (c *testDiagnosticCheck) Group() check.CheckGroup {
 	return "test"
 }
 
-func (c *testDiagnosticCheck) CanApply(currentVersion *semver.Version, targetVersion *semver.Version) bool {
+func (c *testDiagnosticCheck) CanApply(_ *check.CheckTarget) bool {
 	return true // Always apply for testing
 }
 

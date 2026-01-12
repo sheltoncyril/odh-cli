@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/blang/semver/v4"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -14,7 +16,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/codeflare"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
-	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -37,11 +38,10 @@ func TestCodeFlareRemovalCheck_NoDSC(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0", // Targeting 3.x upgrade
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	codeflareCheck := &codeflare.RemovalCheck{}
@@ -86,11 +86,10 @@ func TestCodeFlareRemovalCheck_NotConfigured(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	codeflareCheck := &codeflare.RemovalCheck{}
@@ -135,11 +134,10 @@ func TestCodeFlareRemovalCheck_ManagedBlocking(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	codeflareCheck := &codeflare.RemovalCheck{}
@@ -188,11 +186,10 @@ func TestCodeFlareRemovalCheck_UnmanagedBlocking(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("3.1.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.1.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	codeflareCheck := &codeflare.RemovalCheck{}
@@ -238,11 +235,10 @@ func TestCodeFlareRemovalCheck_RemovedReady(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	codeflareCheck := &codeflare.RemovalCheck{}

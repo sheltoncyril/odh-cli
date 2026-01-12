@@ -57,10 +57,11 @@ func TestDetect_FromDataScienceCluster(t *testing.T) {
 
 	clusterVersion, err := version.Detect(ctx, c)
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(clusterVersion).To(HaveField("Version", "2.17.0"))
-	g.Expect(clusterVersion).To(HaveField("Source", version.SourceDataScienceCluster))
-	g.Expect(clusterVersion).To(HaveField("Confidence", version.ConfidenceHigh))
-	g.Expect(clusterVersion).To(HaveField("Branch", "stable-2.17"))
+	g.Expect(clusterVersion).ToNot(BeNil())
+	g.Expect(clusterVersion.String()).To(Equal("2.17.0"))
+	g.Expect(clusterVersion.Major).To(Equal(uint64(2)))
+	g.Expect(clusterVersion.Minor).To(Equal(uint64(17)))
+	g.Expect(clusterVersion.Patch).To(Equal(uint64(0)))
 }
 
 func TestDetect_FromDSCInitialization(t *testing.T) {
@@ -92,10 +93,11 @@ func TestDetect_FromDSCInitialization(t *testing.T) {
 
 	clusterVersion, err := version.Detect(ctx, c)
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(clusterVersion).To(HaveField("Version", "2.16.0"))
-	g.Expect(clusterVersion).To(HaveField("Source", version.SourceDSCInitialization))
-	g.Expect(clusterVersion).To(HaveField("Confidence", version.ConfidenceHigh))
-	g.Expect(clusterVersion).To(HaveField("Branch", "stable-2.16"))
+	g.Expect(clusterVersion).ToNot(BeNil())
+	g.Expect(clusterVersion.String()).To(Equal("2.16.0"))
+	g.Expect(clusterVersion.Major).To(Equal(uint64(2)))
+	g.Expect(clusterVersion.Minor).To(Equal(uint64(16)))
+	g.Expect(clusterVersion.Patch).To(Equal(uint64(0)))
 }
 
 func TestDetect_FromOLM(t *testing.T) {
@@ -127,10 +129,11 @@ func TestDetect_FromOLM(t *testing.T) {
 
 	clusterVersion, err := version.Detect(ctx, c)
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(clusterVersion).To(HaveField("Version", "2.15.0"))
-	g.Expect(clusterVersion).To(HaveField("Source", version.SourceOLM))
-	g.Expect(clusterVersion).To(HaveField("Confidence", version.ConfidenceMedium))
-	g.Expect(clusterVersion).To(HaveField("Branch", "stable-2.15"))
+	g.Expect(clusterVersion).ToNot(BeNil())
+	g.Expect(clusterVersion.String()).To(Equal("2.15.0"))
+	g.Expect(clusterVersion.Major).To(Equal(uint64(2)))
+	g.Expect(clusterVersion.Minor).To(Equal(uint64(15)))
+	g.Expect(clusterVersion.Patch).To(Equal(uint64(0)))
 }
 
 func TestDetect_PriorityOrder(t *testing.T) {
@@ -194,8 +197,10 @@ func TestDetect_PriorityOrder(t *testing.T) {
 
 	clusterVersion, err := version.Detect(ctx, c)
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(clusterVersion).To(HaveField("Version", "2.17.0"))
-	g.Expect(clusterVersion).To(HaveField("Source", version.SourceDataScienceCluster))
+	g.Expect(clusterVersion).ToNot(BeNil())
+	g.Expect(clusterVersion.String()).To(Equal("2.17.0"))
+	g.Expect(clusterVersion.Major).To(Equal(uint64(2)))
+	g.Expect(clusterVersion.Minor).To(Equal(uint64(17)))
 }
 
 func TestDetect_NoVersionFound(t *testing.T) {

@@ -79,12 +79,6 @@ func TestRunCommand_Complete(t *testing.T) {
 		g.Expect(err.Error()).To(ContainSubstring("invalid target version"))
 	})
 
-	t.Run("should set default backup path", func(t *testing.T) {
-		cmd := migrate.NewRunCommand(genericiooptions.IOStreams{})
-
-		g.Expect(cmd.BackupPath).To(Equal("./backups"))
-	})
-
 	t.Run("should enable verbose when dry-run is true", func(t *testing.T) {
 		cmd := migrate.NewRunCommand(genericiooptions.IOStreams{})
 		cmd.DryRun = true

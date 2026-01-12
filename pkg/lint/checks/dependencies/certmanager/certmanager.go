@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/blang/semver/v4"
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
@@ -31,7 +30,7 @@ func NewCheck() *Check {
 	}
 }
 
-func (c *Check) CanApply(_ *semver.Version, _ *semver.Version) bool {
+func (c *Check) CanApply(_ *check.CheckTarget) bool {
 	return true
 }
 

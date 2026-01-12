@@ -3,8 +3,6 @@ package check
 import (
 	"context"
 
-	"github.com/blang/semver/v4"
-
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 )
 
@@ -83,13 +81,15 @@ type Check interface {
 	// Group returns the check group (component, service, workload, dependency)
 	Group() CheckGroup
 
-	// CanApply returns whether this check should run given the current and target versions.
-	// currentVersion: the current cluster version (source for upgrades, nil for lint)
-	// targetVersion: the target version being checked (for upgrades) or current version (for lint)
-	// Both arguments are parsed semver versions. Either can be nil.
-	// Default behavior: returns true if applicable to targetVersion.
-	// Upgrade checks can override this to check both currentVersion and targetVersion.
-	CanApply(currentVersion *semver.Version, targetVersion *semver.Version) bool
+	// CanApply returns whether this check should run given the check target context.
+	// The target provides access to:
+	// - CurrentVersion: the current cluster version (source for upgrades, nil for lint mode)
+	// - Version: the target version being checked (for upgrades) or current version (for lint mode)
+	// - Client: Kubernetes client for querying cluster state (enables component-conditional checks)
+	// Default behavior: returns true if applicable to target.Version.
+	// Upgrade checks can check both CurrentVersion and Version.
+	// Component-conditional checks can query DataScienceCluster via target.Client.
+	CanApply(target *CheckTarget) bool
 
 	// Validate executes the check against the provided target
 	// Returns DiagnosticResult following Kubernetes CR pattern with conditions

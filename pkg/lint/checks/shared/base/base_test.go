@@ -112,10 +112,7 @@ type MockCheck struct {
 	base.BaseCheck
 }
 
-func (c *MockCheck) CanApply(
-	currentVersion *semver.Version,
-	targetVersion *semver.Version,
-) bool {
+func (c *MockCheck) CanApply(_ *check.CheckTarget) bool {
 	return true
 }
 
@@ -146,9 +143,13 @@ func TestBaseCheckIntegration(t *testing.T) {
 		g.Expect(mockCheck.Description()).To(Equal("Validates that ModelMesh is disabled"))
 		g.Expect(mockCheck.Group()).To(Equal(check.GroupComponent))
 
-		v2, _ := semver.Parse("2.15.0")
-		v3, _ := semver.Parse("3.0.0")
-		g.Expect(mockCheck.CanApply(&v2, &v3)).To(BeTrue())
+		v2 := semver.MustParse("2.15.0")
+		v3 := semver.MustParse("3.0.0")
+		target := &check.CheckTarget{
+			CurrentVersion: &v2,
+			Version:        &v3,
+		}
+		g.Expect(mockCheck.CanApply(target)).To(BeTrue())
 
 		dr, err := mockCheck.Validate(context.Background(), &check.CheckTarget{})
 		g.Expect(err).ToNot(HaveOccurred())

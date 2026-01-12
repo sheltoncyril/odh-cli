@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/blang/semver/v4"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -14,7 +16,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/services/servicemesh"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
-	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -37,11 +38,10 @@ func TestServiceMeshRemovalCheck_NoDSCI(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0", // Targeting 3.x upgrade
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	servicemeshCheck := &servicemesh.RemovalCheck{}
@@ -82,11 +82,10 @@ func TestServiceMeshRemovalCheck_NotConfigured(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	servicemeshCheck := &servicemesh.RemovalCheck{}
@@ -130,11 +129,10 @@ func TestServiceMeshRemovalCheck_ManagedBlocking(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	servicemeshCheck := &servicemesh.RemovalCheck{}
@@ -179,11 +177,10 @@ func TestServiceMeshRemovalCheck_UnmanagedBlocking(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("3.1.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.1.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	servicemeshCheck := &servicemesh.RemovalCheck{}
@@ -228,11 +225,10 @@ func TestServiceMeshRemovalCheck_RemovedReady(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	servicemeshCheck := &servicemesh.RemovalCheck{}

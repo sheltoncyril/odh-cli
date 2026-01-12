@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/blang/semver/v4"
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	operatorfake "github.com/operator-framework/operator-lifecycle-manager/pkg/api/client/clientset/versioned/fake"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/certmanager"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
-	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -33,11 +33,10 @@ func TestCertManagerCheck_NotInstalled(t *testing.T) {
 		OLM:     olmClient,
 	}
 
+	ver := semver.MustParse("2.17.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "2.17.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	certManagerCheck := certmanager.NewCheck()
@@ -76,11 +75,10 @@ func TestCertManagerCheck_InstalledCertManager(t *testing.T) {
 		OLM:     olmClient,
 	}
 
+	ver := semver.MustParse("2.17.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "2.17.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	certManagerCheck := certmanager.NewCheck()
@@ -120,11 +118,10 @@ func TestCertManagerCheck_InstalledOpenShiftCertManager(t *testing.T) {
 		OLM:     olmClient,
 	}
 
+	ver := semver.MustParse("2.17.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "2.17.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	certManagerCheck := certmanager.NewCheck()

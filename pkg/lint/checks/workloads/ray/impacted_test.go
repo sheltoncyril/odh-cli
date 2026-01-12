@@ -17,7 +17,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/ray"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
-	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -68,11 +67,10 @@ func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
 		Metadata: metadataClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	impactedCheck := &ray.ImpactedWorkloadsCheck{}
@@ -117,11 +115,10 @@ func TestImpactedWorkloadsCheck_WithCodeFlareFinalizer(t *testing.T) {
 		Metadata: metadataClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	impactedCheck := &ray.ImpactedWorkloadsCheck{}
@@ -169,11 +166,10 @@ func TestImpactedWorkloadsCheck_WithoutCodeFlareFinalizer(t *testing.T) {
 		Metadata: metadataClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	impactedCheck := &ray.ImpactedWorkloadsCheck{}
@@ -213,11 +209,10 @@ func TestImpactedWorkloadsCheck_NoFinalizers(t *testing.T) {
 		Metadata: metadataClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	impactedCheck := &ray.ImpactedWorkloadsCheck{}
@@ -292,11 +287,10 @@ func TestImpactedWorkloadsCheck_MultipleClusters(t *testing.T) {
 		Metadata: metadataClient,
 	}
 
+	ver := semver.MustParse("3.0.0")
 	target := &check.CheckTarget{
-		Client: c,
-		Version: &version.ClusterVersion{
-			Version: "3.0.0",
-		},
+		Client:  c,
+		Version: &ver,
 	}
 
 	impactedCheck := &ray.ImpactedWorkloadsCheck{}
@@ -332,19 +326,22 @@ func TestImpactedWorkloadsCheck_CanApply(t *testing.T) {
 
 	impactedCheck := ray.NewImpactedWorkloadsCheck()
 
-	// Should not apply when versions are nil
-	g.Expect(impactedCheck.CanApply(nil, nil)).To(BeFalse())
+	// Should not apply when target is nil
+	g.Expect(impactedCheck.CanApply(nil)).To(BeFalse())
 
 	// Should not apply for 2.x to 2.x
-	v2_15, _ := semver.Parse("2.15.0")
-	v2_17, _ := semver.Parse("2.17.0")
-	g.Expect(impactedCheck.CanApply(&v2_15, &v2_17)).To(BeFalse())
+	v2_15 := semver.MustParse("2.15.0")
+	v2_17 := semver.MustParse("2.17.0")
+	target2x := &check.CheckTarget{CurrentVersion: &v2_15, Version: &v2_17}
+	g.Expect(impactedCheck.CanApply(target2x)).To(BeFalse())
 
 	// Should apply for 2.x to 3.x
-	v3_0, _ := semver.Parse("3.0.0")
-	g.Expect(impactedCheck.CanApply(&v2_17, &v3_0)).To(BeTrue())
+	v3_0 := semver.MustParse("3.0.0")
+	target2xTo3x := &check.CheckTarget{CurrentVersion: &v2_17, Version: &v3_0}
+	g.Expect(impactedCheck.CanApply(target2xTo3x)).To(BeTrue())
 
 	// Should not apply for 3.x to 3.x
-	v3_1, _ := semver.Parse("3.1.0")
-	g.Expect(impactedCheck.CanApply(&v3_0, &v3_1)).To(BeFalse())
+	v3_1 := semver.MustParse("3.1.0")
+	target3x := &check.CheckTarget{CurrentVersion: &v3_0, Version: &v3_1}
+	g.Expect(impactedCheck.CanApply(target3x)).To(BeFalse())
 }

@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/blang/semver/v4"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
@@ -33,16 +31,10 @@ func NewRemovalCheck() *RemovalCheck {
 	}
 }
 
-// CanApply returns whether this check should run for the given versions.
+// CanApply returns whether this check should run for the given target.
 // This check only applies when upgrading FROM 2.x TO 3.x.
-func (c *RemovalCheck) CanApply(currentVersion *semver.Version, targetVersion *semver.Version) bool {
-	// If no current version provided (lint mode), don't run this check
-	if currentVersion == nil || targetVersion == nil {
-		return false
-	}
-
-	// Only apply when upgrading FROM 2.x TO 3.x
-	return currentVersion.Major == 2 && targetVersion.Major >= 3
+func (c *RemovalCheck) CanApply(target *check.CheckTarget) bool {
+	return check.IsUpgradeFrom2xTo3x(target)
 }
 
 // Validate executes the check against the provided target.
@@ -74,7 +66,7 @@ func (c *RemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) 
 	// Add management state as annotation
 	dr.Annotations[check.AnnotationComponentManagementState] = managementStateStr
 	if target.Version != nil {
-		dr.Annotations[check.AnnotationCheckTargetVersion] = target.Version.Version
+		dr.Annotations[check.AnnotationCheckTargetVersion] = target.Version.String()
 	}
 
 	// Check if modelmesh is enabled (Managed or Unmanaged)

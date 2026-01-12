@@ -107,7 +107,7 @@ func (c *Command) Run(ctx context.Context) error {
 	}
 
 	// Store current version for output formatting
-	c.currentClusterVersion = currentVersion.Version
+	c.currentClusterVersion = currentVersion.String()
 
 	// Determine mode: upgrade (with --target-version) or lint (without --target-version)
 	if c.TargetVersion != "" {
@@ -118,8 +118,8 @@ func (c *Command) Run(ctx context.Context) error {
 }
 
 // runLintMode validates current cluster state.
-func (c *Command) runLintMode(ctx context.Context, clusterVersion *version.ClusterVersion) error {
-	c.IO.Errorf("Detected OpenShift AI version: %s\n", clusterVersion)
+func (c *Command) runLintMode(ctx context.Context, clusterVersion *semver.Version) error {
+	c.IO.Errorf("Detected OpenShift AI version: %s\n", clusterVersion.String())
 
 	// Discover components and services
 	c.IO.Errorf("Discovering OpenShift AI components and services...")
@@ -236,42 +236,28 @@ func (c *Command) runLintMode(ctx context.Context, clusterVersion *version.Clust
 }
 
 // runUpgradeMode assesses upgrade readiness for a target version.
-func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *version.ClusterVersion) error {
-	c.IO.Errorf("Current OpenShift AI version: %s", currentVersion)
+func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *semver.Version) error {
+	c.IO.Errorf("Current OpenShift AI version: %s", currentVersion.String())
 	c.IO.Errorf("Target OpenShift AI version: %s\n", c.TargetVersion)
 
-	// Parse current version for comparison
-	currentVer, err := semver.Parse(currentVersion.Version)
-	if err != nil {
-		return fmt.Errorf("parsing current version: %w", err)
-	}
-
 	// Check if target version is greater than or equal to current
-	if c.parsedTargetVersion.LT(currentVer) {
+	if c.parsedTargetVersion.LT(*currentVersion) {
 		return fmt.Errorf("target version %s is older than current version %s (downgrades not supported)",
-			c.TargetVersion, currentVersion.Version)
+			c.TargetVersion, currentVersion.String())
 	}
 
 	// Check if already at target version
-	if c.parsedTargetVersion.EQ(currentVer) {
+	if c.parsedTargetVersion.EQ(*currentVersion) {
 		c.IO.Errorf("Cluster is already at target version %s", c.TargetVersion)
 		c.IO.Errorf("No upgrade necessary")
 
 		return nil
 	}
 
-	c.IO.Errorf("Assessing upgrade readiness: %s → %s\n", currentVersion.Version, c.TargetVersion)
+	c.IO.Errorf("Assessing upgrade readiness: %s → %s\n", currentVersion.String(), c.TargetVersion)
 
 	// Get the global check registry
 	registry := check.GetGlobalRegistry()
-
-	// For upgrade assessment, we run all checks against the TARGET version
-	// This allows version-specific checks to determine if they're applicable
-	targetVersionInfo := &version.ClusterVersion{
-		Version:    c.parsedTargetVersion.String(),
-		Source:     version.SourceManual,
-		Confidence: version.ConfidenceHigh,
-	}
 
 	// Execute checks using target version for applicability filtering
 	c.IO.Errorf("Running upgrade compatibility checks...")
@@ -280,8 +266,8 @@ func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *version.Cl
 	// Create check target with BOTH current and target versions for upgrade checks
 	checkTarget := &check.CheckTarget{
 		Client:         c.Client,
-		CurrentVersion: currentVersion,    // The version we're upgrading FROM
-		Version:        targetVersionInfo, // The version we're upgrading TO
+		CurrentVersion: currentVersion,        // The version we're upgrading FROM
+		Version:        c.parsedTargetVersion, // The version we're upgrading TO
 		Resource:       nil,
 	}
 
@@ -303,7 +289,7 @@ func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *version.Cl
 	filteredResults := FilterResultsBySeverity(resultsByGroup, c.MinSeverity)
 
 	// Format and output results
-	if err := c.formatAndOutputUpgradeResults(currentVersion.Version, filteredResults); err != nil {
+	if err := c.formatAndOutputUpgradeResults(currentVersion.String(), filteredResults); err != nil {
 		return err
 	}
 

@@ -3,9 +3,6 @@ package check
 import (
 	"context"
 	"fmt"
-	"strings"
-
-	"github.com/blang/semver/v4"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,21 +58,6 @@ func (e *Executor) ExecuteSelective(
 func (e *Executor) executeChecks(ctx context.Context, target *CheckTarget, checks []Check) []CheckExecution {
 	results := make([]CheckExecution, 0, len(checks))
 
-	// Parse versions once for all checks
-	var currentVer, targetVer *semver.Version
-	if target.CurrentVersion != nil && target.CurrentVersion.Version != "" {
-		parsed, err := semver.Parse(strings.TrimPrefix(target.CurrentVersion.Version, "v"))
-		if err == nil {
-			currentVer = &parsed
-		}
-	}
-	if target.Version != nil && target.Version.Version != "" {
-		parsed, err := semver.Parse(strings.TrimPrefix(target.Version.Version, "v"))
-		if err == nil {
-			targetVer = &parsed
-		}
-	}
-
 	for _, check := range checks {
 		// Check context before executing each check
 		if err := CheckContextError(ctx); err != nil {
@@ -84,9 +66,9 @@ func (e *Executor) executeChecks(ctx context.Context, target *CheckTarget, check
 		}
 
 		// Filter by CanApply before executing
-		// This allows checks to consider both current and target versions
-		if !check.CanApply(currentVer, targetVer) {
-			// Skip checks that don't apply to this version combination
+		// Checks can use target.CurrentVersion, target.Version, or target.Client for filtering
+		if !check.CanApply(target) {
+			// Skip checks that don't apply to this target context
 			continue
 		}
 

@@ -90,7 +90,7 @@ func (c *ListCommand) Validate() error {
 }
 
 func (c *ListCommand) Run(ctx context.Context) error {
-	var currentVersion *version.ClusterVersion
+	var currentVersion *semver.Version
 	var err error
 
 	if !c.ShowAll {
@@ -117,10 +117,13 @@ func (c *ListCommand) Run(ctx context.Context) error {
 		if c.ShowAll && c.parsedTargetVersion == nil {
 			applicableStr = "N/A"
 		} else {
-			applicable := act.CanApply(
-				parseVersion(currentVersion.Version),
-				c.parsedTargetVersion,
-			)
+			target := &action.ActionTarget{
+				Client:         c.Client,
+				CurrentVersion: currentVersion,
+				TargetVersion:  c.parsedTargetVersion,
+			}
+
+			applicable := act.CanApply(target)
 
 			if !c.ShowAll && !applicable {
 				continue
@@ -200,13 +203,4 @@ func (c *ListCommand) printYAML(rows []migrationRow) error {
 	c.IO.Fprintf("%s", string(data))
 
 	return nil
-}
-
-func parseVersion(versionStr string) *semver.Version {
-	ver, err := semver.Parse(versionStr)
-	if err != nil {
-		return nil
-	}
-
-	return &ver
 }
