@@ -407,9 +407,7 @@ func getSeverityString(
 }
 
 // OutputTable is a shared function for outputting check results in table format.
-//
-//nolint:revive // verbose boolean is clear and appropriate for controlling output detail level
-func OutputTable(out io.Writer, results []check.CheckExecution, verbose bool) error {
+func OutputTable(out io.Writer, results []check.CheckExecution) error {
 	totalChecks := 0
 	totalPassed := 0
 	totalWarnings := 0
@@ -425,13 +423,7 @@ func OutputTable(out io.Writer, results []check.CheckExecution, verbose bool) er
 		severityInfo = color.New(color.FgCyan).Sprint("info")
 	)
 
-	// Build headers based on verbose mode
-	var headers []string
-	if verbose {
-		headers = []string{"STATUS", "GROUP", "KIND", "CHECK", "SEVERITY", "MESSAGE", "DESCRIPTION"}
-	} else {
-		headers = []string{"STATUS", "GROUP", "KIND", "CHECK", "SEVERITY", "MESSAGE"}
-	}
+	headers := []string{"STATUS", "GROUP", "KIND", "CHECK", "SEVERITY", "MESSAGE"}
 
 	// Create single table renderer for all results
 	renderer := table.NewRenderer[CheckResultTableRow](

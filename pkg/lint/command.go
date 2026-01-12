@@ -385,7 +385,7 @@ func (c *Command) outputTable(results []check.CheckExecution) error {
 	c.IO.Fprintln("Check Results:")
 	c.IO.Fprintln("==============")
 
-	if err := OutputTable(c.IO.Out(), results, c.Verbose); err != nil {
+	if err := OutputTable(c.IO.Out(), results); err != nil {
 		return fmt.Errorf("outputting table: %w", err)
 	}
 
@@ -427,7 +427,7 @@ func (c *Command) outputUpgradeTable(currentVer string, results []check.CheckExe
 	c.IO.Errorf("=============================================================")
 
 	// Reuse the lint table output logic
-	if err := OutputTable(c.IO.Out(), results, c.Verbose); err != nil {
+	if err := OutputTable(c.IO.Out(), results); err != nil {
 		return fmt.Errorf("outputting table: %w", err)
 	}
 
