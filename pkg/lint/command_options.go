@@ -34,6 +34,22 @@ const (
 	DefaultTimeout = 5 * time.Minute
 )
 
+//nolint:gochecknoglobals
+var (
+	// Table output symbols
+	statusPass = color.New(color.FgGreen).Sprint("✓")
+	statusWarn = color.New(color.FgYellow).Sprint("⚠")
+	statusFail = color.New(color.FgRed).Sprint("✗")
+
+	// Severity level formatting
+	severityCrit = color.New(color.FgRed).Sprint("critical")
+	severityWarn = color.New(color.FgYellow).Add(color.Bold).Sprint("warning") // Bold yellow (orange-ish)
+	severityInfo = color.New(color.FgCyan).Sprint("info")
+
+	// Table headers
+	tableHeaders = []string{"STATUS", "GROUP", "KIND", "CHECK", "SEVERITY", "MESSAGE"}
+)
+
 // Validate checks if the output format is valid.
 func (o OutputFormat) Validate() error {
 	switch o {
@@ -413,22 +429,10 @@ func OutputTable(out io.Writer, results []check.CheckExecution) error {
 	totalWarnings := 0
 	totalFailed := 0
 
-	// Pre-compute color formatters
-	var (
-		statusPass   = color.New(color.FgGreen).Sprint("✓")
-		statusWarn   = color.New(color.FgYellow).Sprint("⚠")
-		statusFail   = color.New(color.FgRed).Sprint("✗")
-		severityCrit = color.New(color.FgRed).Sprint("critical")
-		severityWarn = color.New(color.FgYellow).Add(color.Bold).Sprint("warning") // Bold yellow (orange-ish)
-		severityInfo = color.New(color.FgCyan).Sprint("info")
-	)
-
-	headers := []string{"STATUS", "GROUP", "KIND", "CHECK", "SEVERITY", "MESSAGE"}
-
 	// Create single table renderer for all results
 	renderer := table.NewRenderer[CheckResultTableRow](
 		table.WithWriter[CheckResultTableRow](out),
-		table.WithHeaders[CheckResultTableRow](headers...),
+		table.WithHeaders[CheckResultTableRow](tableHeaders...),
 		table.WithTableOptions[CheckResultTableRow](table.DefaultTableOptions...),
 	)
 
