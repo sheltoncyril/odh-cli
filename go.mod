@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/fatih/color v1.18.0
-	github.com/go-viper/mapstructure/v2 v2.4.0
+	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/itchyny/gojq v0.12.18
 	github.com/olekukonko/tablewriter v1.1.2
 	github.com/onsi/gomega v1.39.0
