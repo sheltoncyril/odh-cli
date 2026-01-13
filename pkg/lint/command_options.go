@@ -9,7 +9,6 @@ import (
 
 	"github.com/fatih/color"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
@@ -47,7 +46,7 @@ var (
 	severityInfo = color.New(color.FgCyan).Sprint("info")
 
 	// Table headers.
-	tableHeaders = []string{"STATUS", "GROUP", "KIND", "CHECK", "SEVERITY", "MESSAGE"}
+	tableHeaders = []string{"STATUS", "GROUP", "KIND", "CHECK", "IMPACT", "MESSAGE"}
 )
 
 // Validate checks if the output format is valid.
@@ -58,52 +57,6 @@ func (o OutputFormat) Validate() error {
 	default:
 		return fmt.Errorf("invalid output format: %s (must be one of: table, json, yaml)", o)
 	}
-}
-
-// MinimumSeverity represents the minimum severity level to display in results.
-type MinimumSeverity string
-
-const (
-	MinimumSeverityCritical MinimumSeverity = "critical"
-	MinimumSeverityWarning  MinimumSeverity = "warning"
-	MinimumSeverityInfo     MinimumSeverity = "info"
-	MinimumSeverityAll      MinimumSeverity = "" // Empty string means show all
-)
-
-// Validate checks if the minimum severity is valid.
-func (m MinimumSeverity) Validate() error {
-	switch m {
-	case MinimumSeverityCritical, MinimumSeverityWarning, MinimumSeverityInfo, MinimumSeverityAll:
-		return nil
-	default:
-		return fmt.Errorf("invalid minimum severity: %s (must be one of: critical, warning, info)", m)
-	}
-}
-
-// ShouldInclude returns true if a check result with the given severity should be included.
-func (m MinimumSeverity) ShouldInclude(severity *string) bool {
-	// Always include pass/error results
-	if severity == nil {
-		return true
-	}
-
-	// If showing all or info (which includes all), return true
-	if m == MinimumSeverityAll || m == MinimumSeverityInfo {
-		return true
-	}
-
-	// For critical filter, only show critical
-	if m == MinimumSeverityCritical {
-		return *severity == string(check.SeverityCritical)
-	}
-
-	// For warning filter, show critical and warning
-	if m == MinimumSeverityWarning {
-		return *severity == string(check.SeverityCritical) || *severity == string(check.SeverityWarning)
-	}
-
-	// Default: show all
-	return true
 }
 
 // SharedOptions contains options common to all doctor subcommands.
@@ -119,9 +72,6 @@ type SharedOptions struct {
 
 	// CheckSelector filters which checks to run (glob pattern)
 	CheckSelector string
-
-	// MinSeverity filters results by minimum severity level
-	MinSeverity MinimumSeverity
 
 	// FailOnCritical exits with non-zero code if critical findings detected
 	FailOnCritical bool
@@ -144,11 +94,10 @@ func NewSharedOptions(streams genericiooptions.IOStreams) *SharedOptions {
 	return &SharedOptions{
 		ConfigFlags:    genericclioptions.NewConfigFlags(true),
 		OutputFormat:   OutputFormatTable,
-		CheckSelector:  "*",                // Run all checks by default
-		MinSeverity:    MinimumSeverityAll, // Show all severity levels by default
-		FailOnCritical: true,               // Exit with error on critical findings (default)
-		FailOnWarning:  false,              // Don't exit on warnings by default
-		Timeout:        DefaultTimeout,     // Default timeout to prevent hanging on slow clusters
+		CheckSelector:  "*",            // Run all checks by default
+		FailOnCritical: true,           // Exit with error on critical findings (default)
+		FailOnWarning:  false,          // Don't exit on warnings by default
+		Timeout:        DefaultTimeout, // Default timeout to prevent hanging on slow clusters
 		IO:             iostreams.NewIOStreams(streams.In, streams.Out, streams.ErrOut),
 	}
 }
@@ -175,11 +124,6 @@ func (o *SharedOptions) Validate() error {
 
 	// Validate check selector
 	if err := ValidateCheckSelector(o.CheckSelector); err != nil {
-		return err
-	}
-
-	// Validate minimum severity
-	if err := o.MinSeverity.Validate(); err != nil {
 		return err
 	}
 
@@ -312,7 +256,7 @@ type CheckResultOutput struct {
 	CheckName   string         `json:"checkName"             yaml:"checkName"`
 	Group       string         `json:"group"                 yaml:"group"`
 	Status      string         `json:"status"                yaml:"status"`
-	Severity    *string        `json:"severity,omitempty"    yaml:"severity,omitempty"`
+	Impact      *string        `json:"impact,omitempty"      yaml:"impact,omitempty"`
 	Message     string         `json:"message"               yaml:"message"`
 	Remediation string         `json:"remediation,omitempty" yaml:"remediation,omitempty"`
 	Details     map[string]any `json:"details,omitempty"     yaml:"details,omitempty"`
@@ -325,7 +269,7 @@ type CheckResultTableRow struct {
 	Group       string
 	Kind        string
 	Check       string
-	Severity    string
+	Impact      string
 	Message     string
 	Description string
 }
@@ -343,32 +287,6 @@ type LintOutput struct {
 		Passed int `json:"passed" yaml:"passed"`
 		Failed int `json:"failed" yaml:"failed"`
 	} `json:"summary" yaml:"summary"`
-}
-
-// FilterResultsBySeverity filters check results based on minimum severity level.
-func FilterResultsBySeverity(
-	resultsByGroup map[check.CheckGroup][]check.CheckExecution,
-	minSeverity MinimumSeverity,
-) map[check.CheckGroup][]check.CheckExecution {
-	// If no filtering requested, return original results
-	if minSeverity == MinimumSeverityAll {
-		return resultsByGroup
-	}
-
-	filtered := make(map[check.CheckGroup][]check.CheckExecution)
-	for group, results := range resultsByGroup {
-		var groupResults []check.CheckExecution
-		for _, res := range results {
-			// Always include pass/error results (no severity)
-			// Include results that match the minimum severity filter
-			if minSeverity.ShouldInclude(res.Result.GetSeverity()) {
-				groupResults = append(groupResults, res)
-			}
-		}
-		filtered[group] = groupResults
-	}
-
-	return filtered
 }
 
 // FlattenResults converts a map of results by group to a flat sorted array.
@@ -389,37 +307,24 @@ func FlattenResults(resultsByGroup map[check.CheckGroup][]check.CheckExecution) 
 	return flattened
 }
 
-// getSeverityString determines the severity string from a condition.
-// For Status=False, uses explicit severity if set (allows overriding critical to warning).
-// For other statuses, always derives from status.
-func getSeverityString(
+// getImpactString determines the display string from a condition's impact.
+func getImpactString(
 	condition *result.Condition,
-	critStr string,
-	warnStr string,
-	infoStr string,
+	blockingStr string,
+	advisoryStr string,
+	noneStr string,
 ) string {
-	switch condition.Status {
-	case metav1.ConditionFalse:
-		// For failures, check if explicit severity is set to override default critical
-		if condition.Severity != "" {
-			switch condition.Severity {
-			case result.SeverityCritical:
-				return critStr
-			case result.SeverityWarning:
-				return warnStr
-			case result.SeverityInfo:
-				return infoStr
-			}
-		}
-
-		return critStr
-	case metav1.ConditionTrue:
-		return infoStr
-	case metav1.ConditionUnknown:
-		return warnStr
+	// Use Impact field directly (always set by NewCondition).
+	switch condition.Impact {
+	case result.ImpactBlocking:
+		return blockingStr
+	case result.ImpactAdvisory:
+		return advisoryStr
+	case result.ImpactNone:
+		return noneStr
 	}
-
-	return infoStr
+	// Unreachable - all Impact values handled above
+	return noneStr
 }
 
 // OutputTable is a shared function for outputting check results in table format.
@@ -443,23 +348,23 @@ func OutputTable(out io.Writer, results []check.CheckExecution) error {
 		for _, condition := range exec.Result.Status.Conditions {
 			totalChecks++
 
-			// Determine severity first (uses explicit severity if set for Status=False)
-			severity := getSeverityString(&condition, severityCrit, severityWarn, severityInfo)
+			// Determine impact display string from condition.
+			impact := getImpactString(&condition, severityCrit, severityWarn, severityInfo)
 
-			// Determine status symbol and count based on severity
+			// Determine status symbol and count based on impact.
 			var status string
 
-			switch severity {
+			switch impact {
 			case severityCrit:
-				// Critical severity = failed check
+				// Blocking impact = failed check
 				status = statusFail
 				totalFailed++
 			case severityWarn:
-				// Warning severity = warning (not counted as failure)
+				// Advisory impact = warning (not counted as failure)
 				status = statusWarn
 				totalWarnings++
 			default:
-				// Info/success
+				// No impact/success
 				status = statusPass
 				totalPassed++
 			}
@@ -469,7 +374,7 @@ func OutputTable(out io.Writer, results []check.CheckExecution) error {
 				Group:       exec.Result.Group,
 				Kind:        exec.Result.Kind,
 				Check:       exec.Result.Name,
-				Severity:    severity,
+				Impact:      impact,
 				Message:     condition.Message,
 				Description: exec.Result.Spec.Description,
 			}

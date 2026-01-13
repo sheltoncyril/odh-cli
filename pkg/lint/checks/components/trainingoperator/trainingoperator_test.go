@@ -146,10 +146,10 @@ func TestTrainingOperatorDeprecationCheck_ManagedDeprecated(t *testing.T) {
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeCompatible),
 		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonVersionIncompatible),
+		"Reason":  Equal(check.ReasonDeprecated),
 		"Message": And(ContainSubstring("enabled"), ContainSubstring("deprecated in RHOAI 3.3")),
 	}))
-	g.Expect(result.Status.Conditions[0].Severity).To(Equal(resultpkg.SeverityWarning))
+	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactAdvisory))
 	g.Expect(result.Annotations).To(And(
 		HaveKeyWithValue("component.opendatahub.io/management-state", "Managed"),
 		HaveKeyWithValue("check.opendatahub.io/target-version", "3.3.0"),
@@ -198,10 +198,10 @@ func TestTrainingOperatorDeprecationCheck_UnmanagedDeprecated(t *testing.T) {
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeCompatible),
 		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonVersionIncompatible),
+		"Reason":  Equal(check.ReasonDeprecated),
 		"Message": ContainSubstring("state: Unmanaged"),
 	}))
-	g.Expect(result.Status.Conditions[0].Severity).To(Equal(resultpkg.SeverityWarning))
+	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactAdvisory))
 	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/management-state", "Unmanaged"))
 }
 

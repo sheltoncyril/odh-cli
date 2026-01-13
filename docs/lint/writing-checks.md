@@ -179,31 +179,89 @@ result := check.NewDiagnosticResult(
 )
 ```
 
-### Adding Conditions
+### Creating Conditions
 
-Each condition represents a specific validation requirement:
+Use `check.NewCondition()` to create conditions with automatic Impact derivation:
 
 ```go
-result.AddCondition(
-    "ComponentReady",                    // Type
-    metav1.ConditionTrue,               // Status (True=passing, False=failing)
-    "DashboardReady",                   // Reason
-    "Dashboard component is ready",     // Message
+import (
+    "github.com/lburgazzoli/odh-cli/pkg/lint/check"
+    "github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
+    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-result.AddCondition(
-    "ConfigurationValid",
+// Success: Status=True → Impact=None (auto-derived)
+condition := check.NewCondition(
+    check.ConditionTypeAvailable,
+    metav1.ConditionTrue,
+    check.ReasonResourceAvailable,
+    "Dashboard component is ready",
+)
+
+// Failure: Status=False → Impact=Blocking (auto-derived)
+condition := check.NewCondition(
+    check.ConditionTypeConfigured,
     metav1.ConditionFalse,
-    "MissingConfig",
+    check.ReasonConfigurationInvalid,
     "Required configuration parameter 'replicas' not set",
+)
+
+// Override impact: Status=False but non-blocking
+condition := check.NewCondition(
+    check.ConditionTypeCompatible,
+    metav1.ConditionFalse,
+    check.ReasonDeprecated,
+    "TrainingOperator is deprecated in RHOAI 3.3",
+    check.WithImpact(result.ImpactAdvisory),  // Override to advisory
+)
+
+// Printf-style formatting
+condition := check.NewCondition(
+    check.ConditionTypeCompatible,
+    metav1.ConditionFalse,
+    check.ReasonWorkloadsImpacted,
+    "Found %d active PyTorchJobs - workloads use deprecated TrainingOperator",
+    activeCount,
+    check.WithImpact(result.ImpactAdvisory),
 )
 ```
 
-### Condition Status Semantics
+**Impact Auto-Derivation Rules:**
+- Status=True → Impact=None (requirement met, no issues)
+- Status=False → Impact=Blocking (requirement not met, blocks upgrade)
+- Status=Unknown → Impact=Advisory (unable to determine, proceed with caution)
 
+**Overriding Impact:**
+Use `check.WithImpact()` functional option when the default impact is not appropriate:
+- Deprecation warnings (Status=False but non-blocking)
+- Advisory notices (Status=False but upgrade can proceed)
+
+**Validation:**
+Conditions are validated at creation time. Invalid combinations will panic:
+- Status=True with Impact≠None (invalid - if met, there's no impact)
+- Status=False/Unknown with Impact=None (invalid - if not met, there must be impact)
+
+### Condition Status and Impact Semantics
+
+**Status** indicates whether a requirement is met:
 - **True**: Requirement is MET (check passing)
 - **False**: Requirement is NOT MET (check failing)
 - **Unknown**: Unable to determine if requirement is met (error state)
+
+**Impact** indicates the upgrade/operational impact:
+- **blocking**: Upgrade cannot proceed (critical issue requiring action)
+- **advisory**: Upgrade can proceed with warning (non-critical, user should be aware)
+- **none** (empty): No impact (success state, requirement met)
+
+**Valid Combinations:**
+- Status=True + Impact=None ✓ (requirement met, no issues)
+- Status=False + Impact=Blocking ✓ (requirement not met, critical)
+- Status=False + Impact=Advisory ✓ (requirement not met, but non-blocking)
+- Status=Unknown + Impact=Advisory ✓ (cannot determine, proceed with caution)
+
+**Invalid Combinations (will panic):**
+- Status=True + Impact=Blocking ✗ (if requirement is met, there's no blocking impact)
+- Status=False + Impact=None ✗ (if requirement is not met, there must be some impact)
 
 ### Adding Annotations
 
@@ -408,112 +466,108 @@ for _, item := range notebooks.Items {
 
 ## Complete Example
 
-Here's a complete lint check implementation:
+Here's a complete lint check implementation using BaseCheck and the new Impact-based API:
 
 ```go
-// pkg/lint/checks/components/kserve/serverless.go
+// pkg/lint/checks/components/kserve/deprecation.go
 package kserve
 
 import (
     "context"
     "fmt"
 
+    apierrors "k8s.io/apimachinery/pkg/api/errors"
     metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
     "github.com/lburgazzoli/odh-cli/pkg/lint/check"
-    "github.com/lburgazzoli/odh-cli/pkg/lint/check/registry"
-    "github.com/lburgazzoli/odh-cli/pkg/resources"
+    "github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
+    "github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
+    "github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
     "github.com/lburgazzoli/odh-cli/pkg/util/jq"
+    "github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
-const (
-    checkID          = "components.kserve.serverless-removal"
-    checkName        = "KServe Serverless Removal"
-    checkDescription = "Validates that serverless components are removed when upgrading to 3.x"
-)
-
-func init() {
-    registry.Instance().Register(&Check{})
+type DeprecationCheck struct {
+    base.BaseCheck
 }
 
-type Check struct{}
-
-func (c *Check) ID() string          { return checkID }
-func (c *Check) Name() string        { return checkName }
-func (c *Check) Description() string { return checkDescription }
-func (c *Check) Group() string       { return "components" }
-
-func (c *Check) CanApply(ctx context.Context, target *check.CheckTarget) bool {
-    // Only applies when upgrading to 3.x
-    if target.CurrentVersion.Version == target.Version.Version {
-        return false
+func NewDeprecationCheck() *DeprecationCheck {
+    return &DeprecationCheck{
+        BaseCheck: base.BaseCheck{
+            CheckGroup:       check.GroupComponent,
+            Kind:             check.ComponentKServe,
+            CheckType:        check.CheckTypeDeprecation,
+            CheckID:          "components.kserve.deprecation",
+            CheckName:        "Components :: KServe :: Serverless Deprecation",
+            CheckDescription: "Validates that serverless components are removed when upgrading to 3.x",
+        },
     }
-    return target.Version.Version.Major() == 3
 }
 
-func (c *Check) Validate(ctx context.Context, target *check.CheckTarget) *check.DiagnosticResult {
-    result := check.NewDiagnosticResult(
-        "components",
-        "kserve",
-        "serverless-removal",
-        "Validates that serverless components are removed when upgrading to 3.x",
-    )
+func (c *DeprecationCheck) CanApply(target check.Target) bool {
+    // Only applies when upgrading to 3.x
+    //nolint:mnd // Version numbers 3.0
+    return version.IsVersionAtLeast(target.TargetVersion, 3, 0)
+}
 
-    // Add version annotations
-    result.AddAnnotation(
-        "check.opendatahub.io/source-version",
-        target.CurrentVersion.Version.String(),
-    )
-    result.AddAnnotation(
-        "check.opendatahub.io/target-version",
-        target.Version.Version.String(),
-    )
+func (c *DeprecationCheck) Validate(
+    ctx context.Context,
+    target check.Target,
+) (*result.DiagnosticResult, error) {
+    dr := c.NewResult()
 
     // Get DataScienceCluster
-    dsc := &unstructured.Unstructured{}
-    dsc.SetGroupVersionKind(resources.DataScienceCluster.GVK())
+    dsc, err := target.Client.GetDataScienceCluster(ctx)
+    switch {
+    case apierrors.IsNotFound(err):
+        return results.DataScienceClusterNotFound(
+            string(c.Group()),
+            c.Kind,
+            c.CheckType,
+            c.Description(),
+        ), nil
+    case err != nil:
+        return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
+    }
 
-    err := target.Client.Get(ctx, client.ObjectKey{Name: "default"}, dsc)
+    // Check serverless configuration using JQ
+    serverlessState, err := jq.Query[string](dsc, ".spec.components.kserve.serving.managementState")
     if err != nil {
-        result.AddCondition(
-            "ServerlessRemoved",
-            metav1.ConditionUnknown,
-            "DSCNotFound",
-            fmt.Sprintf("Unable to retrieve DataScienceCluster: %v", err),
-        )
-        return result
+        return nil, fmt.Errorf("querying serverless managementState: %w", err)
     }
 
-    // Check if serverless is configured (using JQ)
-    serverlessState, err := jq.Query(dsc, ".spec.components.kserve.serving.managementState")
-    if err != nil || serverlessState == nil {
-        // Serverless not configured - condition met
-        result.AddCondition(
-            "ServerlessRemoved",
-            metav1.ConditionTrue,
-            "ServerlessNotConfigured",
-            "Serverless components are not configured",
-        )
-        return result
+    // Add component state annotation
+    dr.Annotations[check.AnnotationComponentManagementState] = serverlessState
+    if target.TargetVersion != nil {
+        dr.Annotations[check.AnnotationCheckTargetVersion] = target.TargetVersion.String()
     }
 
-    state, ok := serverlessState.(string)
-    if !ok || state == "Removed" {
-        result.AddCondition(
-            "ServerlessRemoved",
-            metav1.ConditionTrue,
-            "ServerlessRemoved",
-            "Serverless components are removed",
+    // Evaluate serverless state
+    if serverlessState == "" || serverlessState == check.ManagementStateRemoved {
+        // Success: serverless removed or not configured
+        results.SetCompatibilitySuccessf(dr,
+            "Serverless components are removed (state: %s) - ready for 3.x upgrade",
+            serverlessState,
         )
-    } else {
-        result.AddCondition(
-            "ServerlessRemoved",
-            metav1.ConditionFalse,
-            "ServerlessStillConfigured",
-            fmt.Sprintf("Serverless managementState is %q (expected Removed)", state),
-        )
+        return dr, nil
     }
 
-    return result
+    // Failure: serverless still configured (blocking upgrade)
+    results.SetCondition(dr, check.NewCondition(
+        check.ConditionTypeCompatible,
+        metav1.ConditionFalse,
+        check.ReasonVersionIncompatible,
+        "Serverless components are still configured (state: %s) - must be removed before upgrading to 3.x",
+        serverlessState,
+        // Default Impact=Blocking (auto-derived from Status=False)
+    ))
+
+    return dr, nil
+}
+
+//nolint:gochecknoinits
+func init() {
+    check.MustRegisterCheck(NewDeprecationCheck())
 }
 ```
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/cmd"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
+	resultpkg "github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/util/iostreams"
 	"github.com/lburgazzoli/odh-cli/pkg/util/kube/discovery"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
@@ -51,7 +52,6 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescTargetVersion)
 	fs.StringVarP((*string)(&c.OutputFormat), "output", "o", string(OutputFormatTable), flagDescOutput)
 	fs.StringVar(&c.CheckSelector, "checks", "*", flagDescChecks)
-	fs.StringVar((*string)(&c.MinSeverity), "severity", "", flagDescSeverity)
 	fs.BoolVar(&c.FailOnCritical, "fail-on-critical", true, flagDescFailCritical)
 	fs.BoolVar(&c.FailOnWarning, "fail-on-warning", false, flagDescFailWarning)
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescVerbose)
@@ -223,16 +223,13 @@ func (c *Command) runLintMode(ctx context.Context, clusterVersion *semver.Versio
 		check.GroupWorkload:   workloadResults,
 	}
 
-	// Filter results by minimum severity if specified
-	filteredResults := FilterResultsBySeverity(resultsByGroup, c.MinSeverity)
-
 	// Format and output results based on output format
-	if err := c.formatAndOutputResults(filteredResults); err != nil {
+	if err := c.formatAndOutputResults(resultsByGroup); err != nil {
 		return err
 	}
 
 	// Determine exit code based on fail-on flags
-	return c.determineExitCode(filteredResults)
+	return c.determineExitCode(resultsByGroup)
 }
 
 // runUpgradeMode assesses upgrade readiness for a target version.
@@ -285,20 +282,17 @@ func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *semver.Ver
 		resultsByGroup[group] = append(resultsByGroup[group], result)
 	}
 
-	// Filter results by minimum severity if specified
-	filteredResults := FilterResultsBySeverity(resultsByGroup, c.MinSeverity)
-
 	// Format and output results
-	if err := c.formatAndOutputUpgradeResults(currentVersion.String(), filteredResults); err != nil {
+	if err := c.formatAndOutputUpgradeResults(currentVersion.String(), resultsByGroup); err != nil {
 		return err
 	}
 
 	// Determine if upgrade is recommended
 	blockingIssues := 0
-	for _, executions := range filteredResults {
+	for _, executions := range resultsByGroup {
 		for _, exec := range executions {
-			severity := exec.Result.GetSeverity()
-			if exec.Result.IsFailing() && severity != nil && *severity == string(check.SeverityCritical) {
+			impact := exec.Result.GetImpact()
+			if exec.Result.IsFailing() && impact != nil && *impact == string(resultpkg.ImpactBlocking) {
 				blockingIssues++
 			}
 		}
@@ -311,38 +305,38 @@ func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *semver.Ver
 	}
 
 	// Determine exit code based on fail-on flags
-	return c.determineExitCode(filteredResults)
+	return c.determineExitCode(resultsByGroup)
 }
 
 // determineExitCode returns an error if fail-on conditions are met.
 func (c *Command) determineExitCode(resultsByGroup map[check.CheckGroup][]check.CheckExecution) error {
-	var hasCritical, hasWarning bool
+	var hasBlocking, hasAdvisory bool
 
 	for _, results := range resultsByGroup {
-		for _, result := range results {
-			severity := result.Result.GetSeverity()
-			if severity != nil {
-				//nolint:revive // exhaustive linter requires explicit Info case
-				switch *severity {
-				case string(check.SeverityCritical):
-					hasCritical = true
-				case string(check.SeverityWarning):
-					hasWarning = true
-				case string(check.SeverityInfo):
-					// Info doesn't affect exit code
+		for _, exec := range results {
+			impact := exec.Result.GetImpact()
+			if impact != nil {
+				//nolint:revive // exhaustive linter requires explicit None case
+				switch *impact {
+				case string(resultpkg.ImpactBlocking):
+					hasBlocking = true
+				case string(resultpkg.ImpactAdvisory):
+					hasAdvisory = true
+				case string(resultpkg.ImpactNone):
+					// No impact doesn't affect exit code
 				default:
-					// Unknown severities don't affect exit code
+					// Unknown impacts don't affect exit code
 				}
 			}
 		}
 	}
 
-	if c.FailOnCritical && hasCritical {
-		return errors.New("critical findings detected")
+	if c.FailOnCritical && hasBlocking {
+		return errors.New("blocking findings detected")
 	}
 
-	if c.FailOnWarning && hasWarning {
-		return errors.New("warning findings detected")
+	if c.FailOnWarning && hasAdvisory {
+		return errors.New("advisory findings detected")
 	}
 
 	return nil

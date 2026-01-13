@@ -110,6 +110,7 @@ type Condition struct {
     Status             string    // "True" (passing), "False" (failing), "Unknown"
     Reason             string    // Machine-readable reason
     Message            string    // Human-readable explanation
+    Impact             string    // "blocking", "advisory", "" (none)
     LastTransitionTime time.Time
 }
 ```
@@ -120,6 +121,22 @@ Condition `Status` follows Kubernetes metav1.Condition semantics:
 - **True**: Requirement is MET (check passing)
 - **False**: Requirement is NOT MET (check failing)
 - **Unknown**: Unable to determine if requirement is met
+
+### Impact Levels
+
+Each condition has an `Impact` field indicating the upgrade impact:
+- **blocking**: Upgrade cannot proceed (critical issue)
+- **advisory**: Upgrade can proceed with warning (non-critical issue)
+- **none** (empty string): No impact (success state)
+
+Impact is auto-derived from Status unless explicitly overridden:
+- Status=True → Impact=None
+- Status=False → Impact=Blocking
+- Status=Unknown → Impact=Advisory
+
+Validation ensures valid Status/Impact combinations:
+- Status=True MUST have Impact=None
+- Status=False or Unknown MUST have Impact=Blocking or Advisory
 
 ### Annotations
 

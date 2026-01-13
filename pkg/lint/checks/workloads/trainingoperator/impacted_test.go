@@ -102,10 +102,10 @@ func TestImpactedWorkloadsCheck_ActiveJobs(t *testing.T) {
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(trainingoperator.ConditionTypePyTorchJobsCompatible),
 		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonVersionIncompatible),
+		"Reason":  Equal(check.ReasonWorkloadsImpacted),
 		"Message": And(ContainSubstring("Found 1 active PyTorchJob(s)"), ContainSubstring("deprecated TrainingOperator")),
 	}))
-	g.Expect(result.Status.Conditions[0].Severity).To(Equal(resultpkg.SeverityWarning))
+	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactAdvisory))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(1))
 	g.Expect(result.ImpactedObjects[0].Annotations).To(HaveKeyWithValue("status", "active"))
@@ -303,10 +303,10 @@ func TestImpactedWorkloadsCheck_MixedActiveAndCompleted(t *testing.T) {
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(trainingoperator.ConditionTypePyTorchJobsCompatible),
 		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonVersionIncompatible),
+		"Reason":  Equal(check.ReasonWorkloadsImpacted),
 		"Message": And(ContainSubstring("Found 3 PyTorchJob(s)"), ContainSubstring("2 active"), ContainSubstring("1 completed")),
 	}))
-	g.Expect(result.Status.Conditions[0].Severity).To(Equal(resultpkg.SeverityWarning))
+	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactAdvisory))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "3"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(3))
 }
@@ -348,7 +348,7 @@ func TestImpactedWorkloadsCheck_JobWithoutStatus(t *testing.T) {
 		"Type":   Equal(trainingoperator.ConditionTypePyTorchJobsCompatible),
 		"Status": Equal(metav1.ConditionFalse),
 	}))
-	g.Expect(result.Status.Conditions[0].Severity).To(Equal(resultpkg.SeverityWarning))
+	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactAdvisory))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(1))
 	g.Expect(result.ImpactedObjects[0].Annotations).To(HaveKeyWithValue("status", "active"))

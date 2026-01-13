@@ -16,6 +16,8 @@ For architectural information and design decisions, see [design.md](design.md).
 
 ### Build Commands
 
+**CRITICAL: ALWAYS use `make` commands. NEVER invoke tools directly.**
+
 ```bash
 # Build the binary
 make build
@@ -23,13 +25,13 @@ make build
 # Run the doctor command
 make run
 
-# Format code
+# Format code (NEVER use gci directly)
 make fmt
 
-# Run linter
+# Run linter (NEVER use golangci-lint directly)
 make lint
 
-# Run linter with auto-fix
+# Run linter with auto-fix (ALWAYS try this FIRST before manual fixes)
 make lint/fix
 
 # Run vulnerability scanner
@@ -48,6 +50,18 @@ make tidy
 make clean
 ```
 
+**Why use make commands instead of tools directly:**
+- **Consistency**: Ensures everyone uses the same linter configuration and settings
+- **Safety**: Prevents accidental changes to critical files (e.g., blank imports)
+- **Correctness**: Makefile handles proper tool invocation with correct flags
+- **Maintainability**: Tool versions and configuration centralized in one place
+
+**Prohibited commands:**
+- ❌ `golangci-lint run` - Use `make lint` instead
+- ❌ `gci write` - Use `make fmt` instead
+- ❌ `gofmt` - Use `make fmt` instead
+- ❌ `goimports` - Use `make fmt` instead
+
 ### Test Commands
 
 ```bash
@@ -65,6 +79,38 @@ make test
 ```
 
 ## Coding Conventions
+
+### Code Formatting
+
+**CRITICAL: MUST use `make fmt` to format code. NEVER use `gci` or other formatters directly.**
+
+```bash
+# ✓ CORRECT - Format all code
+make fmt
+
+# ❌ WRONG - DO NOT use gci directly
+gci write ./...
+gci write -s standard -s default ./...
+
+# ❌ WRONG - DO NOT use gofmt directly
+gofmt -w .
+
+# ❌ WRONG - DO NOT use goimports directly
+goimports -w .
+```
+
+**Why you MUST use `make fmt`:**
+- **Safety**: The Makefile applies correct flags to prevent breaking critical files
+- **Consistency**: All developers use identical formatting configuration
+- **Completeness**: `make fmt` runs all necessary formatters in the correct order
+- **Protection**: Direct tool usage can accidentally modify blank imports in `cmd/lint/lint.go` and `cmd/migrate/migrate.go`, breaking auto-registration
+
+**What `make fmt` does:**
+1. Runs `go fmt` for basic formatting
+2. Runs `gci` with project-specific import grouping rules
+3. Applies special handling for files with blank imports
+
+**Never run formatting tools directly.** Always use `make fmt`.
 
 ### Functional Options Pattern
 
@@ -1143,22 +1189,34 @@ Quality verification is a mandatory part of the development workflow, not a pre-
 
 ### Lint-Fix-First
 
+**CRITICAL: ALWAYS use `make lint/fix` as first effort to fix linting issues.**
+
+**Never use tools directly:**
+- ❌ `golangci-lint run --fix` - Use `make lint/fix` instead
+- ❌ `gci write` - Use `make fmt` instead
+- ❌ `gofmt -w` - Use `make fmt` instead
+
 **Always run auto-fix before manual fixes:**
 
 ```bash
 # ✓ CORRECT workflow
-make lint-fix    # Auto-fix first
-make lint        # Check what remains
+make lint/fix    # Auto-fix first (NEVER use golangci-lint directly)
+make lint        # Check what remains (NEVER use golangci-lint directly)
 # manually fix remaining issues
 make check       # Final verification
 
-# ❌ WRONG workflow
-make lint        # Check issues
+# ❌ WRONG workflow - DO NOT DO THIS
+golangci-lint run           # Wrong: use make lint
+gci write ./...             # Wrong: use make fmt
 # manually fix all issues without trying auto-fix
 make check
 ```
 
-**Rationale:** `lint-fix` automatically resolves 80%+ of common issues (formatting, imports, simple patterns). Manual fixes should only address issues that require human judgment.
+**Rationale:**
+- `make lint/fix` automatically resolves 80%+ of common issues (formatting, imports, simple patterns)
+- Manual fixes should only address issues that require human judgment
+- Using make ensures consistent tool configuration across all developers
+- Direct tool invocation may break critical files (e.g., blank imports in cmd/lint/lint.go)
 
 ### Quality Gates
 
@@ -1197,7 +1255,27 @@ make check
 
 ### Linter Rules
 
-The project uses golangci-lint v2 with a comprehensive configuration (`.golangci.yml`) that enables all linters by default with specific exclusions. Run `make lint` to check your code or `make lint/fix` to automatically fix issues where possible.
+**CRITICAL: MUST use `make lint` to run linter. NEVER use `golangci-lint` directly.**
+
+The project uses golangci-lint v2 with a comprehensive configuration (`.golangci.yml`) that enables all linters by default with specific exclusions.
+
+**Correct usage:**
+```bash
+# ✓ Check for linting issues
+make lint
+
+# ✓ Auto-fix issues where possible (ALWAYS try this FIRST)
+make lint/fix
+```
+
+**Prohibited:**
+```bash
+# ❌ NEVER do this - use make lint instead
+golangci-lint run
+
+# ❌ NEVER do this - use make lint/fix instead
+golangci-lint run --fix
+```
 
 **Configuration Highlights:**
 
@@ -1218,11 +1296,13 @@ The project uses golangci-lint v2 with a comprehensive configuration (`.golangci
 
 **Running the Linter:**
 
+**CRITICAL: ALWAYS use make commands. NEVER invoke tools directly.**
+
 ```bash
-# Check for issues
+# Check for issues (NEVER use golangci-lint directly)
 make lint
 
-# Auto-fix issues where possible
+# Auto-fix issues where possible (ALWAYS try this FIRST)
 make lint/fix
 
 # Run vulnerability scanner
@@ -1231,6 +1311,12 @@ make vulncheck
 # Run all checks
 make check
 ```
+
+**Why you MUST use make instead of golangci-lint directly:**
+- Ensures correct configuration and flags are applied
+- Prevents accidental damage to critical files (blank imports)
+- Maintains consistency across all developers
+- Makefile may include additional safety checks or pre-processing
 
 ### Git Commit Conventions
 

@@ -1,6 +1,5 @@
 package migrate
 
-//nolint:gci // Blank imports required for migration action registration - DO NOT REMOVE
 import (
 	"github.com/spf13/cobra"
 
@@ -9,11 +8,6 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/cmd/migrate/list"
 	"github.com/lburgazzoli/odh-cli/cmd/migrate/run"
-
-	// Import migration action packages to trigger init() auto-registration.
-	// These blank imports are REQUIRED for migrations to register with the global registry.
-	// DO NOT REMOVE - they appear unused but are essential for runtime migration discovery.
-	_ "github.com/lburgazzoli/odh-cli/pkg/migrate/actions/kueue/rhbok"
 )
 
 const (

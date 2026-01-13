@@ -8,23 +8,68 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 )
 
-// NewCondition creates a new Condition with the current timestamp.
-// Severity is left empty and will be derived from Status by GetSeverity().
+// ConditionOption is a functional option for customizing condition creation.
+type ConditionOption func(*result.Condition)
+
+// WithImpact sets the impact explicitly, overriding auto-derivation.
+// Use this when the default impact (derived from Status) is not appropriate.
 //
-// This helper ensures LastTransitionTime is automatically set to the current time,
-// providing consistent condition creation across all checks.
+// Example:
 //
-// The message parameter supports printf-style formatting via optional variadic args.
-// If args are provided, fmt.Sprintf is applied to the message.
+//	// Status=False normally derives Impact=Blocking
+//	// Override to Advisory for deprecation warnings
+//	check.NewCondition(
+//	    check.ConditionTypeCompatible,
+//	    metav1.ConditionFalse,
+//	    check.ReasonDeprecated,
+//	    "TrainingOperator deprecated in RHOAI 3.3",
+//	    check.WithImpact(result.ImpactAdvisory),
+//	)
+func WithImpact(impact result.Impact) ConditionOption {
+	return func(c *result.Condition) {
+		c.Impact = impact
+	}
+}
+
+// deriveImpact derives the default impact from condition status.
+func deriveImpact(status metav1.ConditionStatus) result.Impact {
+	switch status {
+	case metav1.ConditionTrue:
+		return result.ImpactNone
+	case metav1.ConditionFalse:
+		return result.ImpactBlocking
+	case metav1.ConditionUnknown:
+		return result.ImpactAdvisory
+	}
+	// Unreachable - all ConditionStatus values handled above
+	return result.ImpactNone
+}
+
+// NewCondition creates a new Condition with automatic Impact derivation.
+// Impact is derived from Status unless explicitly overridden via WithImpact option:
+//   - Status=True  → Impact=None      (requirement met, no issues)
+//   - Status=False → Impact=Blocking  (requirement not met, blocks upgrade)
+//   - Status=Unknown → Impact=Advisory (unable to determine, proceed with caution)
 //
-// Example usage:
+// The message parameter supports printf-style formatting when args are provided.
 //
-//	// Simple message
+// Examples:
+//
+//	// Default behavior: Impact auto-derived as Blocking
 //	condition := check.NewCondition(
-//	    check.ConditionTypeValidated,
-//	    metav1.ConditionTrue,
-//	    check.ReasonRequirementsMet,
-//	    "All version requirements validated successfully",
+//	    check.ConditionTypeAvailable,
+//	    metav1.ConditionFalse,
+//	    check.ReasonResourceNotFound,
+//	    "DataScienceCluster not found",
+//	)
+//
+//	// Override impact: Deprecation is non-blocking
+//	condition := check.NewCondition(
+//	    check.ConditionTypeCompatible,
+//	    metav1.ConditionFalse,
+//	    check.ReasonDeprecated,
+//	    "TrainingOperator deprecated in RHOAI 3.3",
+//	    check.WithImpact(result.ImpactAdvisory),
 //	)
 //
 //	// Formatted message
@@ -32,22 +77,35 @@ import (
 //	    check.ConditionTypeCompatible,
 //	    metav1.ConditionFalse,
 //	    check.ReasonVersionIncompatible,
-//	    "Found %d %s - will be impacted",
-//	    count,
-//	    resourceType,
+//	    "Found %d resources using deprecated API version %s",
+//	    count, apiVersion,
 //	)
 func NewCondition(
 	conditionType string,
 	status metav1.ConditionStatus,
 	reason string,
 	message string,
-	args ...any,
+	argsAndOptions ...any,
 ) result.Condition {
-	if len(args) > 0 {
-		message = fmt.Sprintf(message, args...)
+	// Separate printf args from functional options.
+	var options []ConditionOption
+	var messageArgs []any
+
+	for _, arg := range argsAndOptions {
+		if opt, ok := arg.(ConditionOption); ok {
+			options = append(options, opt)
+		} else {
+			messageArgs = append(messageArgs, arg)
+		}
 	}
 
-	return result.Condition{
+	// Format message if args provided.
+	if len(messageArgs) > 0 {
+		message = fmt.Sprintf(message, messageArgs...)
+	}
+
+	// Create condition with auto-derived impact.
+	c := result.Condition{
 		Condition: metav1.Condition{
 			Type:               conditionType,
 			Status:             status,
@@ -55,44 +113,20 @@ func NewCondition(
 			Message:            message,
 			LastTransitionTime: metav1.Now(),
 		},
-	}
-}
-
-// NewConditionWithSeverity creates a new Condition with explicit severity.
-// Use this when you want to override the default severity derived from Status.
-// For example, to create a Failed status (False) with warning severity instead of critical.
-//
-// Example usage:
-//
-//	condition := check.NewConditionWithSeverity(
-//	    check.ConditionTypeCompatible,
-//	    metav1.ConditionFalse,
-//	    check.ReasonVersionIncompatible,
-//	    result.SeverityWarning,  // Override default critical severity
-//	    "Component deprecated but upgrade can proceed",
-//	)
-func NewConditionWithSeverity(
-	conditionType string,
-	status metav1.ConditionStatus,
-	reason string,
-	severity result.Severity,
-	message string,
-	args ...any,
-) result.Condition {
-	if len(args) > 0 {
-		message = fmt.Sprintf(message, args...)
+		Impact: deriveImpact(status), // Auto-derive by default
 	}
 
-	return result.Condition{
-		Condition: metav1.Condition{
-			Type:               conditionType,
-			Status:             status,
-			Reason:             reason,
-			Message:            message,
-			LastTransitionTime: metav1.Now(),
-		},
-		Severity: severity,
+	// Apply functional options (can override Impact).
+	for _, opt := range options {
+		opt(&c)
 	}
+
+	// Validate the final condition.
+	if err := c.Validate(); err != nil {
+		panic(fmt.Sprintf("invalid condition: %v", err))
+	}
+
+	return c
 }
 
 // Standard Condition Types.
@@ -159,6 +193,12 @@ const (
 
 	// ReasonDependencyUnavailable indicates a dependency is unavailable.
 	ReasonDependencyUnavailable = "DependencyUnavailable"
+
+	// ReasonDeprecated indicates a component or feature is deprecated.
+	ReasonDeprecated = "Deprecated"
+
+	// ReasonWorkloadsImpacted indicates workloads will be affected by changes.
+	ReasonWorkloadsImpacted = "WorkloadsImpacted"
 )
 
 // Standard Reason Values - Unknown/Error.

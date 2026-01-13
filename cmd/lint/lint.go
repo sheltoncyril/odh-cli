@@ -79,8 +79,8 @@ const cmdExample = `
   # Run only dashboard-related checks
   kubectl odh lint --checks "*dashboard*"
 
-  # Check upgrade to version 3.1 with critical issues only
-  kubectl odh lint --target-version 3.1 --severity critical
+  # Check upgrade readiness to version 3.1
+  kubectl odh lint --target-version 3.1
 `
 
 // AddCommand adds the lint command to the root command.

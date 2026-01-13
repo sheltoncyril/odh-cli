@@ -10,25 +10,25 @@ import (
 
 const (
 	// Validation error messages.
-	errMsgGroupEmpty               = "group must not be empty"
-	errMsgKindEmpty                = "kind must not be empty"
-	errMsgNameEmpty                = "name must not be empty"
-	errMsgConditionsEmpty          = "status.conditions must contain at least one condition"
-	errMsgConditionTypeEmpty       = "condition with empty type found"
-	errMsgConditionReasonEmpty     = "condition %q has empty reason"
-	errMsgConditionInvalidStatus   = "condition %q has invalid status (must be True, False, or Unknown)"
-	errMsgAnnotationInvalidFormat  = "annotation key %q must be in domain/key format (e.g., openshiftai.io/version)"
-	errMsgConditionInvalidSeverity = "condition %q has invalid severity (must be critical, warning, or info)"
+	errMsgGroupEmpty              = "group must not be empty"
+	errMsgKindEmpty               = "kind must not be empty"
+	errMsgNameEmpty               = "name must not be empty"
+	errMsgConditionsEmpty         = "status.conditions must contain at least one condition"
+	errMsgConditionTypeEmpty      = "condition with empty type found"
+	errMsgConditionReasonEmpty    = "condition %q has empty reason"
+	errMsgConditionInvalidStatus  = "condition %q has invalid status (must be True, False, or Unknown)"
+	errMsgAnnotationInvalidFormat = "annotation key %q must be in domain/key format (e.g., openshiftai.io/version)"
+	errMsgConditionInvalidImpact  = "condition %q has invalid impact (must be blocking or advisory)"
 )
 
-// Severity represents the impact level of a diagnostic condition.
-type Severity string
+// Impact represents the upgrade impact level of a diagnostic condition.
+type Impact string
 
-// Severity levels for diagnostic conditions.
+// Impact levels for diagnostic conditions.
 const (
-	SeverityCritical Severity = "critical"
-	SeverityWarning  Severity = "warning"
-	SeverityInfo     Severity = "" // Empty string to omit from output (omitempty)
+	ImpactBlocking Impact = "blocking" // Upgrade CANNOT proceed
+	ImpactAdvisory Impact = "advisory" // Upgrade CAN proceed with warning
+	ImpactNone     Impact = ""         // No impact (omitted from JSON/YAML)
 )
 
 // Condition represents a diagnostic condition with severity level.
@@ -37,9 +37,45 @@ const (
 type Condition struct {
 	metav1.Condition `json:",inline" yaml:",inline"`
 
-	// Severity indicates the impact level: "critical", "warning", or "info".
-	// If empty, severity is derived from Status (False=critical, Unknown=warning, True=info).
-	Severity Severity `json:"severity,omitempty" yaml:"severity,omitempty"`
+	// Impact indicates the upgrade impact level.
+	// Auto-derived from Status unless explicitly overridden via WithImpact option.
+	Impact Impact `json:"impact,omitempty" yaml:"impact,omitempty"`
+}
+
+// Validate ensures the condition has valid Status/Impact combination.
+func (c Condition) Validate() error {
+	switch c.Status {
+	case metav1.ConditionTrue:
+		// True status must have no impact.
+		if c.Impact != ImpactNone && c.Impact != "" {
+			return fmt.Errorf(
+				"condition with Status=True must have Impact=None, got Impact=%q (if there's an impact, the condition is not met)",
+				c.Impact,
+			)
+		}
+
+	case metav1.ConditionFalse, metav1.ConditionUnknown:
+		// False/Unknown status must have impact specified.
+		if c.Impact == ImpactNone || c.Impact == "" {
+			return fmt.Errorf(
+				"condition with Status=%q must have Impact specified (Blocking or Advisory), got Impact=%q",
+				c.Status, c.Impact,
+			)
+		}
+
+		// Validate impact values.
+		if c.Impact != ImpactBlocking && c.Impact != ImpactAdvisory {
+			return fmt.Errorf(
+				"invalid Impact=%q, must be %q or %q",
+				c.Impact, ImpactBlocking, ImpactAdvisory,
+			)
+		}
+
+	default:
+		return fmt.Errorf("invalid Status: %q", c.Status)
+	}
+
+	return nil
 }
 
 // DiagnosticSpec describes what the check validates.
@@ -117,12 +153,6 @@ func validateCondition(condition *Condition) error {
 	}
 	if condition.Reason == "" {
 		return fmt.Errorf(errMsgConditionReasonEmpty, condition.Type)
-	}
-	// Validate severity if provided (empty string is valid for SeverityInfo)
-	if condition.Severity != SeverityCritical &&
-		condition.Severity != SeverityWarning &&
-		condition.Severity != SeverityInfo {
-		return fmt.Errorf(errMsgConditionInvalidSeverity, condition.Type)
 	}
 
 	return nil
@@ -204,56 +234,35 @@ func (r *DiagnosticResult) GetMessage() string {
 	return r.Status.Conditions[0].Message
 }
 
-// GetSeverity returns the severity level based on condition severities.
-// If a condition has an explicit Severity field set, that value is used.
-// Otherwise, severity is derived from the condition status:
-// Critical: ConditionFalse (indicates a failure)
-// Warning: ConditionUnknown (indicates an error or inability to determine)
-// Info: ConditionTrue (indicates success/informational)
-// Returns the highest severity found across all conditions (critical > warning > info).
+// GetImpact returns the highest impact level across all conditions.
 // Returns nil if there are no conditions.
-func (r *DiagnosticResult) GetSeverity() *string {
+// Impact is always explicit (set during condition creation), never derived.
+func (r *DiagnosticResult) GetImpact() *string {
 	if len(r.Status.Conditions) == 0 {
 		return nil
 	}
 
-	var hasCritical bool
-	var hasWarning bool
+	var hasBlocking bool
+	var hasAdvisory bool
 
 	for _, cond := range r.Status.Conditions {
-		severity := cond.Severity
-		// If severity not explicitly set, derive from status
-		if severity == "" {
-			switch cond.Status {
-			case metav1.ConditionFalse:
-				severity = SeverityCritical
-			case metav1.ConditionUnknown:
-				severity = SeverityWarning
-			case metav1.ConditionTrue:
-				severity = SeverityInfo
-			default:
-				continue
-			}
-		}
-
-		// Track highest severity (critical > warning > info)
-		switch severity {
-		case SeverityCritical:
-			hasCritical = true
-		case SeverityWarning:
-			hasWarning = true
-		case SeverityInfo:
-			// Info severity doesn't affect flags (lowest priority)
+		switch cond.Impact {
+		case ImpactBlocking:
+			hasBlocking = true
+		case ImpactAdvisory:
+			hasAdvisory = true
+		case ImpactNone:
+			// No impact - continue checking other conditions
 		}
 	}
 
-	var result Severity
-	if hasCritical {
-		result = SeverityCritical
-	} else if hasWarning {
-		result = SeverityWarning
+	var result Impact
+	if hasBlocking {
+		result = ImpactBlocking
+	} else if hasAdvisory {
+		result = ImpactAdvisory
 	} else {
-		result = SeverityInfo
+		result = ImpactNone
 	}
 
 	resultStr := string(result)

@@ -68,14 +68,14 @@ func (c *DeprecationCheck) Validate(
 	}
 
 	if managementStateStr == check.ManagementStateManaged || managementStateStr == check.ManagementStateUnmanaged {
-		// Use warning severity instead of critical (this is advisory, not blocking)
-		results.SetCondition(dr, check.NewConditionWithSeverity(
+		// Deprecation is advisory (non-blocking).
+		results.SetCondition(dr, check.NewCondition(
 			check.ConditionTypeCompatible,
 			metav1.ConditionFalse,
-			check.ReasonVersionIncompatible,
-			result.SeverityWarning,
+			check.ReasonDeprecated,
 			"TrainingOperator (Kubeflow Training Operator v1) is enabled (state: %s) but is deprecated in RHOAI 3.3 and will be replaced by Trainer v2 in a future release",
 			managementStateStr,
+			check.WithImpact(result.ImpactAdvisory),
 		))
 
 		return dr, nil
