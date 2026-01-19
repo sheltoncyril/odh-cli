@@ -36,7 +36,7 @@ func TestOpenShiftCheck_VersionMeetsRequirement(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
-	cv := createClusterVersion("4.19.0")
+	cv := createClusterVersion("4.19.9")
 
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
@@ -68,9 +68,9 @@ func TestOpenShiftCheck_VersionMeetsRequirement(t *testing.T) {
 		"Type":    Equal(check.ConditionTypeCompatible),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
-		"Message": ContainSubstring("4.19.0 meets RHOAI 3.x minimum version requirement"),
+		"Message": ContainSubstring("4.19.9 meets RHOAI 3.x minimum version requirement"),
 	}))
-	g.Expect(result.Annotations).To(HaveKeyWithValue("platform.opendatahub.io/openshift-version", "4.19.0"))
+	g.Expect(result.Annotations).To(HaveKeyWithValue("platform.opendatahub.io/openshift-version", "4.19.9"))
 }
 
 func TestOpenShiftCheck_VersionAboveRequirement(t *testing.T) {
@@ -155,6 +155,50 @@ func TestOpenShiftCheck_VersionBelowRequirement(t *testing.T) {
 		),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue("platform.opendatahub.io/openshift-version", "4.18.5"))
+}
+
+func TestOpenShiftCheck_PatchVersionBelowRequirement(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	cv := createClusterVersion("4.19.8")
+
+	scheme := runtime.NewScheme()
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
+		scheme,
+		map[schema.GroupVersionResource]string{
+			resources.ClusterVersion.GVR(): "ClusterVersionList",
+		},
+		cv,
+	)
+
+	c := &client.Client{
+		Dynamic: dynamicClient,
+	}
+
+	currentVer := semver.MustParse("2.17.0")
+	targetVer := semver.MustParse("3.0.0")
+	target := check.Target{
+		Client:         c,
+		CurrentVersion: &currentVer,
+		TargetVersion:  &targetVer,
+	}
+
+	openshiftCheck := &openshift.Check{}
+	result, err := openshiftCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal(check.ConditionTypeCompatible),
+		"Status": Equal(metav1.ConditionFalse),
+		"Reason": Equal(check.ReasonVersionIncompatible),
+		"Message": And(
+			ContainSubstring("4.19.8 does not meet RHOAI 3.x minimum version requirement"),
+			ContainSubstring("4.19.9"),
+		),
+	}))
+	g.Expect(result.Annotations).To(HaveKeyWithValue("platform.opendatahub.io/openshift-version", "4.19.8"))
 }
 
 func TestOpenShiftCheck_VersionNotDetectable(t *testing.T) {

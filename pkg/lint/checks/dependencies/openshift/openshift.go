@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/blang/semver/v4"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
@@ -15,11 +17,11 @@ import (
 const (
 	checkID          = "dependencies.openshift.version-requirement"
 	checkName        = "Dependencies :: OpenShift :: Version Requirement (3.x)"
-	checkDescription = "Validates that OpenShift is at least version 4.19 when upgrading to RHOAI 3.x"
-
-	minMajorVersion = 4
-	minMinorVersion = 19
+	checkDescription = "Validates that OpenShift is at least version 4.19.9 when upgrading to RHOAI 3.x"
 )
+
+//nolint:gochecknoglobals
+var minVersion = semver.MustParse("4.19.9")
 
 // Check validates OpenShift version requirements for RHOAI 3.x upgrades.
 type Check struct{}
@@ -61,7 +63,7 @@ func (c *Check) Validate(
 			check.ConditionTypeCompatible,
 			metav1.ConditionFalse,
 			check.ReasonInsufficientData,
-			fmt.Sprintf("Unable to detect OpenShift version: %s. RHOAI 3.x requires OpenShift 4.19 or later", err.Error()),
+			fmt.Sprintf("Unable to detect OpenShift version: %s. RHOAI 3.x requires OpenShift %s or later", err.Error(), minVersion.String()),
 		)
 		dr.Status.Conditions = []result.Condition{condition}
 
@@ -70,16 +72,19 @@ func (c *Check) Validate(
 
 	dr.Annotations["platform.opendatahub.io/openshift-version"] = openshiftVersion.String()
 
-	if version.IsVersionAtLeast(openshiftVersion, minMajorVersion, minMinorVersion) {
+	if openshiftVersion.GTE(minVersion) {
 		condition := results.NewCompatibilitySuccess(
-			"OpenShift %s meets RHOAI 3.x minimum version requirement (4.19+)",
+			"OpenShift %s meets RHOAI 3.x minimum version requirement (%s+)",
 			openshiftVersion.String(),
+			minVersion.String(),
 		)
 		dr.Status.Conditions = []result.Condition{condition}
 	} else {
 		condition := results.NewCompatibilityFailure(
-			"OpenShift %s does not meet RHOAI 3.x minimum version requirement (4.19+). Upgrade OpenShift to 4.19 or later before upgrading RHOAI",
+			"OpenShift %s does not meet RHOAI 3.x minimum version requirement (%s+). Upgrade OpenShift to %s or later before upgrading RHOAI",
 			openshiftVersion.String(),
+			minVersion.String(),
+			minVersion.String(),
 		)
 		dr.Status.Conditions = []result.Condition{condition}
 	}
