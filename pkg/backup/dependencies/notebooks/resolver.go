@@ -18,11 +18,6 @@ import (
 // Resolver resolves dependencies for Kubeflow Notebooks.
 type Resolver struct{}
 
-//nolint:gochecknoinits // Required for automatic resolver registration
-func init() {
-	dependencies.MustRegister(&Resolver{})
-}
-
 // NewResolver creates a new Notebook dependency resolver.
 func NewResolver() *Resolver {
 	return &Resolver{}
