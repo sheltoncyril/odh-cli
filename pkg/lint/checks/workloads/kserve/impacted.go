@@ -163,10 +163,3 @@ func (c *ImpactedWorkloadsCheck) findImpactedServingRuntimes(
 
 	return impacted, nil
 }
-
-// Register the check in the global registry.
-//
-//nolint:gochecknoinits // Required for auto-registration pattern
-func init() {
-	check.MustRegisterCheck(NewImpactedWorkloadsCheck())
-}
