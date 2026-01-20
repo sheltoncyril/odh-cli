@@ -1,6 +1,5 @@
 package lint
 
-//nolint:gci // Blank imports required for check registration - DO NOT REMOVE
 import (
 	"fmt"
 
@@ -10,23 +9,6 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	lintpkg "github.com/lburgazzoli/odh-cli/pkg/lint"
-	// Import check packages to trigger init() auto-registration.
-	// These blank imports are REQUIRED for checks to register with the global registry.
-	// DO NOT REMOVE - they appear unused but are essential for runtime check discovery.
-	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/codeflare"
-	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/datasciencepipelines"
-	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/kserve"
-	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/kueue"
-	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/modelmesh"
-	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/trainingoperator"
-	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/certmanager"
-	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/kueueoperator"
-	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/openshift"
-	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/servicemeshoperator"
-	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/services/servicemesh"
-	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/kserve"
-	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/ray"
-	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/trainingoperator"
 )
 
 const (
