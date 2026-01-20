@@ -12,6 +12,7 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/cmd"
 	"github.com/lburgazzoli/odh-cli/pkg/migrate/action"
+	"github.com/lburgazzoli/odh-cli/pkg/migrate/actions/kueue/rhbok"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -27,13 +28,22 @@ type RunCommand struct {
 	TargetVersion string
 
 	parsedTargetVersion *semver.Version
+
+	// registry is the action registry for this command instance.
+	// Explicitly populated to avoid global state and enable test isolation.
+	registry *action.ActionRegistry
 }
 
 func NewRunCommand(streams genericiooptions.IOStreams) *RunCommand {
 	shared := NewSharedOptions(streams)
+	registry := action.NewActionRegistry()
+
+	// Explicitly register all actions (no global state, full test isolation)
+	registry.MustRegister(&rhbok.RHBOKMigrationAction{})
 
 	return &RunCommand{
 		SharedOptions: shared,
+		registry:      registry,
 	}
 }
 
@@ -92,13 +102,11 @@ func (c *RunCommand) Run(ctx context.Context) error {
 		return fmt.Errorf("detecting cluster version: %w", err)
 	}
 
-	registry := action.GetGlobalRegistry()
-
 	if c.Prepare {
-		return c.runPrepareMode(ctx, currentVersion, c.parsedTargetVersion, registry)
+		return c.runPrepareMode(ctx, currentVersion, c.parsedTargetVersion, c.registry)
 	}
 
-	return c.runMigrationMode(ctx, currentVersion, c.parsedTargetVersion, registry)
+	return c.runMigrationMode(ctx, currentVersion, c.parsedTargetVersion, c.registry)
 }
 
 func (c *RunCommand) runPrepareMode(
