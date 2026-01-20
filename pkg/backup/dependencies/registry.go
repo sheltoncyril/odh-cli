@@ -11,12 +11,11 @@ type Registry struct {
 	resolvers []Resolver
 }
 
-//nolint:gochecknoglobals
-var globalRegistry = &Registry{}
-
-// NewRegistry creates a new resolver registry with all built-in resolvers.
+// NewRegistry creates a new resolver registry.
 func NewRegistry() *Registry {
-	return globalRegistry
+	return &Registry{
+		resolvers: make([]Resolver, 0),
+	}
 }
 
 // Register adds a resolver to the registry.
@@ -24,10 +23,13 @@ func (r *Registry) Register(resolver Resolver) {
 	r.resolvers = append(r.resolvers, resolver)
 }
 
-// MustRegister registers a resolver and panics if registration fails.
-// This is intended for use in init() functions.
-func MustRegister(resolver Resolver) {
-	globalRegistry.Register(resolver)
+// MustRegister registers a resolver and panics if the resolver is nil.
+// Use this for explicit registration in command construction.
+func (r *Registry) MustRegister(resolver Resolver) {
+	if resolver == nil {
+		panic("cannot register nil resolver")
+	}
+	r.Register(resolver)
 }
 
 // GetResolver finds the appropriate resolver for the given GVR.
