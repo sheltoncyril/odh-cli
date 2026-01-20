@@ -1,6 +1,5 @@
 package backup
 
-//nolint:gci // Blank import required for resolver registration - DO NOT REMOVE
 import (
 	"context"
 	"fmt"
@@ -13,8 +12,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"github.com/lburgazzoli/odh-cli/pkg/backup/dependencies"
-	// Register notebook resolver via init().
-	_ "github.com/lburgazzoli/odh-cli/pkg/backup/dependencies/notebooks"
+	"github.com/lburgazzoli/odh-cli/pkg/backup/dependencies/notebooks"
 	"github.com/lburgazzoli/odh-cli/pkg/util/kube"
 )
 
@@ -66,7 +64,9 @@ func (c *Command) Complete() error {
 
 	c.StripFields = append(DefaultStripFields, c.StripFields...)
 
+	// Create registry and explicitly register all resolvers (no global state)
 	c.depRegistry = dependencies.NewRegistry()
+	c.depRegistry.MustRegister(notebooks.NewResolver())
 
 	return nil
 }
