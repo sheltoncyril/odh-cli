@@ -14,6 +14,7 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/cmd"
 	"github.com/lburgazzoli/odh-cli/pkg/migrate/action"
+	"github.com/lburgazzoli/odh-cli/pkg/migrate/actions/kueue/rhbok"
 	"github.com/lburgazzoli/odh-cli/pkg/printer/table"
 	"github.com/lburgazzoli/odh-cli/pkg/util/iostreams"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
@@ -35,13 +36,22 @@ type ListCommand struct {
 	ShowAll       bool
 
 	parsedTargetVersion *semver.Version
+
+	// registry is the action registry for this command instance.
+	// Explicitly populated to avoid global state and enable test isolation.
+	registry *action.ActionRegistry
 }
 
 func NewListCommand(streams genericiooptions.IOStreams) *ListCommand {
 	shared := NewSharedOptions(streams)
+	registry := action.NewActionRegistry()
+
+	// Explicitly register all actions (no global state, full test isolation)
+	registry.MustRegister(&rhbok.RHBOKMigrationAction{})
 
 	return &ListCommand{
 		SharedOptions: shared,
+		registry:      registry,
 	}
 }
 
@@ -100,8 +110,7 @@ func (c *ListCommand) Run(ctx context.Context) error {
 		}
 	}
 
-	registry := action.GetGlobalRegistry()
-	allActions := registry.ListAll()
+	allActions := c.registry.ListAll()
 
 	if len(allActions) == 0 {
 		c.IO.Errorf("No migrations registered")
