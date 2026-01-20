@@ -52,8 +52,3 @@ func (c *Check) Validate(ctx context.Context, target check.Target) (*result.Diag
 
 	return res, nil
 }
-
-//nolint:gochecknoinits
-func init() {
-	check.MustRegisterCheck(NewCheck())
-}
