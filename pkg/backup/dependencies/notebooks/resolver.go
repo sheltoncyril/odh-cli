@@ -12,16 +12,41 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/backup/dependencies"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
+	"github.com/lburgazzoli/odh-cli/pkg/util"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 )
 
+// Config configures Notebook dependency resolution.
+type Config struct {
+	BackupSecrets bool
+}
+
+// Option is a functional option for configuring the resolver.
+type Option = util.Option[Config]
+
+// WithBackupSecrets enables backing up Secret dependencies.
+func WithBackupSecrets(enabled bool) Option {
+	return util.FunctionalOption[Config](func(c *Config) {
+		c.BackupSecrets = enabled
+	})
+}
+
 // Resolver resolves dependencies for Kubeflow Notebooks.
-type Resolver struct{}
+type Resolver struct {
+	config Config
+}
 
 // NewResolver creates a new Notebook dependency resolver.
-func NewResolver() *Resolver {
-	return &Resolver{}
+func NewResolver(opts ...Option) *Resolver {
+	cfg := &Config{
+		BackupSecrets: false, // Default: disabled for security
+	}
+	util.ApplyOptions(cfg, opts...)
+
+	return &Resolver{
+		config: *cfg,
+	}
 }
 
 // CanHandle returns true for Kubeflow Notebook resources.
@@ -67,7 +92,16 @@ func (r *Resolver) Resolve(
 	}
 	allDeps = append(allDeps, configMapDeps...)
 
-	// Note: Secrets are intentionally skipped to avoid backing up sensitive information
+	// Resolve Secrets if enabled via --backup-secrets flag.
+	// Secret backup is disabled by default for security.
+	// Users must explicitly opt-in using --backup-secrets flag.
+	if r.config.BackupSecrets {
+		secretDeps, err := dependencies.ResolveSecrets(ctx, c, namespace, filteredSources...)
+		if err != nil {
+			return nil, fmt.Errorf("resolving Secrets: %w", err)
+		}
+		allDeps = append(allDeps, secretDeps...)
+	}
 
 	// Pass volumes only for PVCs
 	volumeSources := make([]any, 0, len(volumes))

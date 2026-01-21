@@ -61,3 +61,29 @@ func TestCompleteWithDependenciesDisabled(t *testing.T) {
 	g.Expect(err).To(HaveOccurred())
 	g.Expect(err.Error()).To(ContainSubstring("no dependency resolver registered"))
 }
+
+func TestValidateBackupSecretsRequiresDependencies(t *testing.T) {
+	g := NewWithT(t)
+
+	cmd := NewCommand(genericiooptions.IOStreams{})
+	cmd.Dependencies = false
+	cmd.BackupSecrets = true
+
+	err := cmd.Validate()
+
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(Equal("--backup-secrets requires --dependencies=true"))
+}
+
+func TestValidateBackupSecretsWithDependenciesEnabled(t *testing.T) {
+	g := NewWithT(t)
+
+	cmd := NewCommand(genericiooptions.IOStreams{})
+	cmd.OutputDir = "/tmp/backup"
+	cmd.Dependencies = true
+	cmd.BackupSecrets = true
+
+	err := cmd.Validate()
+
+	g.Expect(err).ToNot(HaveOccurred())
+}
