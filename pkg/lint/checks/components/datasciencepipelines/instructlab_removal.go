@@ -117,7 +117,7 @@ func (c *InstructLabRemovalCheck) Validate(
 func (c *InstructLabRemovalCheck) listDSPAs(
 	ctx context.Context,
 	target check.Target,
-) ([]unstructured.Unstructured, resources.ResourceType, error) {
+) ([]*unstructured.Unstructured, resources.ResourceType, error) {
 	// Try v1 first
 	dspasV1, err := target.Client.List(ctx, resources.DataSciencePipelinesApplicationV1)
 	if err == nil {

@@ -102,7 +102,7 @@ func (c *ImpactedWorkloadsCheck) findImpactedPyTorchJobs(
 			Name:      job.GetName(),
 		}
 
-		if isJobCompleted(&job) {
+		if isJobCompleted(job) {
 			impacted.Completed = append(impacted.Completed, nsName)
 		} else {
 			impacted.Active = append(impacted.Active, nsName)

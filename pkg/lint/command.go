@@ -25,6 +25,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/servicemeshoperator"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/services/servicemesh"
 	kserveworkloads "github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/kserve"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/notebook"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/ray"
 	trainingoperatorworkloads "github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/trainingoperator"
 	"github.com/lburgazzoli/odh-cli/pkg/util/iostreams"
@@ -80,8 +81,9 @@ func NewCommand(streams genericiooptions.IOStreams) *Command {
 	// Services (1)
 	registry.MustRegister(servicemesh.NewRemovalCheck())
 
-	// Workloads (3)
+	// Workloads (4)
 	registry.MustRegister(kserveworkloads.NewImpactedWorkloadsCheck())
+	registry.MustRegister(notebook.NewImpactedWorkloadsCheck())
 	registry.MustRegister(ray.NewImpactedWorkloadsCheck())
 	registry.MustRegister(trainingoperatorworkloads.NewImpactedWorkloadsCheck())
 
@@ -100,6 +102,10 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&c.FailOnWarning, "fail-on-warning", false, flagDescFailWarning)
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescVerbose)
 	fs.DurationVar(&c.Timeout, "timeout", c.Timeout, flagDescTimeout)
+
+	// Throttling settings
+	fs.Float32Var(&c.QPS, "qps", c.QPS, "Kubernetes API QPS limit (queries per second)")
+	fs.IntVar(&c.Burst, "burst", c.Burst, "Kubernetes API burst capacity")
 }
 
 // Complete populates Options and performs pre-validation setup.
@@ -241,7 +247,7 @@ func (c *Command) runLintMode(ctx context.Context, clusterVersion *semver.Versio
 				Client:         c.Client,
 				CurrentVersion: clusterVersion, // For lint mode, current = target
 				TargetVersion:  clusterVersion,
-				Resource:       &instances[i],
+				Resource:       instances[i],
 			}
 
 			results, err := executor.ExecuteSelective(ctx, workloadTarget, c.CheckSelector, check.GroupWorkload)

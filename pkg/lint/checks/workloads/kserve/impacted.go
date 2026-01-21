@@ -150,7 +150,7 @@ func (c *ImpactedWorkloadsCheck) findImpactedServingRuntimes(
 
 	for _, sr := range servingRuntimes {
 		// Check for ModelMesh using .spec.multiModel field
-		multiModel, err := jq.Query[bool](&sr, ".spec.multiModel")
+		multiModel, err := jq.Query[bool](sr, ".spec.multiModel")
 		if err != nil || !multiModel {
 			continue
 		}

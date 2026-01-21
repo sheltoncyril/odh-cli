@@ -91,65 +91,102 @@ func WithFieldSelector(selector string) ListResourcesOption {
 	})
 }
 
-// ListResources lists instances of a resource type with optional filters.
-func (c *Client) ListResources(ctx context.Context, gvr schema.GroupVersionResource, opts ...ListResourcesOption) ([]unstructured.Unstructured, error) {
+// ListResources lists all instances of a resource type handling pagination automatically.
+// Returns pointers to avoid copying large objects.
+func (c *Client) ListResources(ctx context.Context, gvr schema.GroupVersionResource, opts ...ListResourcesOption) ([]*unstructured.Unstructured, error) {
 	cfg := &ListResourcesConfig{}
 	util.ApplyOptions(cfg, opts...)
 
-	listOpts := metav1.ListOptions{
-		LabelSelector: cfg.LabelSelector,
-		FieldSelector: cfg.FieldSelector,
+	var allItems []*unstructured.Unstructured
+	continueToken := ""
+
+	for {
+		listOpts := metav1.ListOptions{
+			LabelSelector: cfg.LabelSelector,
+			FieldSelector: cfg.FieldSelector,
+			Continue:      continueToken,
+		}
+
+		var list *unstructured.UnstructuredList
+		var err error
+
+		if cfg.Namespace != "" {
+			list, err = c.Dynamic.Resource(gvr).Namespace(cfg.Namespace).List(ctx, listOpts)
+		} else {
+			list, err = c.Dynamic.Resource(gvr).List(ctx, listOpts)
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("listing resources: %w", err)
+		}
+
+		// Append results (convert to pointers)
+		for i := range list.Items {
+			allItems = append(allItems, &list.Items[i])
+		}
+
+		// Check if more pages exist
+		if list.GetContinue() == "" {
+			break
+		}
+		continueToken = list.GetContinue()
 	}
 
-	var list *unstructured.UnstructuredList
-	var err error
-
-	if cfg.Namespace != "" {
-		list, err = c.Dynamic.Resource(gvr).Namespace(cfg.Namespace).List(ctx, listOpts)
-	} else {
-		list, err = c.Dynamic.Resource(gvr).List(ctx, listOpts)
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("listing resources: %w", err)
-	}
-
-	return list.Items, nil
+	return allItems, nil
 }
 
-// List lists instances of a resource type with optional filters
+// List lists all instances of a resource type handling pagination automatically.
+// Returns pointers to avoid copying large objects.
 // This is a convenience wrapper around ListResources that accepts ResourceType.
-func (c *Client) List(ctx context.Context, resourceType resources.ResourceType, opts ...ListResourcesOption) ([]unstructured.Unstructured, error) {
+func (c *Client) List(ctx context.Context, resourceType resources.ResourceType, opts ...ListResourcesOption) ([]*unstructured.Unstructured, error) {
 	return c.ListResources(ctx, resourceType.GVR(), opts...)
 }
 
-// ListMetadata lists instances of a resource type returning only metadata.
+// ListMetadata lists all instances of a resource type returning only metadata.
+// Handles pagination automatically. Returns pointers to avoid copying.
 // This is more efficient than List when only metadata fields (name, namespace, labels, annotations) are needed.
-func (c *Client) ListMetadata(ctx context.Context, resourceType resources.ResourceType, opts ...ListResourcesOption) ([]metav1.PartialObjectMetadata, error) {
+func (c *Client) ListMetadata(ctx context.Context, resourceType resources.ResourceType, opts ...ListResourcesOption) ([]*metav1.PartialObjectMetadata, error) {
 	cfg := &ListResourcesConfig{}
 	util.ApplyOptions(cfg, opts...)
 
-	listOpts := metav1.ListOptions{
-		LabelSelector: cfg.LabelSelector,
-		FieldSelector: cfg.FieldSelector,
-	}
-
-	var list *metav1.PartialObjectMetadataList
-	var err error
+	var allItems []*metav1.PartialObjectMetadata
+	continueToken := ""
 
 	gvr := resourceType.GVR()
 
-	if cfg.Namespace != "" {
-		list, err = c.Metadata.Resource(gvr).Namespace(cfg.Namespace).List(ctx, listOpts)
-	} else {
-		list, err = c.Metadata.Resource(gvr).List(ctx, listOpts)
+	for {
+		listOpts := metav1.ListOptions{
+			LabelSelector: cfg.LabelSelector,
+			FieldSelector: cfg.FieldSelector,
+			Continue:      continueToken,
+		}
+
+		var list *metav1.PartialObjectMetadataList
+		var err error
+
+		if cfg.Namespace != "" {
+			list, err = c.Metadata.Resource(gvr).Namespace(cfg.Namespace).List(ctx, listOpts)
+		} else {
+			list, err = c.Metadata.Resource(gvr).List(ctx, listOpts)
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("listing metadata for resources: %w", err)
+		}
+
+		// Append results (convert to pointers)
+		for i := range list.Items {
+			allItems = append(allItems, &list.Items[i])
+		}
+
+		// Check if more pages exist
+		if list.GetContinue() == "" {
+			break
+		}
+		continueToken = list.GetContinue()
 	}
 
-	if err != nil {
-		return nil, fmt.Errorf("listing metadata for resources: %w", err)
-	}
-
-	return list.Items, nil
+	return allItems, nil
 }
 
 // GetResource is a convenience wrapper around Get that accepts ResourceType.
@@ -174,7 +211,8 @@ func (c *Client) GetSingleton(ctx context.Context, resourceType resources.Resour
 		return nil, fmt.Errorf("expected single %s resource, found %d", resourceType.Kind, len(items))
 	}
 
-	return &items[0], nil
+	// items is now []*unstructured.Unstructured, so items[0] is already a pointer
+	return items[0], nil
 }
 
 // GetDataScienceCluster is a convenience wrapper for retrieving the cluster's DataScienceCluster resource.
