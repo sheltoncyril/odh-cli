@@ -3,8 +3,6 @@ package dependencies
 import (
 	"context"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
@@ -42,6 +40,8 @@ func ResolveConfigMaps(
 		deps = append(deps, Dependency{
 			GVR:      resources.ConfigMap.GVR(),
 			Resource: res,
+			Name:     res.GetName(),
+			Error:    nil,
 		})
 	}
 
@@ -69,22 +69,31 @@ func ResolveSecrets(
 		return nil, fmt.Errorf("extracting Secret references: %w", err)
 	}
 
-	items, notFound, err := kube.FetchResourcesByNameWithMissing(ctx, c, namespace, resources.Secret, names)
+	items, errors, err := kube.FetchResourcesByNameWithErrors(ctx, c, namespace, resources.Secret, names)
 	if err != nil {
 		return nil, fmt.Errorf("fetching Secrets: %w", err)
 	}
 
-	// Log warning about missing secrets to stderr
-	if len(notFound) > 0 {
-		fmt.Fprintf(os.Stderr, "  Warning: Secret(s) not found or inaccessible: %s\n",
-			strings.Join(notFound, ", "))
-	}
+	// Create dependencies for both found and missing resources
+	deps := make([]Dependency, 0, len(names))
 
-	deps := make([]Dependency, 0, len(items))
+	// Add found resources
 	for _, res := range items {
 		deps = append(deps, Dependency{
 			GVR:      resources.Secret.GVR(),
 			Resource: res,
+			Name:     res.GetName(),
+			Error:    nil,
+		})
+	}
+
+	// Add missing resources with error info
+	for name, fetchErr := range errors {
+		deps = append(deps, Dependency{
+			GVR:      resources.Secret.GVR(),
+			Resource: nil,
+			Name:     name,
+			Error:    fetchErr,
 		})
 	}
 
@@ -121,6 +130,8 @@ func ResolvePVCs(
 		deps = append(deps, Dependency{
 			GVR:      resources.PersistentVolumeClaim.GVR(),
 			Resource: res,
+			Name:     res.GetName(),
+			Error:    nil,
 		})
 	}
 

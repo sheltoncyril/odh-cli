@@ -48,8 +48,13 @@ func (w *WriterStage) writeWorkloadWithDeps(item WorkloadWithDeps) error {
 		return fmt.Errorf("writing workload: %w", err)
 	}
 
-	// Write dependencies
+	// Write dependencies (skip ones with errors - they weren't fetched)
 	for _, dep := range item.Dependencies {
+		if dep.Error != nil {
+			// Skip - this dependency couldn't be fetched
+			continue
+		}
+
 		if err := w.WriteResource(dep.GVR, dep.Resource); err != nil {
 			w.IO.Errorf("  Warning: Failed to write dependency %s/%s: %v",
 				dep.Resource.GetNamespace(), dep.Resource.GetName(), err)

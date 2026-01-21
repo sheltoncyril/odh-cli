@@ -111,7 +111,15 @@ func (r *ResolverStage) resolveWorkload(
 func (r *ResolverStage) logDependencies(deps []dependencies.Dependency) {
 	for i := range deps {
 		resourceType := r.formatResourceType(deps[i].GVR.Resource)
-		r.IO.Errorf("  → %s: %s", resourceType, deps[i].Resource.GetName())
+
+		if deps[i].Error != nil {
+			// Failed dependency - show with X and reason
+			reason := r.formatErrorReason(deps[i].Error)
+			r.IO.Errorf("  X %s: %s (%s)", resourceType, deps[i].Name, reason)
+		} else {
+			// Successful dependency - show with →
+			r.IO.Errorf("  → %s: %s", resourceType, deps[i].Name)
+		}
 	}
 }
 
@@ -133,5 +141,24 @@ func (r *ResolverStage) formatResourceType(resource string) string {
 		}
 
 		return resource
+	}
+}
+
+// formatErrorReason converts Kubernetes API errors to short user-friendly reasons.
+func (r *ResolverStage) formatErrorReason(err error) string {
+	errMsg := err.Error()
+
+	// Check for common Kubernetes API error patterns
+	switch {
+	case strings.Contains(errMsg, "forbidden"):
+		return "unauthorized"
+	case strings.Contains(errMsg, "not found"):
+		return "not found"
+	case strings.Contains(errMsg, "timeout"):
+		return "timeout"
+	case strings.Contains(errMsg, "connection refused"):
+		return "connection error"
+	default:
+		return "error"
 	}
 }

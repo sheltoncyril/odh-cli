@@ -13,6 +13,8 @@ import (
 type Dependency struct {
 	GVR      schema.GroupVersionResource
 	Resource *unstructured.Unstructured
+	Name     string // Resource name (populated even if Resource is nil)
+	Error    error  // Non-nil if resource couldn't be fetched
 }
 
 // Resolver finds dependencies for a specific workload type.

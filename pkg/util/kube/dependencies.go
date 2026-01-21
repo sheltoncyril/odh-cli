@@ -35,6 +35,27 @@ func FetchResourcesByNameWithMissing(
 	resourceType resources.ResourceType,
 	names []string,
 ) ([]*unstructured.Unstructured, []string, error) {
+	items, errors, err := FetchResourcesByNameWithErrors(ctx, c, namespace, resourceType, names)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	missing := make([]string, 0, len(errors))
+	for name := range errors {
+		missing = append(missing, name)
+	}
+
+	return items, missing, nil
+}
+
+// FetchResourcesByNameWithErrors fetches resources and returns errors for each failed fetch.
+func FetchResourcesByNameWithErrors(
+	ctx context.Context,
+	c *client.Client,
+	namespace string,
+	resourceType resources.ResourceType,
+	names []string,
+) ([]*unstructured.Unstructured, map[string]error, error) {
 	if len(names) == 0 {
 		return nil, nil, nil
 	}
@@ -44,14 +65,14 @@ func FetchResourcesByNameWithMissing(
 	// Use errgroup for concurrent fetches
 	g, ctx := errgroup.WithContext(ctx)
 	items := make([]*unstructured.Unstructured, len(names))
-	notFound := make([]bool, len(names))
+	fetchErrors := make([]error, len(names))
 
 	for i, name := range names {
 		g.Go(func() error {
 			resource, err := c.Get(ctx, gvr, name, client.InNamespace(namespace))
 			if err != nil {
-				// Mark as not found
-				notFound[i] = true
+				// Store the error for this resource
+				fetchErrors[i] = err
 				return nil
 			}
 			items[i] = resource
@@ -64,18 +85,18 @@ func FetchResourcesByNameWithMissing(
 		return nil, nil, fmt.Errorf("waiting for parallel fetches: %w", err)
 	}
 
-	// Separate found items and missing names
+	// Separate found items and errors
 	result := make([]*unstructured.Unstructured, 0, len(items))
-	missing := make([]string, 0)
+	errors := make(map[string]error)
 	for i, item := range items {
 		if item != nil {
 			result = append(result, item)
-		} else if notFound[i] {
-			missing = append(missing, names[i])
+		} else if fetchErrors[i] != nil {
+			errors[names[i]] = fetchErrors[i]
 		}
 	}
 
-	return result, missing, nil
+	return result, errors, nil
 }
 
 // ExtractConfigMapRefsFromVolumes extracts ConfigMap names from volume definitions.
