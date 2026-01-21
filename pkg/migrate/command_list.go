@@ -60,6 +60,10 @@ func (c *ListCommand) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescListVerbose)
 	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescListTargetVersion)
 	fs.BoolVar(&c.ShowAll, "all", false, flagDescListAll)
+
+	// Throttling settings
+	fs.Float32Var(&c.QPS, "qps", c.QPS, "Kubernetes API QPS limit (queries per second)")
+	fs.IntVar(&c.Burst, "burst", c.Burst, "Kubernetes API burst capacity")
 }
 
 func (c *ListCommand) Complete() error {

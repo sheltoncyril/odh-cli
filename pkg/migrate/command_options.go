@@ -38,6 +38,10 @@ type SharedOptions struct {
 	Verbose      bool
 	Timeout      time.Duration
 	Client       *client.Client
+
+	// Throttling settings for Kubernetes API client
+	QPS   float32
+	Burst int
 }
 
 func NewSharedOptions(streams genericiooptions.IOStreams) *SharedOptions {
@@ -46,11 +50,20 @@ func NewSharedOptions(streams genericiooptions.IOStreams) *SharedOptions {
 		OutputFormat: OutputFormatTable,
 		Timeout:      DefaultTimeout,
 		IO:           iostreams.NewIOStreams(streams.In, streams.Out, streams.ErrOut),
+		QPS:          client.DefaultQPS,
+		Burst:        client.DefaultBurst,
 	}
 }
 
 func (o *SharedOptions) Complete() error {
-	c, err := client.NewClient(o.ConfigFlags)
+	// Create REST config with user-specified throttling
+	restConfig, err := client.NewRESTConfig(o.ConfigFlags, o.QPS, o.Burst)
+	if err != nil {
+		return fmt.Errorf("failed to create REST config: %w", err)
+	}
+
+	// Create client with configured throttling
+	c, err := client.NewClientWithConfig(restConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create Kubernetes client: %w", err)
 	}

@@ -55,6 +55,10 @@ func (c *RunCommand) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&c.Yes, "yes", "y", false, flagDescRunYes)
 	fs.StringArrayVarP(&c.MigrationIDs, "migration", "m", []string{}, flagDescRunMigration)
 	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescRunTargetVersion)
+
+	// Throttling settings
+	fs.Float32Var(&c.QPS, "qps", c.QPS, "Kubernetes API QPS limit (queries per second)")
+	fs.IntVar(&c.Burst, "burst", c.Burst, "Kubernetes API burst capacity")
 }
 
 func (c *RunCommand) Complete() error {

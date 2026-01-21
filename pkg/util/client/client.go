@@ -12,6 +12,7 @@ import (
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/metadata"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 )
 
@@ -25,13 +26,9 @@ type Client struct {
 	RESTMapper    meta.RESTMapper
 }
 
-// NewClient creates a unified client with both dynamic and discovery capabilities.
-func NewClient(configFlags *genericclioptions.ConfigFlags) (*Client, error) {
-	restConfig, err := configFlags.ToRESTConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create REST config: %w", err)
-	}
-
+// NewClientWithConfig creates a client from a pre-configured REST config.
+// This allows callers to customize throttling settings before client creation.
+func NewClientWithConfig(restConfig *rest.Config) (*Client, error) {
 	dynamicClient, err := dynamic.NewForConfig(restConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create dynamic client: %w", err)
@@ -70,6 +67,17 @@ func NewClient(configFlags *genericclioptions.ConfigFlags) (*Client, error) {
 		Metadata:      metadataClient,
 		RESTMapper:    restMapper,
 	}, nil
+}
+
+// NewClient creates a unified client with default throttling settings.
+// The client is configured with appropriate throttling for parallel CLI operations.
+func NewClient(configFlags *genericclioptions.ConfigFlags) (*Client, error) {
+	restConfig, err := NewRESTConfig(configFlags, DefaultQPS, DefaultBurst)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create REST config: %w", err)
+	}
+
+	return NewClientWithConfig(restConfig)
 }
 
 // NewDynamicClient creates a new dynamic client from ConfigFlags.
