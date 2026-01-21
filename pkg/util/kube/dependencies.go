@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"golang.org/x/sync/errgroup"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -13,7 +15,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 )
 
-// FetchResourcesByName fetches resources by name from the cluster.
+// FetchResourcesByName fetches resources by name from the cluster (parallel version).
 func FetchResourcesByName(
 	ctx context.Context,
 	c *client.Client,
@@ -21,19 +23,42 @@ func FetchResourcesByName(
 	resourceType resources.ResourceType,
 	names []string,
 ) ([]*unstructured.Unstructured, error) {
-	//nolint:prealloc // Size unknown until references are fetched
-	var items []*unstructured.Unstructured
-	gvr := resourceType.GVR()
-
-	for _, name := range names {
-		resource, err := c.Get(ctx, gvr, name, client.InNamespace(namespace))
-		if err != nil {
-			continue
-		}
-		items = append(items, resource)
+	if len(names) == 0 {
+		return nil, nil
 	}
 
-	return items, nil
+	gvr := resourceType.GVR()
+
+	// Use errgroup for concurrent fetches
+	g, ctx := errgroup.WithContext(ctx)
+	items := make([]*unstructured.Unstructured, len(names))
+
+	for i, name := range names {
+		g.Go(func() error {
+			resource, err := c.Get(ctx, gvr, name, client.InNamespace(namespace))
+			if err != nil {
+				// Skip not found errors (ConfigMap might not exist)
+				return nil
+			}
+			items[i] = resource
+
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return nil, fmt.Errorf("waiting for parallel fetches: %w", err)
+	}
+
+	// Filter out nil entries (not found resources)
+	result := make([]*unstructured.Unstructured, 0, len(items))
+	for _, item := range items {
+		if item != nil {
+			result = append(result, item)
+		}
+	}
+
+	return result, nil
 }
 
 // ExtractConfigMapRefsFromVolumes extracts ConfigMap names from volume definitions.
