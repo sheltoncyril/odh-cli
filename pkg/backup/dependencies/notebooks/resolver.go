@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -57,17 +58,16 @@ func (r *Resolver) Resolve(
 
 	var allDeps []dependencies.Dependency
 
-	configMapDeps, err := dependencies.ResolveConfigMaps(ctx, c, namespace, sources...)
+	// Filter out trusted-ca-bundle ConfigMaps before resolving
+	filteredSources := r.filterTrustedCABundleSources(sources)
+
+	configMapDeps, err := dependencies.ResolveConfigMaps(ctx, c, namespace, filteredSources...)
 	if err != nil {
 		return nil, fmt.Errorf("resolving ConfigMaps: %w", err)
 	}
 	allDeps = append(allDeps, configMapDeps...)
 
-	secretDeps, err := dependencies.ResolveSecrets(ctx, c, namespace, sources...)
-	if err != nil {
-		return nil, fmt.Errorf("resolving Secrets: %w", err)
-	}
-	allDeps = append(allDeps, secretDeps...)
+	// Note: Secrets are intentionally skipped to avoid backing up sensitive information
 
 	// Pass volumes only for PVCs
 	volumeSources := make([]any, 0, len(volumes))
@@ -85,7 +85,7 @@ func (r *Resolver) Resolve(
 }
 
 func (r *Resolver) extractVolumes(obj *unstructured.Unstructured) ([]corev1.Volume, error) {
-	volumes, err := jq.Query[[]corev1.Volume](obj, ".spec.volumes // []")
+	volumes, err := jq.Query[[]corev1.Volume](obj, ".spec.template.spec.volumes // []")
 	if err != nil && !errors.Is(err, jq.ErrNotFound) {
 		return nil, fmt.Errorf("querying volumes: %w", err)
 	}
@@ -94,10 +94,61 @@ func (r *Resolver) extractVolumes(obj *unstructured.Unstructured) ([]corev1.Volu
 }
 
 func (r *Resolver) extractContainers(obj *unstructured.Unstructured) ([]corev1.Container, error) {
-	containers, err := jq.Query[[]corev1.Container](obj, ".spec.containers // []")
+	containers, err := jq.Query[[]corev1.Container](obj, ".spec.template.spec.containers // []")
 	if err != nil && !errors.Is(err, jq.ErrNotFound) {
 		return nil, fmt.Errorf("querying containers: %w", err)
 	}
 
 	return containers, nil
+}
+
+// filterTrustedCABundleSources filters out volumes and containers that reference ConfigMaps
+// ending with "trusted-ca-bundle" (typically large cluster CA bundles that can be recreated).
+func (r *Resolver) filterTrustedCABundleSources(sources []any) []any {
+	filtered := make([]any, 0, len(sources))
+
+	for _, source := range sources {
+		switch v := source.(type) {
+		case corev1.Volume:
+			if v.ConfigMap != nil && strings.HasSuffix(v.ConfigMap.Name, "trusted-ca-bundle") {
+				continue
+			}
+			filtered = append(filtered, v)
+		case corev1.Container:
+			filteredContainer := r.filterContainerConfigMapRefs(v)
+			filtered = append(filtered, filteredContainer)
+		default:
+			filtered = append(filtered, source)
+		}
+	}
+
+	return filtered
+}
+
+// filterContainerConfigMapRefs removes ConfigMap references ending with "trusted-ca-bundle"
+// from container env and envFrom fields.
+func (r *Resolver) filterContainerConfigMapRefs(container corev1.Container) corev1.Container {
+	// Filter envFrom
+	filteredEnvFrom := make([]corev1.EnvFromSource, 0, len(container.EnvFrom))
+	for _, envFrom := range container.EnvFrom {
+		if envFrom.ConfigMapRef != nil && strings.HasSuffix(envFrom.ConfigMapRef.Name, "trusted-ca-bundle") {
+			continue
+		}
+		filteredEnvFrom = append(filteredEnvFrom, envFrom)
+	}
+	container.EnvFrom = filteredEnvFrom
+
+	// Filter env (valueFrom.configMapKeyRef)
+	filteredEnv := make([]corev1.EnvVar, 0, len(container.Env))
+	for _, env := range container.Env {
+		if env.ValueFrom != nil &&
+			env.ValueFrom.ConfigMapKeyRef != nil &&
+			strings.HasSuffix(env.ValueFrom.ConfigMapKeyRef.Name, "trusted-ca-bundle") {
+			continue
+		}
+		filteredEnv = append(filteredEnv, env)
+	}
+	container.Env = filteredEnv
+
+	return container
 }
