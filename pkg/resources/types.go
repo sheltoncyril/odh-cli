@@ -2,6 +2,7 @@ package resources
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -51,6 +52,14 @@ func (r ResourceType) TypeMeta() metav1.TypeMeta {
 		APIVersion: r.APIVersion(),
 		Kind:       r.Kind,
 	}
+}
+
+// Unstructured returns a new unstructured.Unstructured with the GVK set.
+func (r ResourceType) Unstructured() unstructured.Unstructured {
+	obj := unstructured.Unstructured{}
+	obj.SetGroupVersionKind(r.GVK())
+
+	return obj
 }
 
 // Centralized resource type definitions (Principle VIII)

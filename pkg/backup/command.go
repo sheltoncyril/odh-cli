@@ -15,6 +15,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"github.com/lburgazzoli/odh-cli/pkg/backup/dependencies"
+	"github.com/lburgazzoli/odh-cli/pkg/backup/dependencies/dspa"
 	"github.com/lburgazzoli/odh-cli/pkg/backup/dependencies/notebooks"
 	"github.com/lburgazzoli/odh-cli/pkg/backup/pipeline"
 	"github.com/lburgazzoli/odh-cli/pkg/util/kube"
@@ -101,6 +102,7 @@ func (c *Command) Complete() error {
 	// Only register resolvers if dependency resolution is enabled
 	if c.Dependencies {
 		c.depRegistry.MustRegister(notebooks.NewResolver())
+		c.depRegistry.MustRegister(dspa.NewResolver())
 	}
 
 	return nil

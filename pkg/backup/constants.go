@@ -5,6 +5,7 @@ package backup
 //nolint:gochecknoglobals // Configuration constant for default workload types.
 var DefaultWorkloadTypes = []string{
 	"notebooks.kubeflow.org",
+	"datasciencepipelinesapplications.datasciencepipelinesapplications.opendatahub.io",
 }
 
 // DefaultStripFields are cluster-specific fields to strip from all resources.
