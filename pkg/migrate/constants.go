@@ -13,8 +13,18 @@ const (
 	flagDescRunVerbose       = "Show detailed progress"
 	flagDescRunTimeout       = "Operation timeout (e.g., 10m, 30m)"
 	flagDescRunDryRun        = "Show what would be done without making changes"
-	flagDescRunPrepare       = "Run pre-flight checks and backup resources (does not execute migration)"
 	flagDescRunYes           = "Skip confirmation prompts"
 	flagDescRunMigration     = "Migration ID to execute (can be specified multiple times)"
 	flagDescRunTargetVersion = "Target version for migration (required)"
+)
+
+// Flag descriptions for the migrate prepare command.
+const (
+	flagDescPrepareVerbose       = "Show detailed progress"
+	flagDescPrepareTimeout       = "Operation timeout (e.g., 10m, 30m)"
+	flagDescPrepareDryRun        = "Show what would be backed up without making changes"
+	flagDescPrepareYes           = "Skip confirmation prompts"
+	flagDescPrepareOutputDir     = "Output directory for backups (default: ./backup-<timestamp>/)"
+	flagDescPrepareMigration     = "Migration ID to prepare (can be specified multiple times)"
+	flagDescPrepareTargetVersion = "Target version for migration (required)"
 )

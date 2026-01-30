@@ -70,7 +70,24 @@ func (e *Executor) executeAction(
 	target Target,
 	action Action,
 ) ActionExecution {
-	actionResult, err := action.Execute(ctx, target)
+	runTask := action.Run()
+	if runTask == nil {
+		errorResult := result.New(
+			string(action.Group()),
+			action.ID(),
+			action.Name(),
+			action.Description(),
+		)
+		errorResult.Status.Error = "Action has no run task"
+
+		return ActionExecution{
+			Action: action,
+			Result: errorResult,
+			Error:  fmt.Errorf("action %s has no run task", action.ID()),
+		}
+	}
+
+	actionResult, err := runTask.Execute(ctx, target)
 
 	if err != nil {
 		errorResult := result.New(

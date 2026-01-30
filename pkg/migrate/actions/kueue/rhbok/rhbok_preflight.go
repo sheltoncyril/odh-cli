@@ -96,6 +96,14 @@ func (a *RHBOKMigrationAction) verifyKueueResources(
 
 	localQueues, err := target.Client.ListResources(ctx, resources.LocalQueue.GVR())
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			step.Complete(result.StepCompleted,
+				"Kueue resources found: %d ClusterQueues (LocalQueue CRD not found)",
+				len(clusterQueues))
+
+			return
+		}
+
 		step.Complete(result.StepFailed, "Failed to list LocalQueues: %v", err)
 
 		return

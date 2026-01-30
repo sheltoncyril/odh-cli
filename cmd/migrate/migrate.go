@@ -7,6 +7,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"github.com/lburgazzoli/odh-cli/cmd/migrate/list"
+	"github.com/lburgazzoli/odh-cli/cmd/migrate/prepare"
 	"github.com/lburgazzoli/odh-cli/cmd/migrate/run"
 )
 
@@ -19,6 +20,7 @@ const cmdLong = `
 The migrate command manages cluster migrations for OpenShift AI components.
 
 Use 'migrate list' to see available migrations filtered by version compatibility.
+Use 'migrate prepare' to backup resources before migration.
 Use 'migrate run' to execute one or more migrations sequentially.
 
 Migrations are version-aware and only execute when applicable to the current
@@ -26,8 +28,9 @@ cluster state. Each migration can be run in dry-run mode to preview changes
 before applying them.
 
 Available subcommands:
-  list  List available migrations for a target version
-  run   Execute one or more migrations
+  list     List available migrations for a target version
+  prepare  Execute preparation steps (backups) for migrations
+  run      Execute one or more migrations
 `
 
 const cmdExample = `
@@ -36,6 +39,9 @@ const cmdExample = `
 
   # List all migrations including non-applicable ones
   kubectl odh migrate list --all
+
+  # Prepare for migration (creates backups)
+  kubectl odh migrate prepare --migration kueue.rhbok.migrate --target-version 3.0.0
 
   # Run a migration with confirmation prompts
   kubectl odh migrate run --migration kueue.rhbok.migrate --target-version 3.0.0
@@ -65,6 +71,7 @@ func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 	}
 
 	list.AddCommand(cmd, flags, streams)
+	prepare.AddCommand(cmd, flags, streams)
 	run.AddCommand(cmd, flags, streams)
 
 	root.AddCommand(cmd)

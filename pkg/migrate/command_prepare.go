@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
+	"time"
 
 	"github.com/blang/semver/v4"
 	"github.com/spf13/pflag"
@@ -16,13 +18,14 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
-var _ cmd.Command = (*RunCommand)(nil)
+var _ cmd.Command = (*PrepareCommand)(nil)
 
-type RunCommand struct {
+type PrepareCommand struct {
 	*SharedOptions
 
 	DryRun        bool
 	Yes           bool
+	OutputDir     string
 	MigrationIDs  []string
 	TargetVersion string
 
@@ -33,38 +36,39 @@ type RunCommand struct {
 	registry *action.ActionRegistry
 }
 
-func NewRunCommand(streams genericiooptions.IOStreams) *RunCommand {
+func NewPrepareCommand(streams genericiooptions.IOStreams) *PrepareCommand {
 	shared := NewSharedOptions(streams)
 	registry := action.NewActionRegistry()
 
 	// Explicitly register all actions (no global state, full test isolation)
 	registry.MustRegister(&rhbok.RHBOKMigrationAction{})
 
-	return &RunCommand{
+	return &PrepareCommand{
 		SharedOptions: shared,
 		registry:      registry,
 	}
 }
 
-func (c *RunCommand) AddFlags(fs *pflag.FlagSet) {
-	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescRunVerbose)
-	fs.DurationVar(&c.Timeout, "timeout", c.Timeout, flagDescRunTimeout)
-	fs.BoolVar(&c.DryRun, "dry-run", false, flagDescRunDryRun)
-	fs.BoolVarP(&c.Yes, "yes", "y", false, flagDescRunYes)
-	fs.StringArrayVarP(&c.MigrationIDs, "migration", "m", []string{}, flagDescRunMigration)
-	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescRunTargetVersion)
+func (c *PrepareCommand) AddFlags(fs *pflag.FlagSet) {
+	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescPrepareVerbose)
+	fs.DurationVar(&c.Timeout, "timeout", c.Timeout, flagDescPrepareTimeout)
+	fs.BoolVar(&c.DryRun, "dry-run", false, flagDescPrepareDryRun)
+	fs.BoolVarP(&c.Yes, "yes", "y", false, flagDescPrepareYes)
+	fs.StringVar(&c.OutputDir, "output-dir", "", flagDescPrepareOutputDir)
+	fs.StringArrayVarP(&c.MigrationIDs, "migration", "m", []string{}, flagDescPrepareMigration)
+	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescPrepareTargetVersion)
 
 	// Throttling settings
 	fs.Float32Var(&c.QPS, "qps", c.QPS, "Kubernetes API QPS limit (queries per second)")
 	fs.IntVar(&c.Burst, "burst", c.Burst, "Kubernetes API burst capacity")
 }
 
-func (c *RunCommand) Complete() error {
+func (c *PrepareCommand) Complete() error {
 	if err := c.SharedOptions.Complete(); err != nil {
 		return fmt.Errorf("completing shared options: %w", err)
 	}
 
-	// Always enable verbose for migrate run (both dry-run and actual execution)
+	// Always enable verbose for migrate prepare
 	c.Verbose = true
 
 	if c.TargetVersion != "" {
@@ -76,10 +80,16 @@ func (c *RunCommand) Complete() error {
 		c.parsedTargetVersion = &targetVer
 	}
 
+	// Set default output directory if not specified
+	if c.OutputDir == "" {
+		timestamp := time.Now().Format("20060102-150405")
+		c.OutputDir = filepath.Join(".", "backup-migrate-"+timestamp)
+	}
+
 	return nil
 }
 
-func (c *RunCommand) Validate() error {
+func (c *PrepareCommand) Validate() error {
 	if err := c.SharedOptions.Validate(); err != nil {
 		return fmt.Errorf("validating shared options: %w", err)
 	}
@@ -95,7 +105,7 @@ func (c *RunCommand) Validate() error {
 	return nil
 }
 
-func (c *RunCommand) Run(ctx context.Context) error {
+func (c *PrepareCommand) Run(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, c.Timeout)
 	defer cancel()
 
@@ -104,26 +114,25 @@ func (c *RunCommand) Run(ctx context.Context) error {
 		return fmt.Errorf("detecting cluster version: %w", err)
 	}
 
-	return c.runMigrationMode(ctx, currentVersion, c.parsedTargetVersion, c.registry)
-}
-
-func (c *RunCommand) runMigrationMode(
-	ctx context.Context,
-	currentVersion *semver.Version,
-	targetVersion *semver.Version,
-	registry *action.ActionRegistry,
-) error {
 	c.IO.Errorf("Current OpenShift AI version: %s", currentVersion.String())
-	c.IO.Errorf("Target OpenShift AI version: %s\n", targetVersion.String())
+	c.IO.Errorf("Target OpenShift AI version: %s", c.parsedTargetVersion.String())
+	c.IO.Errorf("Backup directory: %s\n", c.OutputDir)
 
 	for idx, migrationID := range c.MigrationIDs {
 		if len(c.MigrationIDs) > 1 {
-			c.IO.Errorf("\n=== Migration %d/%d: %s ===\n", idx+1, len(c.MigrationIDs), migrationID)
+			c.IO.Errorf("\n=== Preparation %d/%d: %s ===\n", idx+1, len(c.MigrationIDs), migrationID)
 		}
 
-		selectedAction, ok := registry.Get(migrationID)
+		selectedAction, ok := c.registry.Get(migrationID)
 		if !ok {
 			return fmt.Errorf("migration %q not found", migrationID)
+		}
+
+		prepareTask := selectedAction.Prepare()
+		if prepareTask == nil {
+			c.IO.Errorf("Migration %s has no prepare phase (skipped)\n", migrationID)
+
+			continue
 		}
 
 		// Use verbose recorder for real-time streaming output
@@ -133,43 +142,41 @@ func (c *RunCommand) runMigrationMode(
 		target := action.Target{
 			Client:         c.Client,
 			CurrentVersion: currentVersion,
-			TargetVersion:  targetVersion,
+			TargetVersion:  c.parsedTargetVersion,
 			DryRun:         c.DryRun,
 			SkipConfirm:    c.Yes,
+			OutputDir:      c.OutputDir,
 			Recorder:       recorder,
 			IO:             c.IO,
 		}
 
 		if c.DryRun {
-			c.IO.Errorf("DRY RUN MODE: No changes will be made to the cluster\n")
-		} else if c.Yes {
-			c.IO.Errorf("Running migration: %s (confirmations skipped)\n", migrationID)
-		} else {
-			c.IO.Errorf("Preparing migration: %s\n", migrationID)
+			c.IO.Errorf("DRY RUN MODE: No files will be written\n")
 		}
 
-		runTask := selectedAction.Run()
-		if runTask == nil {
-			return fmt.Errorf("migration %q has no run task", migrationID)
-		}
-
-		actionResult, err := runTask.Execute(ctx, target)
+		actionResult, err := prepareTask.Execute(ctx, target)
 		if err != nil {
-			return fmt.Errorf("migration failed: %w", err)
+			return fmt.Errorf("preparation failed: %w", err)
 		}
 
-		// Output has already been streamed during execution, no need to render again
+		// Output has already been streamed during execution
 		c.IO.Fprintln()
 		if !actionResult.Status.Completed {
-			c.IO.Errorf("Migration %s incomplete - please review the output above", migrationID)
+			c.IO.Errorf("Preparation %s incomplete - please review the output above", migrationID)
 
-			return fmt.Errorf("migration halted: %s", migrationID)
+			return fmt.Errorf("preparation halted: %s", migrationID)
 		}
-		c.IO.Errorf("Migration %s completed successfully!", migrationID)
+		c.IO.Errorf("Preparation %s completed successfully!", migrationID)
 	}
 
 	c.IO.Fprintln()
-	c.IO.Errorf("All migrations completed successfully!")
+	if c.DryRun {
+		c.IO.Errorf("Dry-run complete. Run without --dry-run to create backups.")
+	} else {
+		c.IO.Errorf("All preparations completed successfully!")
+		c.IO.Errorf("Backups saved to: %s", c.OutputDir)
+		c.IO.Errorf("\nRun 'migrate run' to execute the migration.")
+	}
 
 	return nil
 }

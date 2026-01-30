@@ -3,7 +3,6 @@ package rhbok
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
@@ -75,44 +74,12 @@ func (a *RHBOKMigrationAction) CanApply(target action.Target) bool {
 	return target.CurrentVersion.Major == 2 && target.CurrentVersion.Minor >= 25
 }
 
-func (a *RHBOKMigrationAction) Validate(
-	ctx context.Context,
-	target action.Target,
-) (*result.ActionResult, error) {
-	a.checkCurrentKueueState(ctx, target)
-	a.checkNoRHBOKConflicts(ctx, target)
-	a.verifyKueueResources(ctx, target)
-
-	rootRecorder, ok := target.Recorder.(action.RootRecorder)
-	if !ok {
-		return nil, errors.New("recorder is not a RootRecorder")
-	}
-
-	return rootRecorder.Build(), nil
+func (a *RHBOKMigrationAction) Prepare() action.Task {
+	return &prepareTask{action: a}
 }
 
-func (a *RHBOKMigrationAction) Execute(
-	ctx context.Context,
-	target action.Target,
-) (*result.ActionResult, error) {
-	// Check if Kueue is managed by DataScienceCluster
-	kueueManaged := a.checkKueueManaged(ctx, target)
-
-	// Only preserve ConfigMap if Kueue is managed
-	if kueueManaged {
-		a.preserveKueueConfig(ctx, target)
-	}
-
-	a.installRHBOKOperator(ctx, target)
-	a.updateDataScienceCluster(ctx, target)
-	a.verifyResourcesPreserved(ctx, target)
-
-	rootRecorder, ok := target.Recorder.(action.RootRecorder)
-	if !ok {
-		return nil, errors.New("recorder is not a RootRecorder")
-	}
-
-	return rootRecorder.Build(), nil
+func (a *RHBOKMigrationAction) Run() action.Task {
+	return &runTask{action: a}
 }
 
 func (a *RHBOKMigrationAction) checkKueueManaged(

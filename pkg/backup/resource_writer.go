@@ -71,6 +71,21 @@ func WriteResourceToStdout(
 	return nil
 }
 
+// WriteResourcesToDir writes multiple resources to a directory using WriteResourceToFile.
+func WriteResourcesToDir(
+	outputDir string,
+	gvr schema.GroupVersionResource,
+	resources []*unstructured.Unstructured,
+) error {
+	for _, resource := range resources {
+		if err := WriteResourceToFile(outputDir, gvr, resource); err != nil {
+			return fmt.Errorf("writing resource %s: %w", resource.GetName(), err)
+		}
+	}
+
+	return nil
+}
+
 const gvrSeparatorLimit = 2
 
 // parseGVRString parses a GVR string like "notebooks.kubeflow.org" into a GVR.

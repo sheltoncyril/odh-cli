@@ -21,7 +21,7 @@ Migrations are executed in the order specified. If any migration fails, executio
 stops immediately. Each migration can require user confirmation unless --yes is specified.
 
 Use --dry-run to preview changes without applying them.
-Use --prepare to run pre-flight checks and backup resources without executing the migration.
+Use 'migrate prepare' to backup resources before running migrations.
 `
 
 const cmdExample = `
@@ -37,8 +37,9 @@ const cmdExample = `
   # Run multiple migrations sequentially
   kubectl odh migrate run -m kueue.rhbok.migrate -m other.migration --target-version 3.0.0
 
-  # Prepare for migration (validate and backup)
-  kubectl odh migrate run --migration kueue.rhbok.migrate --target-version 3.0.0 --prepare
+  # Typical workflow: prepare first, then run
+  kubectl odh migrate prepare --migration kueue.rhbok.migrate --target-version 3.0.0
+  kubectl odh migrate run --migration kueue.rhbok.migrate --target-version 3.0.0 --yes
 `
 
 // AddCommand adds the run subcommand to the migrate command.
