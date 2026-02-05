@@ -16,6 +16,13 @@ podman run --rm -ti \
 
 The container has `KUBECONFIG=/kubeconfig` set by default, so you just need to mount your kubeconfig to that path.
 
+> **SELinux:** On systems with SELinux enabled (Fedora, RHEL, CentOS), add `:Z` to the volume mount:
+> ```bash
+> podman run --rm -ti \
+>   -v $KUBECONFIG:/kubeconfig:Z \
+>   quay.io/lburgazzoli/odh-cli:latest lint --target-version 3.3.0
+> ```
+
 **Available Tags:**
 - `:latest` - Latest stable release
 - `:dev` - Latest development build from main branch (updated on every push)
