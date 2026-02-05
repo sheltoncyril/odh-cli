@@ -58,6 +58,7 @@ import (
 //	            CheckID:          "components.modelmesh.removal",
 //	            CheckName:        "Components :: ModelMesh :: Removal (3.x)",
 //	            CheckDescription: "Validates that ModelMesh is disabled...",
+//	            CheckRemediation: "",
 //	        },
 //	    }
 //	}
@@ -68,6 +69,7 @@ type BaseCheck struct {
 	CheckID          string
 	CheckName        string
 	CheckDescription string
+	CheckRemediation string
 }
 
 // ID returns the unique identifier for this check.
@@ -86,6 +88,11 @@ func (b BaseCheck) Name() string {
 // Required by check.Check interface.
 func (b BaseCheck) Description() string {
 	return b.CheckDescription
+}
+
+// Remediation returns guidance on how to fix issues found by this check.
+func (b BaseCheck) Remediation() string {
+	return b.CheckRemediation
 }
 
 // Group returns the check group.
