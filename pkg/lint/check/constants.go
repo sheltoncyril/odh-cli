@@ -33,6 +33,11 @@ const (
 	DependencyOpenShiftPlatform     = "openshift-platform"
 )
 
+// Configuration names for diagnostic results.
+const (
+	ConfigurationAcceleratorProfile = "acceleratorprofile"
+)
+
 // Check type names (third parameter to result.New).
 const (
 	CheckTypeRemoval            = "removal"
@@ -45,6 +50,7 @@ const (
 	CheckTypeDeprecation        = "deprecation"
 	CheckTypeVersionRequirement = "version-requirement"
 	CheckTypeConfigMigration    = "config-migration"
+	CheckTypeMigration          = "migration"
 )
 
 // Annotation keys for diagnostic results.

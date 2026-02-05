@@ -20,6 +20,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/kueue"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/modelmesh"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/trainingoperator"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/configurations/acceleratorprofile"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/certmanager"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/kueueoperator"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/openshift"
@@ -90,6 +91,9 @@ func NewCommand(
 
 	// Services (1)
 	registry.MustRegister(servicemesh.NewRemovalCheck())
+
+	// Configurations (1)
+	registry.MustRegister(acceleratorprofile.NewMigrationCheck())
 
 	// Workloads (7)
 	registry.MustRegister(guardrails.NewOtelMigrationCheck())

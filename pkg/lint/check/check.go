@@ -10,19 +10,21 @@ import (
 type CheckGroup string
 
 const (
-	GroupComponent  CheckGroup = "component"
-	GroupService    CheckGroup = "service"
-	GroupWorkload   CheckGroup = "workload"
-	GroupDependency CheckGroup = "dependency"
+	GroupComponent      CheckGroup = "component"
+	GroupService        CheckGroup = "service"
+	GroupWorkload       CheckGroup = "workload"
+	GroupDependency     CheckGroup = "dependency"
+	GroupConfigurations CheckGroup = "configurations"
 )
 
 // CanonicalGroupOrder defines the execution order for check groups.
 // Dependencies run first to validate platform prerequisites, followed by
-// services, components, and finally workloads.
+// configurations, services, components, and finally workloads.
 //
 //nolint:gochecknoglobals // Canonical ordering must be accessible across packages
 var CanonicalGroupOrder = []CheckGroup{
 	GroupDependency,
+	GroupConfigurations,
 	GroupService,
 	GroupComponent,
 	GroupWorkload,
