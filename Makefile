@@ -27,7 +27,7 @@ GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 
 ## Tools
-GOLANGCI_VERSION ?= v2.6.0
+GOLANGCI_VERSION ?= v2.8.0
 GOLANGCI ?= go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION)
 GOVULNCHECK_VERSION ?= latest
 GOVULNCHECK ?= go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)

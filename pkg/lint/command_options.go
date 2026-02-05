@@ -239,6 +239,7 @@ type LintOutput struct {
 // 2. Kind (alphabetically within each group)
 // 3. Name (alphabetically within each kind).
 func FlattenResults(resultsByGroup map[check.CheckGroup][]check.CheckExecution) []check.CheckExecution {
+	//nolint:prealloc // Small result set; extra iteration to calculate capacity isn't worth the complexity.
 	flattened := make([]check.CheckExecution, 0)
 
 	// Iterate through groups in canonical order
