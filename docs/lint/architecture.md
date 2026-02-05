@@ -19,67 +19,99 @@ type Check interface {
     ID() string
     Name() string
     Description() string
-    Group() string
-    CanApply(ctx context.Context, target *CheckTarget) bool
-    Validate(ctx context.Context, target *CheckTarget) *DiagnosticResult
+    Group() CheckGroup
+    CanApply(target Target) bool
+    Validate(ctx context.Context, target Target) (*result.DiagnosticResult, error)
 }
 ```
 
 **Key methods:**
 - `ID()` - Unique identifier for the lint check
-- `Group()` - Category: "components", "services", or "workloads"
-- `CanApply()` - Determines if lint check is applicable based on version context
-- `Validate()` - Executes the lint check and returns DiagnosticResult
+- `Group()` - Returns `CheckGroup` type: `GroupComponent`, `GroupService`, `GroupWorkload`, or `GroupDependency`
+- `CanApply()` - Determines if lint check is applicable based on version context (no ctx parameter)
+- `Validate()` - Executes the lint check and returns `(*result.DiagnosticResult, error)`
 
-### CheckTarget
+### Target
 
-The `CheckTarget` provides lint checks with cluster context:
+The `Target` struct provides lint checks with cluster context:
 
 ```go
-type CheckTarget struct {
-    Client         *client.Client
-    CurrentVersion *version.ClusterVersion
-    Version        *version.ClusterVersion  // Target version for upgrade checks
+type Target struct {
+    // Client provides access to Kubernetes API for querying resources
+    Client *client.Client
+
+    // CurrentVersion contains the current/source cluster version as parsed semver
+    // For lint mode: same as TargetVersion
+    // For upgrade mode: the version being upgraded FROM
+    // Nil if no current version available
+    CurrentVersion *semver.Version
+
+    // TargetVersion contains the target version as parsed semver
+    // For lint mode: the detected cluster version
+    // For upgrade mode: the version being upgraded TO
+    // Nil if no target version available
+    TargetVersion *semver.Version
+
+    // Resource is the specific resource being validated (optional)
+    // Only set for workload checks that operate on discovered CRs
+    // Nil for component and service checks
+    Resource *unstructured.Unstructured
+
+    // IO provides access to input/output streams for logging (optional)
+    // Used by checks to log warnings when verbose mode is enabled
+    IO iostreams.Interface
 }
 ```
 
-Lint checks compare `CurrentVersion` with `Version` to determine execution mode:
-- **Lint mode**: `Version == CurrentVersion` (validate current state)
-- **Upgrade mode**: `Version != CurrentVersion` (assess upgrade readiness)
+Lint checks compare `CurrentVersion` with `TargetVersion` to determine execution mode:
+- **Lint mode**: `TargetVersion == CurrentVersion` (validate current state)
+- **Upgrade mode**: `TargetVersion != CurrentVersion` (assess upgrade readiness)
 
 ### Check Registration
 
-Lint checks self-register using the init() function pattern:
+Lint checks are explicitly registered in the `NewCommand()` constructor. This approach avoids global state and enables full test isolation:
 
 ```go
-// pkg/lint/checks/components/kserve/kserve.go
-package kserve
+// pkg/lint/command.go - Explicit check registration in NewCommand()
+func NewCommand(
+    streams genericiooptions.IOStreams,
+    configFlags *genericclioptions.ConfigFlags,
+    options ...CommandOption,
+) *Command {
+    registry := check.NewRegistry()
 
-import "github.com/lburgazzoli/odh-cli/pkg/lint/check/registry"
+    // Explicitly register all checks (no global state, full test isolation)
+    // Components
+    registry.MustRegister(codeflare.NewRemovalCheck())
+    registry.MustRegister(kserve.NewServerlessRemovalCheck())
+    registry.MustRegister(modelmesh.NewRemovalCheck())
+    // ... additional component checks
 
-func init() {
-    registry.Instance().Register(&Check{})
+    // Dependencies
+    registry.MustRegister(certmanager.NewCheck())
+    registry.MustRegister(kueueoperator.NewCheck())
+    // ... additional dependency checks
+
+    // Services
+    registry.MustRegister(servicemesh.NewRemovalCheck())
+
+    // Workloads
+    registry.MustRegister(kserveworkloads.NewImpactedWorkloadsCheck())
+    registry.MustRegister(notebook.NewImpactedWorkloadsCheck())
+    // ... additional workload checks
+
+    return &Command{
+        SharedOptions: shared,
+        registry:      registry,
+    }
 }
-
-type Check struct{}
-// ... implementation
-```
-
-Command entrypoints use blank imports to trigger registration:
-
-```go
-// cmd/lint/lint.go
-import (
-    // Import check packages to trigger init() auto-registration.
-    _ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/kserve"
-    _ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/dashboard"
-)
 ```
 
 **Benefits:**
-- Automatic discovery without manual registration
-- Extensible: add new lint checks by adding packages
-- No modification of core lint command logic required
+- No global state - each command instance has its own registry
+- Full test isolation - tests can register only the checks they need
+- Explicit dependencies - all registered checks are visible in one place
+- Easier debugging - registration order is deterministic
 
 ## DiagnosticResult Structure
 
@@ -87,31 +119,35 @@ DiagnosticResults follow Kubernetes Custom Resource conventions with metadata, s
 
 ### Structure
 
+The DiagnosticResult uses a flattened structure (not nested Metadata):
+
 ```go
 type DiagnosticResult struct {
-    Metadata struct {
-        Group       string            // "components", "services", "workloads"
-        Kind        string            // Target: "kserve", "dashboard", etc.
-        Name        string            // Check identifier
-        Annotations map[string]string // Version metadata
-    }
+    // Flattened metadata fields (not nested in a Metadata struct)
+    Group       string            // "component", "service", "workload", "dependency"
+    Kind        string            // Target: "kserve", "dashboard", etc.
+    Name        string            // Check type identifier (e.g., "removal", "deprecation")
+    Annotations map[string]string // Version metadata with domain-qualified keys
 
-    Spec struct {
-        Description string // What the lint check validates
-    }
+    Spec DiagnosticSpec           // Description of what the check validates
 
-    Status struct {
-        Conditions []Condition // Individual validation requirements
-    }
+    Status DiagnosticStatus       // Condition-based validation results
+
+    // ImpactedObjects contains references to resources impacted by this diagnostic
+    ImpactedObjects []metav1.PartialObjectMetadata
+}
+
+type DiagnosticSpec struct {
+    Description string // What the lint check validates
+}
+
+type DiagnosticStatus struct {
+    Conditions []Condition // Individual validation requirements
 }
 
 type Condition struct {
-    Type               string    // "ConfigurationValid", "ServerlessRemoved", etc.
-    Status             string    // "True" (passing), "False" (failing), "Unknown"
-    Reason             string    // Machine-readable reason
-    Message            string    // Human-readable explanation
-    Impact             string    // "blocking", "advisory", "" (none)
-    LastTransitionTime time.Time
+    metav1.Condition           // Embedded Kubernetes condition (Type, Status, Reason, Message, LastTransitionTime)
+    Impact           Impact    // "blocking", "advisory", "" (none)
 }
 ```
 
@@ -140,7 +176,7 @@ Validation ensures valid Status/Impact combinations:
 
 ### Annotations
 
-Version information is stored in annotations using domain-qualified keys:
+Version information is stored in the flattened `Annotations` map using domain-qualified keys:
 - `check.opendatahub.io/source-version` - Current cluster version
 - `check.opendatahub.io/target-version` - Target version for upgrade assessment
 
@@ -315,21 +351,33 @@ The lint command supports three output formats with consistent structure.
 
 ### JSON/YAML List Structure
 
-Follows Kubernetes List conventions:
+Results are returned in a list with flattened result fields:
 
 ```json
 {
-  "kind": "DiagnosticResultList",
-  "metadata": {
-    "clusterVersion": "2.17.0",
-    "targetVersion": "3.0.0"
-  },
-  "items": [
+  "clusterVersion": "2.17.0",
+  "targetVersion": "3.0.0",
+  "results": [
     {
-      "kind": "DiagnosticResult",
-      "metadata": { "group": "...", "kind": "...", "name": "..." },
-      "spec": { "description": "..." },
-      "status": { "conditions": [...] }
+      "group": "component",
+      "kind": "kserve",
+      "name": "removal",
+      "annotations": {
+        "check.opendatahub.io/target-version": "3.0.0"
+      },
+      "spec": { "description": "Validates serverless removal..." },
+      "status": {
+        "conditions": [
+          {
+            "type": "Compatible",
+            "status": "True",
+            "reason": "ServerlessRemoved",
+            "message": "Serverless components are removed",
+            "lastTransitionTime": "2024-01-15T10:30:00Z",
+            "impact": ""
+          }
+        ]
+      }
     }
   ]
 }
@@ -337,7 +385,7 @@ Follows Kubernetes List conventions:
 
 **Key characteristics:**
 - Results in execution order (sequential, not grouped by category)
-- Category information preserved in `metadata.group`
+- Category information preserved in flattened `group` field
 - Deterministic ordering through sequential execution
 - Compatible with `jq`/`yq` for post-processing
 
@@ -369,7 +417,10 @@ wg.Wait()
 ```go
 // ✓ CORRECT: Sequential execution
 for _, check := range checks {
-    result := check.Validate(ctx, target)
+    result, err := check.Validate(ctx, target)
+    if err != nil {
+        return fmt.Errorf("executing check %s: %w", check.ID(), err)
+    }
     results = append(results, result)
 }
 ```
@@ -438,20 +489,22 @@ The lint command operates cluster-wide and scans all namespaces. Namespace filte
 
 ```
 pkg/
-├── cmd/lint/              # Lint command implementation
 ├── lint/
-│   ├── check/            # Check interface, CheckTarget
-│   │   └── registry/     # Check registry
-│   ├── version/          # Version detection
-│   ├── discovery/        # Resource discovery
+│   ├── command.go        # Lint command implementation with explicit check registration
+│   ├── check/            # Check interface, Target, result types
+│   │   └── result/       # DiagnosticResult and related types
 │   └── checks/
 │       ├── components/   # Component checks (one package per check)
+│       ├── dependencies/ # Dependency checks (cert-manager, kueue, etc.)
 │       ├── services/     # Service checks
-│       └── workloads/    # Workload checks
+│       ├── workloads/    # Workload checks
+│       └── shared/       # Shared utilities (base, results helpers)
 ├── printer/              # Output formatting
 ├── resources/            # Centralized GVK/GVR definitions
 └── util/
     ├── jq/              # JQ query utilities
+    ├── version/         # Version detection utilities
+    ├── kube/discovery/  # Resource discovery
     └── iostreams/       # IOStreams wrapper
 ```
 

@@ -15,11 +15,16 @@ type Check interface {
     ID() string
     Name() string
     Description() string
-    Group() string
-    CanApply(ctx context.Context, target *CheckTarget) bool
-    Validate(ctx context.Context, target *CheckTarget) *DiagnosticResult
+    Group() CheckGroup
+    CanApply(target Target) bool
+    Validate(ctx context.Context, target Target) (*result.DiagnosticResult, error)
 }
 ```
+
+**Key differences from typical interfaces:**
+- `Group()` returns `CheckGroup` type (not string)
+- `CanApply()` takes `Target` directly (no `ctx` parameter)
+- `Validate()` returns `(*result.DiagnosticResult, error)` - error for infrastructure failures
 
 ### Implementing a Lint Check
 
@@ -31,10 +36,11 @@ package dashboard
 
 import (
     "context"
-    "github.com/blang/semver/v4"
+
     "github.com/lburgazzoli/odh-cli/pkg/lint/check"
     "github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
     "github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
+    "github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
 type Check struct {
@@ -54,20 +60,27 @@ func NewCheck() *Check {
     }
 }
 
-func (c *Check) CanApply(currentVersion *semver.Version, targetVersion *semver.Version) bool {
+// CanApply determines if this check should run (no ctx parameter).
+func (c *Check) CanApply(target check.Target) bool {
     // Check applies to all versions
     return true
 }
 
-func (c *Check) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
+// Validate executes the check and returns (result, error).
+// Return error for infrastructure failures (API errors, etc.).
+// Return result with failing conditions for validation failures.
+func (c *Check) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
     dr := c.NewResult()
-    // Implementation
+    // Implementation - add conditions to dr
     return dr, nil
 }
+```
 
-func init() {
-    check.MustRegisterCheck(NewCheck())
-}
+**Registration:** Checks are explicitly registered in `pkg/lint/command.go`:
+
+```go
+// In NewCommand()
+registry.MustRegister(dashboard.NewCheck())
 ```
 
 ### Using BaseCheck
@@ -87,50 +100,63 @@ func init() {
 
 ## Registration Pattern
 
-Lint checks self-register using `init()` functions:
+Lint checks are explicitly registered in `pkg/lint/command.go` within the `NewCommand()` constructor:
 
 ```go
-func init() {
-    registry.Instance().Register(&Check{})
+// pkg/lint/command.go
+func NewCommand(
+    streams genericiooptions.IOStreams,
+    configFlags *genericclioptions.ConfigFlags,
+    options ...CommandOption,
+) *Command {
+    registry := check.NewRegistry()
+
+    // Explicitly register all checks
+    registry.MustRegister(dashboard.NewCheck())
+    registry.MustRegister(kserve.NewServerlessRemovalCheck())
+    registry.MustRegister(modelmesh.NewRemovalCheck())
+    // ... more checks
+
+    return &Command{
+        SharedOptions: shared,
+        registry:      registry,
+    }
 }
 ```
 
-Import the check package with a blank import in the lint command entrypoint:
-
-```go
-// cmd/lint/lint.go
-import (
-    // Import check packages to trigger init() auto-registration.
-    // These blank imports are REQUIRED for checks to register with the global registry.
-    // Do NOT remove these imports - they appear unused but are essential for runtime check discovery.
-    _ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/dashboard"
-    _ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/kserve"
-)
-```
-
-**Critical:** Always include explanatory comments with blank imports to prevent accidental removal.
+**Benefits of explicit registration:**
+- No global state - each command instance has its own registry
+- Full test isolation - tests can register only needed checks
+- Explicit dependencies - all checks visible in one place
+- Deterministic registration order
 
 ## CanApply Versioning Logic
 
-The `CanApply` method determines if a lint check is applicable based on version context.
+The `CanApply` method determines if a lint check is applicable based on version context. Note that `CanApply` takes `Target` directly (no `ctx` parameter).
 
 ### Lint Mode vs Upgrade Mode
 
 Lint checks detect their execution mode by comparing versions:
 
 ```go
-func (c *Check) CanApply(ctx context.Context, target *check.CheckTarget) bool {
-    currentVer := target.CurrentVersion.Version
-    targetVer := target.Version.Version
+func (c *Check) CanApply(target check.Target) bool {
+    // Version fields are *semver.Version
+    currentVer := target.CurrentVersion
+    targetVer := target.TargetVersion
+
+    // Handle nil versions
+    if currentVer == nil || targetVer == nil {
+        return false
+    }
 
     // Lint mode: validating current cluster state
-    isLintMode := currentVer == targetVer
+    isLintMode := currentVer.EQ(*targetVer)
 
     // Upgrade mode: assessing upgrade readiness
-    isUpgradeMode := currentVer != targetVer
+    isUpgradeMode := !currentVer.EQ(*targetVer)
 
     // Example: check only applies when upgrading to 3.x
-    if isUpgradeMode && targetVer.Major() == 3 {
+    if isUpgradeMode && targetVer.Major == 3 {
         return true
     }
 
@@ -142,25 +168,26 @@ func (c *Check) CanApply(ctx context.Context, target *check.CheckTarget) bool {
 
 **Check applies to all versions:**
 ```go
-func (c *Check) CanApply(ctx context.Context, target *check.CheckTarget) bool {
+func (c *Check) CanApply(target check.Target) bool {
     return true
 }
 ```
 
 **Check applies only in upgrade mode:**
 ```go
-func (c *Check) CanApply(ctx context.Context, target *check.CheckTarget) bool {
-    return target.CurrentVersion.Version != target.Version.Version
+func (c *Check) CanApply(target check.Target) bool {
+    if target.CurrentVersion == nil || target.TargetVersion == nil {
+        return false
+    }
+    return !target.CurrentVersion.EQ(*target.TargetVersion)
 }
 ```
 
 **Check applies when upgrading to specific version:**
 ```go
-func (c *Check) CanApply(ctx context.Context, target *check.CheckTarget) bool {
-    if target.CurrentVersion.Version == target.Version.Version {
-        return false // Not upgrade mode
-    }
-    return target.Version.Version.Major() == 3
+func (c *Check) CanApply(target check.Target) bool {
+    // Use version helper for clean version checks
+    return version.IsVersionAtLeast(target.TargetVersion, 3, 0)
 }
 ```
 
@@ -168,15 +195,27 @@ func (c *Check) CanApply(ctx context.Context, target *check.CheckTarget) bool {
 
 ### Creating Results
 
-Use the `New()` constructor:
+Use `result.New()` to create results with flattened metadata:
 
 ```go
-result := check.NewDiagnosticResult(
-    "components",           // Group
-    "dashboard",           // Kind
-    "component-status",    // Name
+import "github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
+
+dr := result.New(
+    "component",           // Group (flattened field)
+    "dashboard",           // Kind (flattened field)
+    "status",              // Name (flattened field)
     "Validates dashboard component configuration and availability", // Description
 )
+```
+
+When using `BaseCheck`, prefer the convenience method:
+
+```go
+func (c *Check) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
+    dr := c.NewResult()  // Uses check metadata automatically
+    // Add conditions...
+    return dr, nil
+}
 ```
 
 ### Creating Conditions
@@ -265,33 +304,29 @@ Conditions are validated at creation time. Invalid combinations will panic:
 
 ### Adding Annotations
 
-Version information is added via annotations:
+Version information is added via the flattened `Annotations` map:
 
 ```go
-result.AddAnnotation(
-    "check.opendatahub.io/source-version",
-    target.CurrentVersion.Version.String(),
-)
+// Annotations is a map[string]string field on DiagnosticResult
+dr.Annotations[check.AnnotationCheckTargetVersion] = target.TargetVersion.String()
 
-result.AddAnnotation(
-    "check.opendatahub.io/target-version",
-    target.Version.Version.String(),
-)
+// Or add directly
+dr.Annotations["check.opendatahub.io/source-version"] = target.CurrentVersion.String()
 ```
 
-**Important:** Annotation keys must use domain-qualified format (`domain/key`).
+**Important:** Annotation keys must use domain-qualified format (`domain.tld/key`).
 
 ### Validation
 
-Results are automatically validated before being returned. Validation ensures:
-- `Metadata.Group` is not empty
-- `Metadata.Kind` is not empty
-- `Metadata.Name` is not empty
+Results are validated via `DiagnosticResult.Validate()`. Validation ensures:
+- `Group` is not empty (flattened field)
+- `Kind` is not empty (flattened field)
+- `Name` is not empty (flattened field)
 - `Status.Conditions` contains at least one condition
 - All condition `Type` fields are not empty
 - All condition `Status` values are "True", "False", or "Unknown"
 - All condition `Reason` fields are not empty
-- All annotation keys are in `domain/key` format
+- All annotation keys are in `domain.tld/key` format
 
 ## JQ-Based Field Access
 
@@ -410,16 +445,19 @@ Lint checks MUST NOT target these as primary resources:
 
 ```go
 // ✓ CORRECT: Check Dashboard CR
-func (c *Check) Validate(ctx context.Context, target *check.CheckTarget) *check.DiagnosticResult {
-    dsc := &unstructured.Unstructured{}
-    dsc.SetGroupVersionKind(resources.DataScienceCluster.GVK())
+func (c *Check) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
+    dr := c.NewResult()
 
-    err := target.Client.Get(ctx, client.ObjectKey{Name: "default"}, dsc)
+    dsc, err := target.Client.GetDataScienceCluster(ctx)
+    if err != nil {
+        return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
+    }
     // Validate Dashboard component within DSC
+    return dr, nil
 }
 
 // ❌ WRONG: Check Dashboard Deployment directly
-func (c *Check) Validate(ctx context.Context, target *check.CheckTarget) *check.DiagnosticResult {
+func (c *Check) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
     deployment := &appsv1.Deployment{}
     err := target.Client.Get(ctx, client.ObjectKey{
         Namespace: "opendatahub",
@@ -466,10 +504,10 @@ for _, item := range notebooks.Items {
 
 ## Complete Example
 
-Here's a complete lint check implementation using BaseCheck and the new Impact-based API:
+Here's a complete lint check implementation using BaseCheck and the Impact-based API:
 
 ```go
-// pkg/lint/checks/components/kserve/deprecation.go
+// pkg/lint/checks/components/kserve/serverless_removal.go
 package kserve
 
 import (
@@ -487,39 +525,41 @@ import (
     "github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
-type DeprecationCheck struct {
+type ServerlessRemovalCheck struct {
     base.BaseCheck
 }
 
-func NewDeprecationCheck() *DeprecationCheck {
-    return &DeprecationCheck{
+func NewServerlessRemovalCheck() *ServerlessRemovalCheck {
+    return &ServerlessRemovalCheck{
         BaseCheck: base.BaseCheck{
             CheckGroup:       check.GroupComponent,
             Kind:             check.ComponentKServe,
-            CheckType:        check.CheckTypeDeprecation,
-            CheckID:          "components.kserve.deprecation",
-            CheckName:        "Components :: KServe :: Serverless Deprecation",
+            CheckType:        check.CheckTypeRemoval,
+            CheckID:          "components.kserve.serverless-removal",
+            CheckName:        "Components :: KServe :: Serverless Removal (3.x)",
             CheckDescription: "Validates that serverless components are removed when upgrading to 3.x",
         },
     }
 }
 
-func (c *DeprecationCheck) CanApply(target check.Target) bool {
+// CanApply - no ctx parameter, takes Target directly.
+func (c *ServerlessRemovalCheck) CanApply(target check.Target) bool {
     // Only applies when upgrading to 3.x
-    //nolint:mnd // Version numbers 3.0
     return version.IsVersionAtLeast(target.TargetVersion, 3, 0)
 }
 
-func (c *DeprecationCheck) Validate(
+// Validate - returns (*result.DiagnosticResult, error).
+func (c *ServerlessRemovalCheck) Validate(
     ctx context.Context,
     target check.Target,
 ) (*result.DiagnosticResult, error) {
     dr := c.NewResult()
 
-    // Get DataScienceCluster
+    // Get DataScienceCluster using client helper
     dsc, err := target.Client.GetDataScienceCluster(ctx)
     switch {
     case apierrors.IsNotFound(err):
+        // Return result for "not found" case (not an error)
         return results.DataScienceClusterNotFound(
             string(c.Group()),
             c.Kind,
@@ -527,6 +567,7 @@ func (c *DeprecationCheck) Validate(
             c.Description(),
         ), nil
     case err != nil:
+        // Return error for infrastructure failures
         return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
     }
 
@@ -536,7 +577,7 @@ func (c *DeprecationCheck) Validate(
         return nil, fmt.Errorf("querying serverless managementState: %w", err)
     }
 
-    // Add component state annotation
+    // Add annotations to flattened Annotations map
     dr.Annotations[check.AnnotationComponentManagementState] = serverlessState
     if target.TargetVersion != nil {
         dr.Annotations[check.AnnotationCheckTargetVersion] = target.TargetVersion.String()
@@ -559,16 +600,14 @@ func (c *DeprecationCheck) Validate(
         check.ReasonVersionIncompatible,
         "Serverless components are still configured (state: %s) - must be removed before upgrading to 3.x",
         serverlessState,
-        // Default Impact=Blocking (auto-derived from Status=False)
+        // Impact=Blocking is auto-derived from Status=False
     ))
 
     return dr, nil
 }
 
-//nolint:gochecknoinits
-func init() {
-    check.MustRegisterCheck(NewDeprecationCheck())
-}
+// Registration is done explicitly in pkg/lint/command.go:
+// registry.MustRegister(kserve.NewServerlessRemovalCheck())
 ```
 
 ## Testing Lint Checks
@@ -576,19 +615,21 @@ func init() {
 Write tests using vanilla Gomega and fake clients:
 
 ```go
-// pkg/lint/checks/components/kserve/serverless_test.go
+// pkg/lint/checks/components/kserve/serverless_removal_test.go
 package kserve
 
 import (
-    "context"
     "testing"
 
+    "github.com/blang/semver/v4"
     . "github.com/onsi/gomega"
     "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
     "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
     "github.com/lburgazzoli/odh-cli/pkg/lint/check"
     "github.com/lburgazzoli/odh-cli/pkg/resources"
+    "github.com/lburgazzoli/odh-cli/pkg/util/client"
 )
 
 func TestServerlessRemovalCheck(t *testing.T) {
@@ -609,23 +650,27 @@ func TestServerlessRemovalCheck(t *testing.T) {
         }
 
         fakeClient := fake.NewClientBuilder().WithObjects(dsc).Build()
+        currentVer := semver.MustParse("2.17.0")
+        targetVer := semver.MustParse("3.0.0")
 
-        target := &check.CheckTarget{
-            Client:         fakeClient,
-            CurrentVersion: &version.ClusterVersion{Version: semver.MustParse("2.17.0")},
-            Version:        &version.ClusterVersion{Version: semver.MustParse("3.0.0")},
+        // Target uses flattened version fields (*semver.Version)
+        target := check.Target{
+            Client:         client.NewClientWithClient(fakeClient),
+            CurrentVersion: &currentVer,
+            TargetVersion:  &targetVer,
         }
 
-        check := &Check{}
-        result := check.Validate(t.Context(), target)
+        chk := NewServerlessRemovalCheck()
+        result, err := chk.Validate(t.Context(), target)
 
-        g.Expect(result).To(HaveField("Metadata.Group", "components"))
-        g.Expect(result).To(HaveField("Metadata.Kind", "kserve"))
+        g.Expect(err).ToNot(HaveOccurred())
+        // Result has flattened fields (not Metadata.Group)
+        g.Expect(result).To(HaveField("Group", "component"))
+        g.Expect(result).To(HaveField("Kind", "kserve"))
         g.Expect(result.Status.Conditions).To(HaveLen(1))
         g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
-            "Type":   Equal("ServerlessRemoved"),
+            "Type":   Equal("Compatible"),
             "Status": Equal(metav1.ConditionTrue),
-            "Reason": Equal("ServerlessRemoved"),
         }))
     })
 }
