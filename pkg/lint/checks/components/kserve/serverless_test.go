@@ -257,7 +257,6 @@ func TestKServeServerlessRemovalCheck_ServerlessManagedBlocking(t *testing.T) {
 	}))
 	g.Expect(result.Annotations).To(And(
 		HaveKeyWithValue(check.AnnotationComponentManagementState, check.ManagementStateManaged),
-		HaveKeyWithValue(check.AnnotationComponentServingState, check.ManagementStateManaged),
 		HaveKeyWithValue(check.AnnotationCheckTargetVersion, "3.0.0"),
 	))
 }
@@ -311,7 +310,7 @@ func TestKServeServerlessRemovalCheck_ServerlessUnmanagedBlocking(t *testing.T) 
 		"Reason":  Equal(check.ReasonVersionIncompatible),
 		"Message": ContainSubstring("state: Unmanaged"),
 	}))
-	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationComponentServingState, check.ManagementStateUnmanaged))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationComponentManagementState, check.ManagementStateManaged))
 }
 
 func TestKServeServerlessRemovalCheck_ServerlessRemovedReady(t *testing.T) {
@@ -363,10 +362,7 @@ func TestKServeServerlessRemovalCheck_ServerlessRemovedReady(t *testing.T) {
 		"Reason":  Equal(check.ReasonVersionCompatible),
 		"Message": And(ContainSubstring("serverless mode is disabled"), ContainSubstring("ready for RHOAI 3.x upgrade")),
 	}))
-	g.Expect(result.Annotations).To(And(
-		HaveKeyWithValue(check.AnnotationComponentManagementState, check.ManagementStateManaged),
-		HaveKeyWithValue(check.AnnotationComponentServingState, check.ManagementStateRemoved),
-	))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationComponentManagementState, check.ManagementStateManaged))
 }
 
 func TestKServeServerlessRemovalCheck_Metadata(t *testing.T) {

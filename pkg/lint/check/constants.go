@@ -60,10 +60,6 @@ const (
 const (
 	// AnnotationComponentManagementState is the management state for components.
 	AnnotationComponentManagementState = "component.opendatahub.io/management-state"
-	// AnnotationComponentKServeState is the KServe component management state.
-	AnnotationComponentKServeState = "component.opendatahub.io/kserve-management-state"
-	// AnnotationComponentServingState is the serving (serverless) management state.
-	AnnotationComponentServingState = "component.opendatahub.io/serving-management-state"
 
 	// AnnotationServiceManagementState is the management state for services.
 	AnnotationServiceManagementState = "service.opendatahub.io/management-state"

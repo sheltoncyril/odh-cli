@@ -42,24 +42,17 @@ func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target check.Targ
 	return validate.Component(c, target).
 		InState(check.ManagementStateManaged).
 		Run(ctx, func(_ context.Context, req *validate.ComponentRequest) error {
-			servingStateStr, err := jq.Query[string](req.DSC, ".spec.components.kserve.serving.managementState")
-			if err != nil {
-				if errors.Is(err, jq.ErrNotFound) {
-					results.SetCompatibilitySuccessf(req.Result, "KServe serverless mode is not configured - ready for RHOAI 3.x upgrade")
+			state, err := jq.Query[string](req.DSC, ".spec.components.kserve.serving.managementState")
 
-					return nil
-				}
-
+			switch {
+			case errors.Is(err, jq.ErrNotFound):
+				results.SetCompatibilitySuccessf(req.Result, "KServe serverless mode is not configured - ready for RHOAI 3.x upgrade")
+			case err != nil:
 				return fmt.Errorf("querying kserve serving managementState: %w", err)
-			}
-
-			req.Result.Annotations[check.AnnotationComponentServingState] = servingStateStr
-
-			switch servingStateStr {
-			case check.ManagementStateManaged, check.ManagementStateUnmanaged:
-				results.SetCompatibilityFailuref(req.Result, "KServe serverless mode is enabled (state: %s) but will be removed in RHOAI 3.x", servingStateStr)
+			case state == check.ManagementStateManaged || state == check.ManagementStateUnmanaged:
+				results.SetCompatibilityFailuref(req.Result, "KServe serverless mode is enabled (state: %s) but will be removed in RHOAI 3.x", state)
 			default:
-				results.SetCompatibilitySuccessf(req.Result, "KServe serverless mode is disabled (state: %s) - ready for RHOAI 3.x upgrade", servingStateStr)
+				results.SetCompatibilitySuccessf(req.Result, "KServe serverless mode is disabled (state: %s) - ready for RHOAI 3.x upgrade", state)
 			}
 
 			return nil

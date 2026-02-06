@@ -36,24 +36,17 @@ func (c *DeprecationCheck) CanApply(_ context.Context, target check.Target) bool
 }
 
 func (c *DeprecationCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
-	// Note: No InState filter - we need to handle all states explicitly
 	return validate.Component(c, target).
+		InState(check.ManagementStateManaged).
 		Run(ctx, func(_ context.Context, req *validate.ComponentRequest) error {
-			// Check if trainingoperator is enabled (Managed or Unmanaged)
-			switch req.ManagementState {
-			case check.ManagementStateManaged, check.ManagementStateUnmanaged:
-				results.SetCondition(req.Result, check.NewCondition(
-					check.ConditionTypeCompatible,
-					metav1.ConditionFalse,
-					check.ReasonDeprecated,
-					"TrainingOperator (Kubeflow Training Operator v1) is enabled (state: %s) but is deprecated in RHOAI 3.3 and will be replaced by Trainer v2 in a future release",
-					req.ManagementState,
-					check.WithImpact(result.ImpactAdvisory),
-				))
-			default:
-				// TrainingOperator is disabled (Removed or not configured) - check passes
-				results.SetCompatibilitySuccessf(req.Result, "TrainingOperator is disabled (state: %s) - no deprecation warning needed", req.ManagementState)
-			}
+			results.SetCondition(req.Result, check.NewCondition(
+				check.ConditionTypeCompatible,
+				metav1.ConditionFalse,
+				check.ReasonDeprecated,
+				"TrainingOperator (Kubeflow Training Operator v1) is enabled (state: %s) but is deprecated in RHOAI 3.3 and will be replaced by Trainer v2 in a future release",
+				req.ManagementState,
+				check.WithImpact(result.ImpactAdvisory)),
+			)
 
 			return nil
 		})
