@@ -160,11 +160,12 @@ func TestCodeFlareRemovalCheck_ManagedBlocking(t *testing.T) {
 	))
 }
 
-func TestCodeFlareRemovalCheck_UnmanagedBlocking(t *testing.T) {
+func TestCodeFlareRemovalCheck_UnmanagedReady(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
-	// Create DataScienceCluster with codeflare Unmanaged (also blocking)
+	// Create DataScienceCluster with codeflare Unmanaged
+	// CodeFlare only supports Managed state, so Unmanaged is treated as disabled (ready for upgrade)
 	dsc := &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": resources.DataScienceCluster.APIVersion(),
@@ -202,9 +203,9 @@ func TestCodeFlareRemovalCheck_UnmanagedBlocking(t *testing.T) {
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeCompatible),
-		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonVersionIncompatible),
-		"Message": ContainSubstring("state: Unmanaged"),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal(check.ReasonVersionCompatible),
+		"Message": ContainSubstring("disabled"),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/management-state", "Unmanaged"))
 }

@@ -40,7 +40,7 @@ func NewAcceleratorMigrationCheck() *AcceleratorMigrationCheck {
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupWorkload,
 			Kind:             check.ComponentNotebook,
-			CheckType:        check.CheckTypeImpactedWorkloads,
+			Type:             check.CheckTypeImpactedWorkloads,
 			CheckID:          "workloads.notebook.accelerator-migration",
 			CheckName:        "Workloads :: Notebook :: AcceleratorProfile Migration (3.x)",
 			CheckDescription: "Detects Notebook (workbench) CRs referencing AcceleratorProfiles that need migration to HardwareProfiles",

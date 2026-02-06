@@ -34,7 +34,7 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupWorkload,
 			Kind:             check.ComponentRay,
-			CheckType:        check.CheckTypeImpactedWorkloads,
+			Type:             check.CheckTypeImpactedWorkloads,
 			CheckID:          "workloads.ray.impacted-workloads",
 			CheckName:        "Workloads :: Ray :: Impacted Workloads (3.x)",
 			CheckDescription: "Lists RayClusters managed by CodeFlare that will be impacted in RHOAI 3.x (CodeFlare not available)",

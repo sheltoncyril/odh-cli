@@ -22,7 +22,7 @@ func NewCheck() *Check {
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupDependency,
 			Kind:             check.DependencyCertManager,
-			CheckType:        check.CheckTypeInstalled,
+			Type:             check.CheckTypeInstalled,
 			CheckID:          "dependencies.certmanager.installed",
 			CheckName:        "Dependencies :: CertManager :: Installed",
 			CheckDescription: "Reports the cert-manager operator installation status and version",

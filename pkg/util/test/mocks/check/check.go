@@ -47,6 +47,18 @@ func (m *MockCheck) Group() check.CheckGroup {
 	return group
 }
 
+func (m *MockCheck) CheckKind() string {
+	args := m.Called()
+
+	return args.String(0)
+}
+
+func (m *MockCheck) CheckType() string {
+	args := m.Called()
+
+	return args.String(0)
+}
+
 func (m *MockCheck) CanApply(ctx context.Context, target check.Target) bool {
 	args := m.Called(ctx, target)
 

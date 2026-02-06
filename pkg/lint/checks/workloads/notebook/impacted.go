@@ -30,7 +30,7 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupWorkload,
 			Kind:             check.ComponentNotebook,
-			CheckType:        check.CheckTypeImpactedWorkloads,
+			Type:             check.CheckTypeImpactedWorkloads,
 			CheckID:          "workloads.notebook.impacted-workloads",
 			CheckName:        "Workloads :: Notebook :: Impacted Workloads (3.x)",
 			CheckDescription: "Lists Notebook (workbench) instances that will be impacted in RHOAI 3.x",

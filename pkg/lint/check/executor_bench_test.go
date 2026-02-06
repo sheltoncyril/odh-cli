@@ -161,6 +161,14 @@ func (c *benchmarkCheck) Group() check.CheckGroup {
 	return c.group
 }
 
+func (c *benchmarkCheck) CheckKind() string {
+	return "bench" + string(rune('0'+len(c.id)))
+}
+
+func (c *benchmarkCheck) CheckType() string {
+	return "benchmark"
+}
+
 func (c *benchmarkCheck) CanApply(_ context.Context, _ check.Target) bool {
 	return true // Always applicable
 }

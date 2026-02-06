@@ -34,7 +34,7 @@ func NewMigrationCheck() *MigrationCheck {
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupConfigurations,
 			Kind:             check.ConfigurationAcceleratorProfile,
-			CheckType:        check.CheckTypeMigration,
+			Type:             check.CheckTypeMigration,
 			CheckID:          "configuration.acceleratorprofile.migration",
 			CheckName:        "Configuration :: AcceleratorProfile :: Migration (3.x)",
 			CheckDescription: "Lists AcceleratorProfiles that will be auto-migrated to HardwareProfiles during upgrade",

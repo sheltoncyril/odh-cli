@@ -43,7 +43,7 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupWorkload,
 			Kind:             check.ComponentKServe,
-			CheckType:        check.CheckTypeImpactedWorkloads,
+			Type:             check.CheckTypeImpactedWorkloads,
 			CheckID:          "workloads.kserve.impacted-workloads",
 			CheckName:        "Workloads :: KServe :: Impacted Workloads (3.x)",
 			CheckDescription: "Lists InferenceServices and ServingRuntimes using deprecated deployment modes (ModelMesh, Serverless) that will be impacted in RHOAI 3.x",

@@ -49,6 +49,16 @@ func (c *RemovalCheck) Group() check.CheckGroup {
 	return check.GroupService
 }
 
+// CheckKind returns the kind of resource being checked.
+func (c *RemovalCheck) CheckKind() string {
+	return check.ServiceServiceMesh
+}
+
+// CheckType returns the type of check.
+func (c *RemovalCheck) CheckType() string {
+	return check.CheckTypeRemoval
+}
+
 // CanApply returns whether this check should run for the given target.
 // This check only applies when upgrading FROM 2.x TO 3.x.
 func (c *RemovalCheck) CanApply(_ context.Context, target check.Target) bool {

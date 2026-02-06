@@ -34,7 +34,7 @@ func NewOtelMigrationCheck() *OtelMigrationCheck {
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupWorkload,
 			Kind:             check.ComponentGuardrails,
-			CheckType:        check.CheckTypeConfigMigration,
+			Type:             check.CheckTypeConfigMigration,
 			CheckID:          "workloads.guardrails.otel-config-migration",
 			CheckName:        "Workloads :: Guardrails :: OTEL Config Migration (3.x)",
 			CheckDescription: "Detects GuardrailsOrchestrator CRs using deprecated otelExporter configuration fields that need migration",

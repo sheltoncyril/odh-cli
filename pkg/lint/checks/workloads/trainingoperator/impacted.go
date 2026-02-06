@@ -33,7 +33,7 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupWorkload,
 			Kind:             check.ComponentTrainingOperator,
-			CheckType:        check.CheckTypeImpactedWorkloads,
+			Type:             check.CheckTypeImpactedWorkloads,
 			CheckID:          "workloads.trainingoperator.impacted-workloads",
 			CheckName:        "Workloads :: TrainingOperator :: Impacted Workloads (3.3+)",
 			CheckDescription: "Lists PyTorchJobs using deprecated TrainingOperator (Kubeflow v1) that will be impacted by transition to Trainer v2",

@@ -51,6 +51,7 @@ const (
 	CheckTypeVersionRequirement = "version-requirement"
 	CheckTypeConfigMigration    = "config-migration"
 	CheckTypeMigration          = "migration"
+	CheckTypeUpgrade            = "upgrade"
 )
 
 // Annotation keys for diagnostic results.

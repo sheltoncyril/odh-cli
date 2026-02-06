@@ -39,7 +39,7 @@ func NewAcceleratorMigrationCheck() *AcceleratorMigrationCheck {
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupWorkload,
 			Kind:             check.ComponentKServe,
-			CheckType:        check.CheckTypeImpactedWorkloads,
+			Type:             check.CheckTypeImpactedWorkloads,
 			CheckID:          "workloads.kserve.accelerator-migration",
 			CheckName:        "Workloads :: KServe :: AcceleratorProfile Migration (3.x)",
 			CheckDescription: "Detects InferenceService CRs referencing AcceleratorProfiles that need migration to HardwareProfiles",

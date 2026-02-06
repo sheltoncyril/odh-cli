@@ -157,6 +157,14 @@ func (c *testDiagnosticCheck) Group() check.CheckGroup {
 	return "test"
 }
 
+func (c *testDiagnosticCheck) CheckKind() string {
+	return "integration"
+}
+
+func (c *testDiagnosticCheck) CheckType() string {
+	return "e2e-test"
+}
+
 func (c *testDiagnosticCheck) CanApply(_ context.Context, _ check.Target) bool {
 	return true // Always apply for testing
 }

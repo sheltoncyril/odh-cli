@@ -43,6 +43,14 @@ func (c *Check) Group() check.CheckGroup {
 	return check.GroupDependency
 }
 
+func (c *Check) CheckKind() string {
+	return check.DependencyServiceMeshOperatorV2
+}
+
+func (c *Check) CheckType() string {
+	return check.CheckTypeUpgrade
+}
+
 func (c *Check) CanApply(_ context.Context, target check.Target) bool {
 	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion)
 }

@@ -42,6 +42,14 @@ func (c *Check) Group() check.CheckGroup {
 	return check.GroupDependency
 }
 
+func (c *Check) CheckKind() string {
+	return check.DependencyKueueOperator
+}
+
+func (c *Check) CheckType() string {
+	return check.CheckTypeInstalled
+}
+
 // CanApply returns whether this check should run for the given target.
 // This check only applies when the kueue component is enabled in DataScienceCluster.
 func (c *Check) CanApply(ctx context.Context, target check.Target) bool {
