@@ -35,7 +35,7 @@ func NewRenamingCheck() *RenamingCheck {
 
 // CanApply returns whether this check should run for the given target.
 // This check only applies when upgrading FROM 2.x TO 3.x.
-func (c *RenamingCheck) CanApply(target check.Target) bool {
+func (c *RenamingCheck) CanApply(_ context.Context, target check.Target) bool {
 	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion)
 }
 
@@ -56,15 +56,9 @@ func (c *RenamingCheck) Validate(
 	}
 
 	// In DSC v1 (2.x): .spec.components.datasciencepipelines
-	dspStateStr, configured, err := components.GetManagementState(dsc, "datasciencepipelines")
+	dspStateStr, err := components.GetManagementState(dsc, "datasciencepipelines")
 	if err != nil {
 		return nil, fmt.Errorf("querying datasciencepipelines managementState: %w", err)
-	}
-
-	if !configured {
-		results.SetComponentNotConfigured(dr, "DataSciencePipelines")
-
-		return dr, nil
 	}
 
 	dr.Annotations[check.AnnotationComponentManagementState] = dspStateStr

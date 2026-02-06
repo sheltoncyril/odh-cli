@@ -325,23 +325,24 @@ func TestImpactedWorkloadsCheck_CanApply(t *testing.T) {
 	g := NewWithT(t)
 
 	impactedCheck := ray.NewImpactedWorkloadsCheck()
+	ctx := t.Context()
 
 	// Should not apply when target is nil
-	g.Expect(impactedCheck.CanApply(check.Target{})).To(BeFalse())
+	g.Expect(impactedCheck.CanApply(ctx, check.Target{})).To(BeFalse())
 
 	// Should not apply for 2.x to 2.x
 	v2_15 := semver.MustParse("2.15.0")
 	v2_17 := semver.MustParse("2.17.0")
 	target2x := check.Target{CurrentVersion: &v2_15, TargetVersion: &v2_17}
-	g.Expect(impactedCheck.CanApply(target2x)).To(BeFalse())
+	g.Expect(impactedCheck.CanApply(ctx, target2x)).To(BeFalse())
 
 	// Should apply for 2.x to 3.x
 	v3_0 := semver.MustParse("3.0.0")
 	target2xTo3x := check.Target{CurrentVersion: &v2_17, TargetVersion: &v3_0}
-	g.Expect(impactedCheck.CanApply(target2xTo3x)).To(BeTrue())
+	g.Expect(impactedCheck.CanApply(ctx, target2xTo3x)).To(BeTrue())
 
 	// Should not apply for 3.x to 3.x
 	v3_1 := semver.MustParse("3.1.0")
 	target3x := check.Target{CurrentVersion: &v3_0, TargetVersion: &v3_1}
-	g.Expect(impactedCheck.CanApply(target3x)).To(BeFalse())
+	g.Expect(impactedCheck.CanApply(ctx, target3x)).To(BeFalse())
 }

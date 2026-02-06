@@ -16,14 +16,14 @@ type Check interface {
     Name() string
     Description() string
     Group() CheckGroup
-    CanApply(target Target) bool
+    CanApply(ctx context.Context, target Target) bool
     Validate(ctx context.Context, target Target) (*result.DiagnosticResult, error)
 }
 ```
 
 **Key differences from typical interfaces:**
 - `Group()` returns `CheckGroup` type (not string)
-- `CanApply()` takes `Target` directly (no `ctx` parameter)
+- `CanApply()` takes context and target
 - `Validate()` returns `(*result.DiagnosticResult, error)` - error for infrastructure failures
 
 ### Implementing a Lint Check
@@ -60,8 +60,8 @@ func NewCheck() *Check {
     }
 }
 
-// CanApply determines if this check should run (no ctx parameter).
-func (c *Check) CanApply(target check.Target) bool {
+// CanApply determines if this check should run.
+func (c *Check) CanApply(_ context.Context, _ check.Target) bool {
     // Check applies to all versions
     return true
 }
@@ -132,14 +132,14 @@ func NewCommand(
 
 ## CanApply Versioning Logic
 
-The `CanApply` method determines if a lint check is applicable based on version context. Note that `CanApply` takes `Target` directly (no `ctx` parameter).
+The `CanApply` method determines if a lint check is applicable based on version context.
 
 ### Lint Mode vs Upgrade Mode
 
 Lint checks detect their execution mode by comparing versions:
 
 ```go
-func (c *Check) CanApply(target check.Target) bool {
+func (c *Check) CanApply(_ context.Context, target check.Target) bool {
     // Version fields are *semver.Version
     currentVer := target.CurrentVersion
     targetVer := target.TargetVersion
@@ -168,14 +168,14 @@ func (c *Check) CanApply(target check.Target) bool {
 
 **Check applies to all versions:**
 ```go
-func (c *Check) CanApply(target check.Target) bool {
+func (c *Check) CanApply(_ context.Context, _ check.Target) bool {
     return true
 }
 ```
 
 **Check applies only in upgrade mode:**
 ```go
-func (c *Check) CanApply(target check.Target) bool {
+func (c *Check) CanApply(_ context.Context, target check.Target) bool {
     if target.CurrentVersion == nil || target.TargetVersion == nil {
         return false
     }
@@ -185,7 +185,7 @@ func (c *Check) CanApply(target check.Target) bool {
 
 **Check applies when upgrading to specific version:**
 ```go
-func (c *Check) CanApply(target check.Target) bool {
+func (c *Check) CanApply(_ context.Context, target check.Target) bool {
     // Use version helper for clean version checks
     return version.IsVersionAtLeast(target.TargetVersion, 3, 0)
 }
@@ -622,8 +622,8 @@ func NewServerlessRemovalCheck() *ServerlessRemovalCheck {
     }
 }
 
-// CanApply - no ctx parameter, takes Target directly.
-func (c *ServerlessRemovalCheck) CanApply(target check.Target) bool {
+// CanApply determines if this check should run.
+func (c *ServerlessRemovalCheck) CanApply(_ context.Context, target check.Target) bool {
     // Only applies when upgrading to 3.x
     return version.IsVersionAtLeast(target.TargetVersion, 3, 0)
 }

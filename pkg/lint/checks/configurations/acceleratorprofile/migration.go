@@ -45,7 +45,7 @@ func NewMigrationCheck() *MigrationCheck {
 
 // CanApply returns whether this check should run for the given target.
 // Only applies when upgrading to 3.x or later.
-func (c *MigrationCheck) CanApply(target check.Target) bool {
+func (c *MigrationCheck) CanApply(_ context.Context, target check.Target) bool {
 	return version.IsVersionAtLeast(target.TargetVersion, minMigrationMajorVersion, 0)
 }
 
@@ -81,9 +81,10 @@ func (c *MigrationCheck) Validate(
 	}
 
 	// AcceleratorProfiles found - advisory notice about auto-migration.
+	// Use Status=False (not yet migrated) with advisory impact since this is informational.
 	results.SetCondition(dr, check.NewCondition(
 		check.ConditionTypeMigrationRequired,
-		metav1.ConditionTrue,
+		metav1.ConditionFalse,
 		check.ReasonMigrationPending,
 		"Found %d AcceleratorProfile(s) that will be automatically migrated to HardwareProfiles during upgrade",
 		totalCount,

@@ -386,7 +386,7 @@ func TestOtelMigrationCheck_CanApply_LintMode(t *testing.T) {
 	}
 
 	otelCheck := guardrails.NewOtelMigrationCheck()
-	canApply := otelCheck.CanApply(target)
+	canApply := otelCheck.CanApply(t.Context(), target)
 
 	// Lint mode at 2.x should not apply
 	g.Expect(canApply).To(BeFalse())
@@ -402,7 +402,7 @@ func TestOtelMigrationCheck_CanApply_LintMode3x(t *testing.T) {
 	}
 
 	otelCheck := guardrails.NewOtelMigrationCheck()
-	canApply := otelCheck.CanApply(target)
+	canApply := otelCheck.CanApply(t.Context(), target)
 
 	// Lint mode at 3.x should apply
 	g.Expect(canApply).To(BeTrue())
@@ -419,7 +419,7 @@ func TestOtelMigrationCheck_CanApply_UpgradeTo3x(t *testing.T) {
 	}
 
 	otelCheck := guardrails.NewOtelMigrationCheck()
-	canApply := otelCheck.CanApply(target)
+	canApply := otelCheck.CanApply(t.Context(), target)
 
 	g.Expect(canApply).To(BeTrue())
 }
@@ -435,7 +435,7 @@ func TestOtelMigrationCheck_CanApply_UpgradeTo33(t *testing.T) {
 	}
 
 	otelCheck := guardrails.NewOtelMigrationCheck()
-	canApply := otelCheck.CanApply(target)
+	canApply := otelCheck.CanApply(t.Context(), target)
 
 	g.Expect(canApply).To(BeTrue())
 }
@@ -449,7 +449,7 @@ func TestOtelMigrationCheck_CanApply_NilVersions(t *testing.T) {
 	}
 
 	otelCheck := guardrails.NewOtelMigrationCheck()
-	canApply := otelCheck.CanApply(target)
+	canApply := otelCheck.CanApply(t.Context(), target)
 
 	g.Expect(canApply).To(BeFalse())
 }

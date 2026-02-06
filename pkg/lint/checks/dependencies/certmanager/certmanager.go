@@ -30,7 +30,7 @@ func NewCheck() *Check {
 	}
 }
 
-func (c *Check) CanApply(_ check.Target) bool {
+func (c *Check) CanApply(_ context.Context, _ check.Target) bool {
 	return true
 }
 

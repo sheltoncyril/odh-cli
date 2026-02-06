@@ -161,7 +161,7 @@ func (c *benchmarkCheck) Group() check.CheckGroup {
 	return c.group
 }
 
-func (c *benchmarkCheck) CanApply(target check.Target) bool {
+func (c *benchmarkCheck) CanApply(_ context.Context, _ check.Target) bool {
 	return true // Always applicable
 }
 

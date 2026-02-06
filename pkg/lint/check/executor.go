@@ -70,7 +70,7 @@ func (e *Executor) executeChecks(ctx context.Context, target Target, checks []Ch
 
 		// Filter by CanApply before executing
 		// Checks can use target.CurrentVersion, target.TargetVersion, or target.Client for filtering
-		if !check.CanApply(target) {
+		if !check.CanApply(ctx, target) {
 			// Skip checks that don't apply to this target context
 			continue
 		}

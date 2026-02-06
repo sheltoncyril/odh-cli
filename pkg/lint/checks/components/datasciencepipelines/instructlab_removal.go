@@ -38,7 +38,7 @@ func NewInstructLabRemovalCheck() *InstructLabRemovalCheck {
 
 // CanApply returns whether this check should run for the given target.
 // This check only applies when upgrading FROM 2.x TO 3.x.
-func (c *InstructLabRemovalCheck) CanApply(target check.Target) bool {
+func (c *InstructLabRemovalCheck) CanApply(_ context.Context, target check.Target) bool {
 	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion)
 }
 

@@ -61,6 +61,8 @@ func TestTrainingOperatorDeprecationCheck_NotConfigured(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
+	// Create DataScienceCluster without trainingoperator component
+	// "Not configured" is now treated as "Removed" - both mean component is not active
 	dsc := &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": resources.DataScienceCluster.APIVersion(),
@@ -96,12 +98,14 @@ func TestTrainingOperatorDeprecationCheck_NotConfigured(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	// When component is not configured, it's treated as Removed - check passes
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeConfigured),
-		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonResourceNotFound),
-		"Message": ContainSubstring("not configured"),
+		"Type":    Equal(check.ConditionTypeCompatible),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal(check.ReasonVersionCompatible),
+		"Message": ContainSubstring("state: Removed"),
 	}))
+	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/management-state", "Removed"))
 }
 
 func TestTrainingOperatorDeprecationCheck_ManagedDeprecated(t *testing.T) {
@@ -262,7 +266,7 @@ func TestTrainingOperatorDeprecationCheck_CanApply_Version32(t *testing.T) {
 	}
 
 	trainingoperatorCheck := trainingoperator.NewDeprecationCheck()
-	canApply := trainingoperatorCheck.CanApply(target)
+	canApply := trainingoperatorCheck.CanApply(t.Context(), target)
 
 	g.Expect(canApply).To(BeFalse())
 }
@@ -276,7 +280,7 @@ func TestTrainingOperatorDeprecationCheck_CanApply_Version33(t *testing.T) {
 	}
 
 	trainingoperatorCheck := trainingoperator.NewDeprecationCheck()
-	canApply := trainingoperatorCheck.CanApply(target)
+	canApply := trainingoperatorCheck.CanApply(t.Context(), target)
 
 	g.Expect(canApply).To(BeTrue())
 }
@@ -290,7 +294,7 @@ func TestTrainingOperatorDeprecationCheck_CanApply_Version34(t *testing.T) {
 	}
 
 	trainingoperatorCheck := trainingoperator.NewDeprecationCheck()
-	canApply := trainingoperatorCheck.CanApply(target)
+	canApply := trainingoperatorCheck.CanApply(t.Context(), target)
 
 	g.Expect(canApply).To(BeTrue())
 }

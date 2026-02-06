@@ -44,7 +44,7 @@ func NewOtelMigrationCheck() *OtelMigrationCheck {
 
 // CanApply returns whether this check should run for the given target.
 // Only applies when upgrading to 3.x or later.
-func (c *OtelMigrationCheck) CanApply(target check.Target) bool {
+func (c *OtelMigrationCheck) CanApply(_ context.Context, target check.Target) bool {
 	return version.IsVersionAtLeast(target.TargetVersion, minTargetMajorVersion, 0)
 }
 

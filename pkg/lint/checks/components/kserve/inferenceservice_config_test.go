@@ -438,6 +438,8 @@ func TestInferenceServiceConfigCheck_CanApply(t *testing.T) {
 
 	inferenceConfigCheck := kserve.NewInferenceServiceConfigCheck()
 
+	ctx := t.Context()
+
 	// Test 2.x to 3.x upgrade - should apply
 	currentVer2x := semver.MustParse("2.17.0")
 	targetVer3x := semver.MustParse("3.0.0")
@@ -445,7 +447,7 @@ func TestInferenceServiceConfigCheck_CanApply(t *testing.T) {
 		CurrentVersion: &currentVer2x,
 		TargetVersion:  &targetVer3x,
 	}
-	g.Expect(inferenceConfigCheck.CanApply(target2xTo3x)).To(BeTrue())
+	g.Expect(inferenceConfigCheck.CanApply(ctx, target2xTo3x)).To(BeTrue())
 
 	// Test 3.x to 3.x upgrade - should not apply
 	currentVer3x := semver.MustParse("3.0.0")
@@ -454,12 +456,12 @@ func TestInferenceServiceConfigCheck_CanApply(t *testing.T) {
 		CurrentVersion: &currentVer3x,
 		TargetVersion:  &targetVer31,
 	}
-	g.Expect(inferenceConfigCheck.CanApply(target3xTo3x)).To(BeFalse())
+	g.Expect(inferenceConfigCheck.CanApply(ctx, target3xTo3x)).To(BeFalse())
 
 	// Test nil versions - should not apply
 	targetNil := check.Target{
 		CurrentVersion: nil,
 		TargetVersion:  nil,
 	}
-	g.Expect(inferenceConfigCheck.CanApply(targetNil)).To(BeFalse())
+	g.Expect(inferenceConfigCheck.CanApply(ctx, targetNil)).To(BeFalse())
 }

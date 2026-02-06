@@ -44,7 +44,7 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 
 // CanApply returns whether this check should run for the given target.
 // Only applies when upgrading FROM 2.x TO 3.x since CodeFlare is impacted by the transition.
-func (c *ImpactedWorkloadsCheck) CanApply(target check.Target) bool {
+func (c *ImpactedWorkloadsCheck) CanApply(_ context.Context, target check.Target) bool {
 	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion)
 }
 

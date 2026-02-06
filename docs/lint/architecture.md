@@ -20,7 +20,7 @@ type Check interface {
     Name() string
     Description() string
     Group() CheckGroup
-    CanApply(target Target) bool
+    CanApply(ctx context.Context, target Target) bool
     Validate(ctx context.Context, target Target) (*result.DiagnosticResult, error)
 }
 ```
@@ -28,7 +28,7 @@ type Check interface {
 **Key methods:**
 - `ID()` - Unique identifier for the lint check
 - `Group()` - Returns `CheckGroup` type: `GroupComponent`, `GroupService`, `GroupWorkload`, or `GroupDependency`
-- `CanApply()` - Determines if lint check is applicable based on version context (no ctx parameter)
+- `CanApply()` - Determines if lint check is applicable based on version context
 - `Validate()` - Executes the lint check and returns `(*result.DiagnosticResult, error)`
 
 ### Target

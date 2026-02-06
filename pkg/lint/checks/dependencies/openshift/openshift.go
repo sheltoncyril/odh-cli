@@ -47,7 +47,7 @@ func (c *Check) Group() check.CheckGroup {
 	return check.GroupDependency
 }
 
-func (c *Check) CanApply(target check.Target) bool {
+func (c *Check) CanApply(_ context.Context, target check.Target) bool {
 	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion)
 }
 

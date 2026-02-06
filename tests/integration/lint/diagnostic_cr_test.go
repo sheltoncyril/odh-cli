@@ -157,7 +157,7 @@ func (c *testDiagnosticCheck) Group() check.CheckGroup {
 	return "test"
 }
 
-func (c *testDiagnosticCheck) CanApply(_ check.Target) bool {
+func (c *testDiagnosticCheck) CanApply(_ context.Context, _ check.Target) bool {
 	return true // Always apply for testing
 }
 

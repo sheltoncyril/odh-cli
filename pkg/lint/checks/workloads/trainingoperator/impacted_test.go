@@ -374,7 +374,7 @@ func TestImpactedWorkloadsCheck_CanApply_Version32(t *testing.T) {
 	}
 
 	impactedCheck := trainingoperator.NewImpactedWorkloadsCheck()
-	canApply := impactedCheck.CanApply(target)
+	canApply := impactedCheck.CanApply(t.Context(), target)
 
 	g.Expect(canApply).To(BeFalse())
 }
@@ -388,7 +388,7 @@ func TestImpactedWorkloadsCheck_CanApply_Version33(t *testing.T) {
 	}
 
 	impactedCheck := trainingoperator.NewImpactedWorkloadsCheck()
-	canApply := impactedCheck.CanApply(target)
+	canApply := impactedCheck.CanApply(t.Context(), target)
 
 	g.Expect(canApply).To(BeTrue())
 }
@@ -402,7 +402,7 @@ func TestImpactedWorkloadsCheck_CanApply_Version34(t *testing.T) {
 	}
 
 	impactedCheck := trainingoperator.NewImpactedWorkloadsCheck()
-	canApply := impactedCheck.CanApply(target)
+	canApply := impactedCheck.CanApply(t.Context(), target)
 
 	g.Expect(canApply).To(BeTrue())
 }

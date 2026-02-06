@@ -41,7 +41,7 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 	}
 }
 
-func (c *ImpactedWorkloadsCheck) CanApply(target check.Target) bool {
+func (c *ImpactedWorkloadsCheck) CanApply(_ context.Context, target check.Target) bool {
 	//nolint:mnd // Version numbers 3.3
 	return version.IsVersionAtLeast(target.TargetVersion, 3, 3)
 }

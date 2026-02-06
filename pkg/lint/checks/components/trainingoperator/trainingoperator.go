@@ -33,7 +33,7 @@ func NewDeprecationCheck() *DeprecationCheck {
 	}
 }
 
-func (c *DeprecationCheck) CanApply(target check.Target) bool {
+func (c *DeprecationCheck) CanApply(_ context.Context, target check.Target) bool {
 	//nolint:mnd // Version numbers 3.3
 	return version.IsVersionAtLeast(target.TargetVersion, 3, 3)
 }
@@ -52,15 +52,9 @@ func (c *DeprecationCheck) Validate(
 		return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
 	}
 
-	managementStateStr, configured, err := components.GetManagementState(dsc, "trainingoperator")
+	managementStateStr, err := components.GetManagementState(dsc, "trainingoperator")
 	if err != nil {
 		return nil, fmt.Errorf("querying trainingoperator managementState: %w", err)
-	}
-
-	if !configured {
-		results.SetComponentNotConfigured(dr, "TrainingOperator")
-
-		return dr, nil
 	}
 
 	dr.Annotations[check.AnnotationComponentManagementState] = managementStateStr

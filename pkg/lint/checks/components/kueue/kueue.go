@@ -35,7 +35,7 @@ func NewManagedRemovalCheck() *ManagedRemovalCheck {
 
 // CanApply returns whether this check should run for the given target.
 // This check only applies when upgrading FROM 2.x TO 3.x.
-func (c *ManagedRemovalCheck) CanApply(target check.Target) bool {
+func (c *ManagedRemovalCheck) CanApply(_ context.Context, target check.Target) bool {
 	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion)
 }
 
@@ -52,15 +52,9 @@ func (c *ManagedRemovalCheck) Validate(ctx context.Context, target check.Target)
 		return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
 	}
 
-	managementStateStr, configured, err := components.GetManagementState(dsc, "kueue")
+	managementStateStr, err := components.GetManagementState(dsc, "kueue")
 	if err != nil {
 		return nil, fmt.Errorf("querying kueue managementState: %w", err)
-	}
-
-	if !configured {
-		results.SetComponentNotConfigured(dr, "Kueue")
-
-		return dr, nil
 	}
 
 	// Add management state as annotation

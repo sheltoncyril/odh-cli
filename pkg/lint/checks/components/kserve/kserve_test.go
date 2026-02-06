@@ -62,6 +62,7 @@ func TestKServeServerlessRemovalCheck_KServeNotConfigured(t *testing.T) {
 	ctx := context.Background()
 
 	// Create DataScienceCluster without kserve component
+	// "Not configured" is now treated as "Removed" - both mean component is not active
 	dsc := &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": resources.DataScienceCluster.APIVersion(),
@@ -97,12 +98,14 @@ func TestKServeServerlessRemovalCheck_KServeNotConfigured(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	// When KServe is not configured, it's treated as Removed - check reports "not managed"
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeConfigured),
 		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonResourceNotFound),
-		"Message": ContainSubstring("not configured"),
+		"Reason":  Equal("ComponentNotManaged"),
+		"Message": ContainSubstring("state: Removed"),
 	}))
+	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/kserve-management-state", "Removed"))
 }
 
 func TestKServeServerlessRemovalCheck_KServeNotManaged(t *testing.T) {

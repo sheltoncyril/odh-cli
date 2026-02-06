@@ -37,6 +37,7 @@ var acceleratorProfileListKinds = map[schema.GroupVersionResource]string{
 
 func TestMigrationCheck_CanApply(t *testing.T) {
 	g := NewWithT(t)
+	ctx := t.Context()
 
 	chk := acceleratorprofile.NewMigrationCheck()
 
@@ -49,7 +50,7 @@ func TestMigrationCheck_CanApply(t *testing.T) {
 			TargetVersion:  &targetVer,
 		}
 
-		g.Expect(chk.CanApply(target)).To(BeTrue())
+		g.Expect(chk.CanApply(ctx, target)).To(BeTrue())
 	})
 
 	t.Run("should apply when upgrading to 3.3", func(_ *testing.T) {
@@ -61,7 +62,7 @@ func TestMigrationCheck_CanApply(t *testing.T) {
 			TargetVersion:  &targetVer,
 		}
 
-		g.Expect(chk.CanApply(target)).To(BeTrue())
+		g.Expect(chk.CanApply(ctx, target)).To(BeTrue())
 	})
 
 	t.Run("should not apply for 2.x versions", func(_ *testing.T) {
@@ -73,7 +74,7 @@ func TestMigrationCheck_CanApply(t *testing.T) {
 			TargetVersion:  &targetVer,
 		}
 
-		g.Expect(chk.CanApply(target)).To(BeFalse())
+		g.Expect(chk.CanApply(ctx, target)).To(BeFalse())
 	})
 
 	t.Run("should not apply when target version is nil", func(_ *testing.T) {
@@ -84,7 +85,7 @@ func TestMigrationCheck_CanApply(t *testing.T) {
 			TargetVersion:  nil,
 		}
 
-		g.Expect(chk.CanApply(target)).To(BeFalse())
+		g.Expect(chk.CanApply(ctx, target)).To(BeFalse())
 	})
 }
 
@@ -174,9 +175,10 @@ func TestMigrationCheck_Validate_WithProfiles(t *testing.T) {
 		"Kind":  Equal(check.ConfigurationAcceleratorProfile),
 	})))
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
+	// Status=False (not yet migrated) with advisory impact since auto-migration is informational
 	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeMigrationRequired),
-		"Status":  Equal(metav1.ConditionTrue),
+		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonMigrationPending),
 		"Message": ContainSubstring("2 AcceleratorProfile"),
 	}))

@@ -41,7 +41,7 @@ func NewInferenceServiceConfigCheck() *InferenceServiceConfigCheck {
 
 // CanApply returns whether this check should run for the given target.
 // This check only applies when upgrading FROM 2.x TO 3.x.
-func (c *InferenceServiceConfigCheck) CanApply(target check.Target) bool {
+func (c *InferenceServiceConfigCheck) CanApply(_ context.Context, target check.Target) bool {
 	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion)
 }
 

@@ -37,7 +37,7 @@ func NewServerlessRemovalCheck() *ServerlessRemovalCheck {
 
 // CanApply returns whether this check should run for the given target.
 // This check only applies when upgrading FROM 2.x TO 3.x.
-func (c *ServerlessRemovalCheck) CanApply(target check.Target) bool {
+func (c *ServerlessRemovalCheck) CanApply(_ context.Context, target check.Target) bool {
 	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion)
 }
 
@@ -54,15 +54,9 @@ func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target check.Targ
 		return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
 	}
 
-	kserveStateStr, configured, err := components.GetManagementState(dsc, "kserve")
+	kserveStateStr, err := components.GetManagementState(dsc, "kserve")
 	if err != nil {
 		return nil, fmt.Errorf("querying kserve managementState: %w", err)
-	}
-
-	if !configured {
-		results.SetComponentNotConfigured(dr, "KServe")
-
-		return dr, nil
 	}
 
 	dr.Annotations[check.AnnotationComponentKServeState] = kserveStateStr

@@ -51,7 +51,7 @@ func NewAcceleratorMigrationCheck() *AcceleratorMigrationCheck {
 
 // CanApply returns whether this check should run for the given target.
 // Only applies when upgrading to 3.x or later.
-func (c *AcceleratorMigrationCheck) CanApply(target check.Target) bool {
+func (c *AcceleratorMigrationCheck) CanApply(_ context.Context, target check.Target) bool {
 	return version.IsVersionAtLeast(target.TargetVersion, minAcceleratorMigrationMajorVersion, 0)
 }
 

@@ -47,8 +47,8 @@ func (m *MockCheck) Group() check.CheckGroup {
 	return group
 }
 
-func (m *MockCheck) CanApply(target check.Target) bool {
-	args := m.Called(target)
+func (m *MockCheck) CanApply(ctx context.Context, target check.Target) bool {
+	args := m.Called(ctx, target)
 
 	return args.Bool(0)
 }

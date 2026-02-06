@@ -367,7 +367,7 @@ func TestAcceleratorMigrationCheck_CanApply_LintMode2x(t *testing.T) {
 	}
 
 	acceleratorCheck := kserve.NewAcceleratorMigrationCheck()
-	canApply := acceleratorCheck.CanApply(target)
+	canApply := acceleratorCheck.CanApply(t.Context(), target)
 
 	// Lint mode at 2.x should not apply
 	g.Expect(canApply).To(BeFalse())
@@ -383,7 +383,7 @@ func TestAcceleratorMigrationCheck_CanApply_LintMode3x(t *testing.T) {
 	}
 
 	acceleratorCheck := kserve.NewAcceleratorMigrationCheck()
-	canApply := acceleratorCheck.CanApply(target)
+	canApply := acceleratorCheck.CanApply(t.Context(), target)
 
 	// Lint mode at 3.x should apply
 	g.Expect(canApply).To(BeTrue())
@@ -400,7 +400,7 @@ func TestAcceleratorMigrationCheck_CanApply_UpgradeTo3x(t *testing.T) {
 	}
 
 	acceleratorCheck := kserve.NewAcceleratorMigrationCheck()
-	canApply := acceleratorCheck.CanApply(target)
+	canApply := acceleratorCheck.CanApply(t.Context(), target)
 
 	g.Expect(canApply).To(BeTrue())
 }
@@ -414,7 +414,7 @@ func TestAcceleratorMigrationCheck_CanApply_NilVersions(t *testing.T) {
 	}
 
 	acceleratorCheck := kserve.NewAcceleratorMigrationCheck()
-	canApply := acceleratorCheck.CanApply(target)
+	canApply := acceleratorCheck.CanApply(t.Context(), target)
 
 	g.Expect(canApply).To(BeFalse())
 }
