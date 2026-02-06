@@ -2,7 +2,6 @@ package guardrails
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 
@@ -11,10 +10,10 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/inspect"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
-	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -98,13 +97,13 @@ func (c *OtelMigrationCheck) findOrchestratorWithDeprecatedConfig(
 	impacted := make([]types.NamespacedName, 0)
 
 	for _, orch := range orchestrators {
-		hasDeprecated, err := hasDeprecatedOtelFields(orch.Object)
+		found, err := inspect.HasFields(orch.Object, deprecatedOtelExpressions...)
 		if err != nil {
 			return nil, fmt.Errorf("checking deprecated fields for %s/%s: %w",
 				orch.GetNamespace(), orch.GetName(), err)
 		}
 
-		if hasDeprecated {
+		if len(found) > 0 {
 			impacted = append(impacted, types.NamespacedName{
 				Namespace: orch.GetNamespace(),
 				Name:      orch.GetName(),
@@ -113,25 +112,4 @@ func (c *OtelMigrationCheck) findOrchestratorWithDeprecatedConfig(
 	}
 
 	return impacted, nil
-}
-
-// hasDeprecatedOtelFields checks if the object contains any deprecated otelExporter fields.
-func hasDeprecatedOtelFields(obj map[string]any) (bool, error) {
-	for _, field := range deprecatedOtelFields {
-		query := ".spec.otelExporter." + field
-
-		_, err := jq.Query[any](obj, query)
-		if err != nil {
-			if errors.Is(err, jq.ErrNotFound) {
-				continue
-			}
-
-			return false, fmt.Errorf("querying field %s: %w", field, err)
-		}
-
-		// Field exists (no error and not ErrNotFound)
-		return true, nil
-	}
-
-	return false, nil
 }

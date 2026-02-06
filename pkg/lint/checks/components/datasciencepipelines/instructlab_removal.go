@@ -2,7 +2,6 @@ package datasciencepipelines
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 
@@ -14,9 +13,9 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/inspect"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
-	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -66,19 +65,16 @@ func (c *InstructLabRemovalCheck) Validate(
 	for i := range dspas {
 		dspa := dspas[i]
 
-		// Check if .spec.apiServer.managedPipelines.instructLab exists
-		_, err := jq.Query[any](&dspa, ".spec.apiServer.managedPipelines.instructLab")
+		found, err := inspect.HasFields(&dspa, ".spec.apiServer.managedPipelines.instructLab")
 		if err != nil {
-			if errors.Is(err, jq.ErrNotFound) {
-				// Field doesn't exist - this DSPA is not impacted
-				continue
-			}
-			// Other error - propagate
 			return nil, fmt.Errorf("querying managedPipelines.instructLab for DSPA %s/%s: %w",
 				dspa.GetNamespace(), dspa.GetName(), err)
 		}
 
-		// If we get here, field exists - add to impacted list
+		if len(found) == 0 {
+			continue
+		}
+
 		impactedDSPAs = append(impactedDSPAs, types.NamespacedName{
 			Namespace: dspa.GetNamespace(),
 			Name:      dspa.GetName(),

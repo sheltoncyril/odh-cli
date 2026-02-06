@@ -86,11 +86,11 @@ func TestOtelMigrationCheck_NoOrchestrators(t *testing.T) {
 	g.Expect(result.ImpactedObjects).To(BeEmpty())
 }
 
-func TestOtelMigrationCheck_OrchestratorWithNewFields(t *testing.T) {
+func TestOtelMigrationCheck_OrchestratorWithOtelExporter(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
-	// Orchestrator using new field format only
+	// Any orchestrator with .spec.otelExporter is impacted since the entire struct is changing
 	orch := &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": resources.GuardrailsOrchestrator.APIVersion(),
@@ -135,12 +135,16 @@ func TestOtelMigrationCheck_OrchestratorWithNewFields(t *testing.T) {
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":   Equal(guardrails.ConditionTypeOtelConfigCompatible),
-		"Status": Equal(metav1.ConditionTrue),
-		"Reason": Equal(check.ReasonVersionCompatible),
+		"Type":    Equal(guardrails.ConditionTypeOtelConfigCompatible),
+		"Status":  Equal(metav1.ConditionFalse),
+		"Reason":  Equal(check.ReasonConfigurationInvalid),
+		"Message": And(ContainSubstring("Found 1 GuardrailsOrchestrator"), ContainSubstring("deprecated")),
 	}))
-	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
-	g.Expect(result.ImpactedObjects).To(BeEmpty())
+	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactAdvisory))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
+	g.Expect(result.ImpactedObjects).To(HaveLen(1))
+	g.Expect(result.ImpactedObjects[0].Name).To(Equal("test-orchestrator"))
+	g.Expect(result.ImpactedObjects[0].Namespace).To(Equal("test-ns"))
 }
 
 func TestOtelMigrationCheck_OrchestratorWithoutOtelExporter(t *testing.T) {
@@ -293,7 +297,7 @@ func TestOtelMigrationCheck_MultipleOrchestratorsWithDeprecatedFields(t *testing
 		},
 	}
 
-	// Orchestrator with new config only - should not be impacted
+	// Orchestrator with new config only - also impacted since the entire otelExporter struct is changing
 	orch3 := &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": resources.GuardrailsOrchestrator.APIVersion(),
@@ -312,10 +316,25 @@ func TestOtelMigrationCheck_MultipleOrchestratorsWithDeprecatedFields(t *testing
 		},
 	}
 
+	// Orchestrator without otelExporter - should not be impacted
+	orch4 := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.GuardrailsOrchestrator.APIVersion(),
+			"kind":       resources.GuardrailsOrchestrator.Kind,
+			"metadata": map[string]any{
+				"name":      "orch-4",
+				"namespace": "ns4",
+			},
+			"spec": map[string]any{
+				"replicas": int64(1),
+			},
+		},
+	}
+
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
-	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, orch1, orch2, orch3)
-	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(orch1, orch2, orch3)...)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, orch1, orch2, orch3, orch4)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(orch1, orch2, orch3, orch4)...)
 
 	c := &client.Client{
 		Dynamic:  dynamicClient,
@@ -339,11 +358,11 @@ func TestOtelMigrationCheck_MultipleOrchestratorsWithDeprecatedFields(t *testing
 		"Type":    Equal(guardrails.ConditionTypeOtelConfigCompatible),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonConfigurationInvalid),
-		"Message": ContainSubstring("Found 2 GuardrailsOrchestrator"),
+		"Message": ContainSubstring("Found 3 GuardrailsOrchestrator"),
 	}))
 	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactAdvisory))
-	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "2"))
-	g.Expect(result.ImpactedObjects).To(HaveLen(2))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "3"))
+	g.Expect(result.ImpactedObjects).To(HaveLen(3))
 }
 
 func TestOtelMigrationCheck_Metadata(t *testing.T) {

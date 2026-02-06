@@ -7,18 +7,12 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 )
 
-// deprecatedOtelFields lists the otelExporter fields that are deprecated in 3.x.
-// These fields need to be migrated to the new configuration format.
+// deprecatedOtelExpressions lists JQ expressions for the deprecated otelExporter section in 3.x.
+// The entire otelExporter struct is changing and needs migration.
 //
-//nolint:gochecknoglobals // Package-level constant for deprecated field names.
-var deprecatedOtelFields = []string{
-	"protocol",
-	"tracesProtocol",
-	"metricsProtocol",
-	"otlpEndpoint",
-	"tracesEndpoint",
-	"metricsEndpoint",
-	"otlpExport",
+//nolint:gochecknoglobals // Package-level constant for deprecated field expressions.
+var deprecatedOtelExpressions = []string{
+	".spec.otelExporter",
 }
 
 func newOtelMigrationCondition(count int) result.Condition {
