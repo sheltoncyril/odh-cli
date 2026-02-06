@@ -18,7 +18,7 @@ import (
 // FetchResourcesByName fetches resources by name from the cluster (parallel version).
 func FetchResourcesByName(
 	ctx context.Context,
-	c *client.Client,
+	c client.Reader,
 	namespace string,
 	resourceType resources.ResourceType,
 	names []string,
@@ -31,7 +31,7 @@ func FetchResourcesByName(
 // FetchResourcesByNameWithMissing fetches resources and returns both found items and missing names.
 func FetchResourcesByNameWithMissing(
 	ctx context.Context,
-	c *client.Client,
+	c client.Reader,
 	namespace string,
 	resourceType resources.ResourceType,
 	names []string,
@@ -52,7 +52,7 @@ func FetchResourcesByNameWithMissing(
 // FetchResourcesByNameWithErrors fetches resources and returns errors for each failed fetch.
 func FetchResourcesByNameWithErrors(
 	ctx context.Context,
-	c *client.Client,
+	c client.Reader,
 	namespace string,
 	resourceType resources.ResourceType,
 	names []string,

@@ -87,7 +87,7 @@ type SharedOptions struct {
 	Timeout time.Duration
 
 	// Client is the Kubernetes client (populated during Complete)
-	Client *client.Client
+	Client client.Client
 
 	// Throttling settings for Kubernetes API client
 	QPS   float32

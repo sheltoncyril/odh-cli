@@ -37,7 +37,7 @@ type SharedOptions struct {
 	OutputFormat OutputFormat
 	Verbose      bool
 	Timeout      time.Duration
-	Client       *client.Client
+	Client       client.Client
 
 	// Throttling settings for Kubernetes API client
 	QPS   float32

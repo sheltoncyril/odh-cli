@@ -32,7 +32,7 @@ func (r *Resolver) CanHandle(gvr schema.GroupVersionResource) bool {
 // Resolve finds all dependencies for a Notebook.
 func (r *Resolver) Resolve(
 	ctx context.Context,
-	c *client.Client,
+	c client.Reader,
 	obj *unstructured.Unstructured,
 ) ([]dependencies.Dependency, error) {
 	namespace := obj.GetNamespace()

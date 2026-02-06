@@ -35,7 +35,7 @@ func TestDetectOpenShiftVersion_FromDesiredVersion(t *testing.T) {
 		cv,
 	)
 
-	c := &client.Client{Dynamic: dynamicClient}
+	c := client.NewForTesting(client.TestClientConfig{Dynamic: dynamicClient})
 
 	ver, err := version.DetectOpenShiftVersion(ctx, c)
 
@@ -70,7 +70,7 @@ func TestDetectOpenShiftVersion_FromHistory(t *testing.T) {
 		cv,
 	)
 
-	c := &client.Client{Dynamic: dynamicClient}
+	c := client.NewForTesting(client.TestClientConfig{Dynamic: dynamicClient})
 
 	ver, err := version.DetectOpenShiftVersion(ctx, c)
 
@@ -86,7 +86,7 @@ func TestDetectOpenShiftVersion_NotFound(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, nil)
 
-	c := &client.Client{Dynamic: dynamicClient}
+	c := client.NewForTesting(client.TestClientConfig{Dynamic: dynamicClient})
 
 	ver, err := version.DetectOpenShiftVersion(ctx, c)
 
@@ -124,7 +124,7 @@ func TestDetectOpenShiftVersion_NoVersionData(t *testing.T) {
 		cv,
 	)
 
-	c := &client.Client{Dynamic: dynamicClient}
+	c := client.NewForTesting(client.TestClientConfig{Dynamic: dynamicClient})
 
 	ver, err := version.DetectOpenShiftVersion(ctx, c)
 

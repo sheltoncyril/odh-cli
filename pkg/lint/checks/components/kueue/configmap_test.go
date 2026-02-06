@@ -79,9 +79,9 @@ func TestConfigMapManagedCheck_NoDSCI(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, configMapListKinds)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -127,9 +127,9 @@ func TestConfigMapManagedCheck_DSCINoNamespace(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, configMapListKinds, dsci)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -164,9 +164,9 @@ func TestConfigMapManagedCheck_ConfigMapNotFound(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, configMapListKinds, dsci)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -202,9 +202,9 @@ func TestConfigMapManagedCheck_ConfigMapManaged(t *testing.T) {
 		scheme, configMapListKinds, dsci, configMap,
 	)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -243,9 +243,9 @@ func TestConfigMapManagedCheck_ConfigMapManagedTrue(t *testing.T) {
 		scheme, configMapListKinds, dsci, configMap,
 	)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -283,9 +283,9 @@ func TestConfigMapManagedCheck_ConfigMapManagedFalse(t *testing.T) {
 		scheme, configMapListKinds, dsci, configMap,
 	)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")

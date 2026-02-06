@@ -51,9 +51,9 @@ func TestDetect_FromDataScienceCluster(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsc)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	clusterVersion, err := version.Detect(ctx, c)
 	g.Expect(err).ToNot(HaveOccurred())
@@ -87,9 +87,9 @@ func TestDetect_FromDSCInitialization(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsci)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	clusterVersion, err := version.Detect(ctx, c)
 	g.Expect(err).ToNot(HaveOccurred())
@@ -122,10 +122,10 @@ func TestDetect_FromOLM(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds)
 	olmClient := operatorfake.NewSimpleClientset(csv)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
 		OLM:     olmClient,
-	}
+	})
 
 	clusterVersion, err := version.Detect(ctx, c)
 	g.Expect(err).ToNot(HaveOccurred())
@@ -191,9 +191,9 @@ func TestDetect_PriorityOrder(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsc, dsci, csv)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	clusterVersion, err := version.Detect(ctx, c)
 	g.Expect(err).ToNot(HaveOccurred())
@@ -211,9 +211,9 @@ func TestDetect_NoVersionFound(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	clusterVersion, err := version.Detect(ctx, c)
 	g.Expect(err).To(HaveOccurred())

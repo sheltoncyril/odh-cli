@@ -97,10 +97,10 @@ func TestMigrationCheck_Validate_NoProfiles(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, acceleratorProfileListKinds)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	targetVer := semver.MustParse("3.0.0")
 	currentVer := semver.MustParse("2.17.0")
@@ -150,10 +150,10 @@ func TestMigrationCheck_Validate_WithProfiles(t *testing.T) {
 		toPartialObjectMetadata(profile1, profile2)...,
 	)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	targetVer := semver.MustParse("3.0.0")
 	currentVer := semver.MustParse("2.17.0")
@@ -194,10 +194,10 @@ func TestMigrationCheck_Validate_AnnotationsPresent(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, acceleratorProfileListKinds)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	targetVer := semver.MustParse("3.3.0")
 	currentVer := semver.MustParse("2.17.0")

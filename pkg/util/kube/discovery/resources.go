@@ -25,9 +25,9 @@ type ComponentAndService struct {
 
 // DiscoverComponentsAndServices discovers OpenShift AI components and services by API groups
 // Components and services are identified by API groups matching OpenShift AI patterns.
-func DiscoverComponentsAndServices(_ context.Context, c *client.Client) ([]ComponentAndService, error) {
+func DiscoverComponentsAndServices(_ context.Context, c client.Client) ([]ComponentAndService, error) {
 	// Get all API groups
-	apiGroupList, err := c.Discovery.ServerGroups()
+	apiGroupList, err := c.Discovery().ServerGroups()
 	if err != nil {
 		return nil, fmt.Errorf("listing API groups: %w", err)
 	}
@@ -52,7 +52,7 @@ func DiscoverComponentsAndServices(_ context.Context, c *client.Client) ([]Compo
 		}
 
 		// Get resources for this API group version
-		resourceList, err := c.Discovery.ServerResourcesForGroupVersion(
+		resourceList, err := c.Discovery().ServerResourcesForGroupVersion(
 			schema.GroupVersion{Group: apiGroup.Name, Version: version}.String(),
 		)
 		if err != nil {

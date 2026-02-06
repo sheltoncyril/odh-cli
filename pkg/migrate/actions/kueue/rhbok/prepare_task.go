@@ -128,7 +128,7 @@ func (t *prepareTask) backupConfigMap(
 		"Backup ConfigMap "+configMapName,
 	)
 
-	obj, err := target.Client.Dynamic.Resource(resources.ConfigMap.GVR()).
+	obj, err := target.Client.Dynamic().Resource(resources.ConfigMap.GVR()).
 		Namespace(applicationsNamespace).
 		Get(ctx, configMapName, metav1.GetOptions{})
 

@@ -37,10 +37,10 @@ func TestAcceleratorMigrationCheck_NoNotebooks(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, acceleratorListKinds)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -87,10 +87,10 @@ func TestAcceleratorMigrationCheck_NotebookWithoutAcceleratorProfile(t *testing.
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, acceleratorListKinds, nb)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(nb)...)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -152,10 +152,10 @@ func TestAcceleratorMigrationCheck_NotebookWithExistingAcceleratorProfile(t *tes
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, acceleratorListKinds, nb, profile)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(nb, profile)...)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -209,10 +209,10 @@ func TestAcceleratorMigrationCheck_NotebookWithMissingAcceleratorProfile(t *test
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, acceleratorListKinds, nb)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(nb)...)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -316,10 +316,10 @@ func TestAcceleratorMigrationCheck_MixedNotebooks(t *testing.T) {
 		toPartialObjectMetadata(nb1, nb2, nb3, profile)...,
 	)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -428,10 +428,10 @@ func TestAcceleratorMigrationCheck_AnnotationTargetVersion(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, acceleratorListKinds)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -486,10 +486,10 @@ func TestAcceleratorMigrationCheck_DefaultNamespace(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, acceleratorListKinds, nb, profile)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(nb, profile)...)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")

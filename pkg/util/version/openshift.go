@@ -8,7 +8,6 @@ import (
 
 	"github.com/blang/semver/v4"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
@@ -18,15 +17,13 @@ import (
 // DetectOpenShiftVersion queries the OpenShift ClusterVersion resource to determine the cluster version.
 func DetectOpenShiftVersion(
 	ctx context.Context,
-	k8sClient *client.Client,
+	k8sClient client.Reader,
 ) (*semver.Version, error) {
-	if k8sClient == nil || k8sClient.Dynamic == nil {
+	if k8sClient == nil {
 		return nil, errors.New("kubernetes client not available")
 	}
 
-	cv, err := k8sClient.Dynamic.
-		Resource(resources.ClusterVersion.GVR()).
-		Get(ctx, "version", metav1.GetOptions{})
+	cv, err := k8sClient.Get(ctx, resources.ClusterVersion.GVR(), "version")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get ClusterVersion: %w", err)
 	}

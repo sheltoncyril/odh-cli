@@ -10,6 +10,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
+	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
@@ -64,7 +65,7 @@ func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*resu
 	)
 
 	// Get the DSCInitialization singleton
-	dsci, err := target.Client.GetDSCInitialization(ctx)
+	dsci, err := client.GetDSCInitialization(ctx, target.Client)
 	switch {
 	case apierrors.IsNotFound(err):
 		return results.DSCInitializationNotFound(string(check.GroupService), check.ServiceServiceMesh, check.CheckTypeRemoval, checkDescription), nil

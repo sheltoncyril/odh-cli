@@ -50,7 +50,7 @@ func (r *Resolver) CanHandle(gvr schema.GroupVersionResource) bool {
 // Resolve finds all dependencies for a DataSciencePipelinesApplication.
 func (r *Resolver) Resolve(
 	ctx context.Context,
-	c *client.Client,
+	c client.Reader,
 	obj *unstructured.Unstructured,
 ) ([]dependencies.Dependency, error) {
 	namespace := obj.GetNamespace()
@@ -83,7 +83,7 @@ func (r *Resolver) Resolve(
 
 func (r *Resolver) resolveSecrets(
 	ctx context.Context,
-	c *client.Client,
+	c client.Reader,
 	namespace string,
 	obj *unstructured.Unstructured,
 ) ([]dependencies.Dependency, error) {
@@ -151,7 +151,7 @@ func (r *Resolver) resolveSecrets(
 
 func (r *Resolver) resolveConfigMaps(
 	ctx context.Context,
-	c *client.Client,
+	c client.Reader,
 	namespace string,
 	obj *unstructured.Unstructured,
 ) ([]dependencies.Dependency, error) {
@@ -196,7 +196,7 @@ func (r *Resolver) resolveConfigMaps(
 
 func (r *Resolver) resolvePVCs(
 	ctx context.Context,
-	c *client.Client,
+	c client.Reader,
 	namespace string,
 	dspaName string,
 	obj *unstructured.Unstructured,

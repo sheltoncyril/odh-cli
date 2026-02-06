@@ -41,9 +41,9 @@ func TestDiagnosticCR_EndToEndExecution(t *testing.T) {
 	}
 
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme, dsc)
-	k8sClient := &client.Client{
+	k8sClient := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	// Create a test check that validates CR structure
 	testCheck := &testDiagnosticCheck{}

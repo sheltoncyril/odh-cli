@@ -11,10 +11,10 @@ import (
 
 // DiscoverWorkloads discovers user-created workload resources via CRD labels
 // Workloads are CRDs labeled with "platform.opendatahub.io/part-of".
-func DiscoverWorkloads(ctx context.Context, c *client.Client) ([]schema.GroupVersionResource, error) {
-	// Use the client's DiscoverGVRs method with the default label selector
+func DiscoverWorkloads(ctx context.Context, c client.Client) ([]schema.GroupVersionResource, error) {
+	// Use client.DiscoverGVRs with the default label selector
 	// This will find all CRDs labeled with "platform.opendatahub.io/part-of"
-	gvrs, err := c.DiscoverGVRs(ctx)
+	gvrs, err := client.DiscoverGVRs(ctx, c)
 	if err != nil {
 		return nil, fmt.Errorf("discovering workload CRDs: %w", err)
 	}
@@ -23,8 +23,8 @@ func DiscoverWorkloads(ctx context.Context, c *client.Client) ([]schema.GroupVer
 }
 
 // DiscoverWorkloadsWithLabel discovers workload resources with a custom label selector.
-func DiscoverWorkloadsWithLabel(ctx context.Context, c *client.Client, labelSelector string) ([]schema.GroupVersionResource, error) {
-	gvrs, err := c.DiscoverGVRs(ctx, client.WithCRDLabelSelector(labelSelector))
+func DiscoverWorkloadsWithLabel(ctx context.Context, c client.Client, labelSelector string) ([]schema.GroupVersionResource, error) {
+	gvrs, err := client.DiscoverGVRs(ctx, c, client.WithCRDLabelSelector(labelSelector))
 	if err != nil {
 		return nil, fmt.Errorf("discovering workload CRDs with label %q: %w", labelSelector, err)
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
+	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -46,7 +47,7 @@ func (c *RenamingCheck) Validate(
 	dr := c.NewResult()
 
 	// Get the DataScienceCluster singleton
-	dsc, err := target.Client.GetDataScienceCluster(ctx)
+	dsc, err := client.GetDataScienceCluster(ctx, target.Client)
 	switch {
 	case apierrors.IsNotFound(err):
 		return results.DataScienceClusterNotFound(string(c.Group()), c.Kind, c.CheckType, c.Description()), nil

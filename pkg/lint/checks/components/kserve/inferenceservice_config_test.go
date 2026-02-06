@@ -36,9 +36,9 @@ func TestInferenceServiceConfigCheck_NoDSCI(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -82,9 +82,9 @@ func TestInferenceServiceConfigCheck_ConfigMapNotFound(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsci)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -145,9 +145,9 @@ func TestInferenceServiceConfigCheck_ConfigMapManagedFalse(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsci, configMap)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -210,9 +210,9 @@ func TestInferenceServiceConfigCheck_ConfigMapManagedTrue(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsci, configMap)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -270,9 +270,9 @@ func TestInferenceServiceConfigCheck_ConfigMapNoAnnotation(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsci, configMap)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -331,9 +331,9 @@ func TestInferenceServiceConfigCheck_ConfigMapEmptyAnnotations(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsci, configMap)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -395,9 +395,9 @@ func TestInferenceServiceConfigCheck_DSCINoNamespace(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsci, configMap)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")

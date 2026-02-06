@@ -54,7 +54,7 @@ func (c *ConfigMapManagedCheck) Validate(
 	dr := c.NewResult()
 
 	// Get the applications namespace from DSCI
-	applicationsNamespace, err := target.Client.GetApplicationsNamespace(ctx)
+	applicationsNamespace, err := client.GetApplicationsNamespace(ctx, target.Client)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return results.DSCInitializationNotFound(

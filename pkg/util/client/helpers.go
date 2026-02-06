@@ -32,13 +32,14 @@ func WithCRDLabelSelector(selector string) DiscoverGVRsOption {
 }
 
 // DiscoverGVRs discovers custom resources and returns their GVRs.
-func (c *Client) DiscoverGVRs(ctx context.Context, opts ...DiscoverGVRsOption) ([]schema.GroupVersionResource, error) {
+// Requires full Client access because it uses the APIExtensions client.
+func DiscoverGVRs(ctx context.Context, c Client, opts ...DiscoverGVRsOption) ([]schema.GroupVersionResource, error) {
 	cfg := &DiscoverGVRsConfig{
 		LabelSelector: "platform.opendatahub.io/part-of", // default for workloads
 	}
 	util.ApplyOptions(cfg, opts...)
 
-	crdList, err := c.APIExtensions.ApiextensionsV1().CustomResourceDefinitions().List(ctx, metav1.ListOptions{
+	crdList, err := c.APIExtensions().ApiextensionsV1().CustomResourceDefinitions().List(ctx, metav1.ListOptions{
 		LabelSelector: cfg.LabelSelector,
 	})
 	if err != nil {
@@ -95,7 +96,7 @@ func WithFieldSelector(selector string) ListResourcesOption {
 
 // ListResources lists all instances of a resource type handling pagination automatically.
 // Returns pointers to avoid copying large objects.
-func (c *Client) ListResources(ctx context.Context, gvr schema.GroupVersionResource, opts ...ListResourcesOption) ([]*unstructured.Unstructured, error) {
+func (c *defaultClient) ListResources(ctx context.Context, gvr schema.GroupVersionResource, opts ...ListResourcesOption) ([]*unstructured.Unstructured, error) {
 	cfg := &ListResourcesConfig{}
 	util.ApplyOptions(cfg, opts...)
 
@@ -113,9 +114,9 @@ func (c *Client) ListResources(ctx context.Context, gvr schema.GroupVersionResou
 		var err error
 
 		if cfg.Namespace != "" {
-			list, err = c.Dynamic.Resource(gvr).Namespace(cfg.Namespace).List(ctx, listOpts)
+			list, err = c.dynamic.Resource(gvr).Namespace(cfg.Namespace).List(ctx, listOpts)
 		} else {
-			list, err = c.Dynamic.Resource(gvr).List(ctx, listOpts)
+			list, err = c.dynamic.Resource(gvr).List(ctx, listOpts)
 		}
 
 		if err != nil {
@@ -145,14 +146,14 @@ func (c *Client) ListResources(ctx context.Context, gvr schema.GroupVersionResou
 // List lists all instances of a resource type handling pagination automatically.
 // Returns pointers to avoid copying large objects.
 // This is a convenience wrapper around ListResources that accepts ResourceType.
-func (c *Client) List(ctx context.Context, resourceType resources.ResourceType, opts ...ListResourcesOption) ([]*unstructured.Unstructured, error) {
+func (c *defaultClient) List(ctx context.Context, resourceType resources.ResourceType, opts ...ListResourcesOption) ([]*unstructured.Unstructured, error) {
 	return c.ListResources(ctx, resourceType.GVR(), opts...)
 }
 
 // ListMetadata lists all instances of a resource type returning only metadata.
 // Handles pagination automatically. Returns pointers to avoid copying.
 // This is more efficient than List when only metadata fields (name, namespace, labels, annotations) are needed.
-func (c *Client) ListMetadata(ctx context.Context, resourceType resources.ResourceType, opts ...ListResourcesOption) ([]*metav1.PartialObjectMetadata, error) {
+func (c *defaultClient) ListMetadata(ctx context.Context, resourceType resources.ResourceType, opts ...ListResourcesOption) ([]*metav1.PartialObjectMetadata, error) {
 	cfg := &ListResourcesConfig{}
 	util.ApplyOptions(cfg, opts...)
 
@@ -172,9 +173,9 @@ func (c *Client) ListMetadata(ctx context.Context, resourceType resources.Resour
 		var err error
 
 		if cfg.Namespace != "" {
-			list, err = c.Metadata.Resource(gvr).Namespace(cfg.Namespace).List(ctx, listOpts)
+			list, err = c.metadata.Resource(gvr).Namespace(cfg.Namespace).List(ctx, listOpts)
 		} else {
-			list, err = c.Metadata.Resource(gvr).List(ctx, listOpts)
+			list, err = c.metadata.Resource(gvr).List(ctx, listOpts)
 		}
 
 		if err != nil {
@@ -202,14 +203,58 @@ func (c *Client) ListMetadata(ctx context.Context, resourceType resources.Resour
 }
 
 // GetResource is a convenience wrapper around Get that accepts ResourceType.
-func (c *Client) GetResource(ctx context.Context, resourceType resources.ResourceType, name string, opts ...GetOption) (*unstructured.Unstructured, error) {
+func (c *defaultClient) GetResource(ctx context.Context, resourceType resources.ResourceType, name string, opts ...GetOption) (*unstructured.Unstructured, error) {
 	return c.Get(ctx, resourceType.GVR(), name, opts...)
 }
 
+// GetConfig holds options for customizing Get operations (e.g., namespace scope).
+type GetConfig struct {
+	Namespace string
+}
+
+// GetOption is a functional option for configuring Get operations.
+type GetOption = util.Option[GetConfig]
+
+// InNamespace specifies the namespace for the resource (optional for cluster-scoped).
+func InNamespace(ns string) GetOption {
+	return util.FunctionalOption[GetConfig](func(c *GetConfig) {
+		c.Namespace = ns
+	})
+}
+
+// Get retrieves a single resource by name, automatically handling namespace vs cluster-scoped resources.
+func (c *defaultClient) Get(ctx context.Context, gvr schema.GroupVersionResource, name string, opts ...GetOption) (*unstructured.Unstructured, error) {
+	cfg := &GetConfig{}
+	util.ApplyOptions(cfg, opts...)
+
+	var resource *unstructured.Unstructured
+	var err error
+
+	if cfg.Namespace != "" {
+		resource, err = c.dynamic.Resource(gvr).Namespace(cfg.Namespace).Get(ctx, name, metav1.GetOptions{})
+	} else {
+		// Cluster-scoped resource
+		resource, err = c.dynamic.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
+	}
+
+	if err != nil {
+		// Permission errors are non-fatal - return nil resource
+		if IsPermissionError(err) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("getting resource: %w", err)
+	}
+
+	return resource, nil
+}
+
+// --- Standalone helper functions that accept Reader ---
+
 // GetSingleton expects exactly one instance of the resource type to exist.
 // Returns error if zero or multiple instances found.
-func (c *Client) GetSingleton(ctx context.Context, resourceType resources.ResourceType) (*unstructured.Unstructured, error) {
-	items, err := c.List(ctx, resourceType)
+func GetSingleton(ctx context.Context, r Reader, resourceType resources.ResourceType) (*unstructured.Unstructured, error) {
+	items, err := r.List(ctx, resourceType)
 	if err != nil {
 		return nil, fmt.Errorf("listing %s resources: %w", resourceType.Kind, err)
 	}
@@ -223,26 +268,25 @@ func (c *Client) GetSingleton(ctx context.Context, resourceType resources.Resour
 		return nil, fmt.Errorf("expected single %s resource, found %d", resourceType.Kind, len(items))
 	}
 
-	// items is now []*unstructured.Unstructured, so items[0] is already a pointer
 	return items[0], nil
 }
 
-// GetDataScienceCluster is a convenience wrapper for retrieving the cluster's DataScienceCluster resource.
-func (c *Client) GetDataScienceCluster(ctx context.Context) (*unstructured.Unstructured, error) {
-	return c.GetSingleton(ctx, resources.DataScienceCluster)
+// GetDataScienceCluster retrieves the cluster's DataScienceCluster singleton resource.
+func GetDataScienceCluster(ctx context.Context, r Reader) (*unstructured.Unstructured, error) {
+	return GetSingleton(ctx, r, resources.DataScienceCluster)
 }
 
-// GetDSCInitialization is a convenience wrapper for retrieving the cluster's DSCInitialization resource.
-func (c *Client) GetDSCInitialization(ctx context.Context) (*unstructured.Unstructured, error) {
-	return c.GetSingleton(ctx, resources.DSCInitialization)
+// GetDSCInitialization retrieves the cluster's DSCInitialization singleton resource.
+func GetDSCInitialization(ctx context.Context, r Reader) (*unstructured.Unstructured, error) {
+	return GetSingleton(ctx, r, resources.DSCInitialization)
 }
 
 // GetApplicationsNamespace retrieves the applications namespace from DSCInitialization.
 // Returns the namespace string and nil error if found. Returns empty string and NotFound
 // error if DSCI doesn't exist or if applicationsNamespace is not set or empty. Returns
 // empty string and wrapped error for other failures.
-func (c *Client) GetApplicationsNamespace(ctx context.Context) (string, error) {
-	dsci, err := c.GetDSCInitialization(ctx)
+func GetApplicationsNamespace(ctx context.Context, r Reader) (string, error) {
+	dsci, err := GetDSCInitialization(ctx, r)
 	if err != nil {
 		return "", err
 	}
@@ -267,48 +311,6 @@ func (c *Client) GetApplicationsNamespace(ctx context.Context) (string, error) {
 	}
 
 	return namespace, nil
-}
-
-// GetConfig holds options for customizing Get operations (e.g., namespace scope).
-type GetConfig struct {
-	Namespace string
-}
-
-// GetOption is a functional option for configuring Get operations.
-type GetOption = util.Option[GetConfig]
-
-// InNamespace specifies the namespace for the resource (optional for cluster-scoped).
-func InNamespace(ns string) GetOption {
-	return util.FunctionalOption[GetConfig](func(c *GetConfig) {
-		c.Namespace = ns
-	})
-}
-
-// Get retrieves a single resource by name, automatically handling namespace vs cluster-scoped resources.
-func (c *Client) Get(ctx context.Context, gvr schema.GroupVersionResource, name string, opts ...GetOption) (*unstructured.Unstructured, error) {
-	cfg := &GetConfig{}
-	util.ApplyOptions(cfg, opts...)
-
-	var resource *unstructured.Unstructured
-	var err error
-
-	if cfg.Namespace != "" {
-		resource, err = c.Dynamic.Resource(gvr).Namespace(cfg.Namespace).Get(ctx, name, metav1.GetOptions{})
-	} else {
-		// Cluster-scoped resource
-		resource, err = c.Dynamic.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
-	}
-
-	if err != nil {
-		// Permission errors are non-fatal - return nil resource
-		if IsPermissionError(err) {
-			return nil, nil
-		}
-
-		return nil, fmt.Errorf("getting resource: %w", err)
-	}
-
-	return resource, nil
 }
 
 // Helper functions for CRD discovery

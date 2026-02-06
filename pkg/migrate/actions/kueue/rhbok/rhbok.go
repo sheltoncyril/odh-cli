@@ -13,6 +13,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/migrate/action"
 	"github.com/lburgazzoli/odh-cli/pkg/migrate/action/result"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
+	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/confirmation"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 	"github.com/lburgazzoli/odh-cli/pkg/util/operators"
@@ -91,7 +92,7 @@ func (a *RHBOKMigrationAction) checkKueueManaged(
 		"Check if Kueue is managed by DataScienceCluster",
 	)
 
-	dsc, err := target.Client.Dynamic.Resource(resources.DataScienceCluster.GVR()).
+	dsc, err := target.Client.Dynamic().Resource(resources.DataScienceCluster.GVR()).
 		Namespace("").
 		Get(ctx, "default-dsc", metav1.GetOptions{})
 
@@ -135,7 +136,7 @@ func (a *RHBOKMigrationAction) preserveKueueConfig(
 		fmt.Sprintf("Checking if ConfigMap '%s' exists in namespace '%s'", configMapName, applicationsNamespace),
 	)
 
-	configMap, err := target.Client.Dynamic.Resource(resources.ConfigMap.GVR()).
+	configMap, err := target.Client.Dynamic().Resource(resources.ConfigMap.GVR()).
 		Namespace(applicationsNamespace).
 		Get(ctx, configMapName, metav1.GetOptions{})
 
@@ -183,7 +184,7 @@ func (a *RHBOKMigrationAction) preserveKueueConfig(
 		return
 	}
 
-	_, err = target.Client.Dynamic.Resource(resources.ConfigMap.GVR()).
+	_, err = target.Client.Dynamic().Resource(resources.ConfigMap.GVR()).
 		Namespace(applicationsNamespace).
 		Update(ctx, configMap, metav1.UpdateOptions{})
 
@@ -210,7 +211,7 @@ func (a *RHBOKMigrationAction) installRHBOKOperator(
 	// Check if subscription exists first
 	subscriptionExists := false
 	if !target.DryRun {
-		_, err := target.Client.OLM.OperatorsV1alpha1().Subscriptions(operatorNamespace).Get(ctx, subscriptionName, metav1.GetOptions{})
+		_, err := target.Client.OLMClient().OperatorsV1alpha1().Subscriptions(operatorNamespace).Get(ctx, subscriptionName, metav1.GetOptions{})
 		subscriptionExists = err == nil
 	}
 
@@ -264,7 +265,7 @@ func (a *RHBOKMigrationAction) updateDataScienceCluster(
 		"Update DataScienceCluster Kueue managementState",
 	)
 
-	dsc, err := target.Client.GetDataScienceCluster(ctx)
+	dsc, err := client.GetDataScienceCluster(ctx, target.Client)
 	if err != nil {
 		step.Complete(result.StepFailed, "Failed to get DataScienceCluster: %v", err)
 
@@ -304,7 +305,7 @@ func (a *RHBOKMigrationAction) updateDataScienceCluster(
 		Steps:    retryMaxSteps,
 	}, func() (bool, error) {
 		// Get latest version
-		latestDSC, err := target.Client.GetDataScienceCluster(ctx)
+		latestDSC, err := client.GetDataScienceCluster(ctx, target.Client)
 		if err != nil {
 			return false, fmt.Errorf("failed to get DataScienceCluster: %w", err)
 		}
@@ -315,7 +316,7 @@ func (a *RHBOKMigrationAction) updateDataScienceCluster(
 		}
 
 		// Attempt update
-		_, err = target.Client.Dynamic.Resource(resources.DataScienceCluster.GVR()).
+		_, err = target.Client.Dynamic().Resource(resources.DataScienceCluster.GVR()).
 			Update(ctx, latestDSC, metav1.UpdateOptions{})
 		if err != nil {
 			// Retry on conflict errors

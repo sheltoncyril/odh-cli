@@ -34,9 +34,9 @@ func TestServiceMeshRemovalCheck_NoDSCI(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.0.0")
 	target := check.Target{
@@ -78,9 +78,9 @@ func TestServiceMeshRemovalCheck_NotConfigured(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsci)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.0.0")
 	target := check.Target{
@@ -125,9 +125,9 @@ func TestServiceMeshRemovalCheck_ManagedBlocking(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsci)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.0.0")
 	target := check.Target{
@@ -173,9 +173,9 @@ func TestServiceMeshRemovalCheck_UnmanagedBlocking(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsci)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.1.0")
 	target := check.Target{
@@ -221,9 +221,9 @@ func TestServiceMeshRemovalCheck_RemovedReady(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsci)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.0.0")
 	target := check.Target{

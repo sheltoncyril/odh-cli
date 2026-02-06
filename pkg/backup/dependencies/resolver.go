@@ -22,7 +22,7 @@ type Resolver interface {
 	// Resolve finds all dependencies for the given workload
 	Resolve(
 		ctx context.Context,
-		c *client.Client,
+		c client.Reader,
 		obj *unstructured.Unstructured,
 	) ([]Dependency, error)
 

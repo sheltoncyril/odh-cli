@@ -12,7 +12,7 @@ import (
 
 // DiscoveryStage lists workload instances and sends them to output channel.
 type DiscoveryStage struct {
-	Client  *client.Client
+	Client  client.Client
 	Verbose bool
 	IO      iostreams.Interface
 }

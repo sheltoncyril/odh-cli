@@ -58,10 +58,10 @@ func TestOtelMigrationCheck_NoOrchestrators(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -116,10 +116,10 @@ func TestOtelMigrationCheck_OrchestratorWithOtelExporter(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, orch)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(orch)...)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -171,10 +171,10 @@ func TestOtelMigrationCheck_OrchestratorWithoutOtelExporter(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, orch)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(orch)...)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -226,10 +226,10 @@ func TestOtelMigrationCheck_OrchestratorWithDeprecatedFields(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, orch)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(orch)...)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -336,10 +336,10 @@ func TestOtelMigrationCheck_MultipleOrchestratorsWithDeprecatedFields(t *testing
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, orch1, orch2, orch3, orch4)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(orch1, orch2, orch3, orch4)...)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -463,10 +463,10 @@ func TestOtelMigrationCheck_AnnotationTargetVersion(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")

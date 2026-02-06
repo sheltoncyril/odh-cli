@@ -16,19 +16,32 @@ import (
 	"k8s.io/client-go/restmapper"
 )
 
-// Client provides access to Kubernetes dynamic and discovery clients.
-type Client struct {
-	Dynamic       dynamic.Interface
-	Discovery     discovery.DiscoveryInterface
-	APIExtensions apiextensionsclientset.Interface
-	OLM           olmclientset.Interface
-	Metadata      metadata.Interface
-	RESTMapper    meta.RESTMapper
+// Compile-time verification that defaultClient implements Client (and therefore Reader + Writer).
+var _ Client = (*defaultClient)(nil)
+
+// defaultClient is the concrete implementation of Client, Reader, and Writer.
+type defaultClient struct {
+	dynamic       dynamic.Interface
+	discovery     discovery.DiscoveryInterface
+	apiExtensions apiextensionsclientset.Interface
+	olm           olmclientset.Interface
+	metadata      metadata.Interface
+	restMapper    meta.RESTMapper
+
+	olmReader OLMReader
 }
+
+func (c *defaultClient) Dynamic() dynamic.Interface                      { return c.dynamic }
+func (c *defaultClient) Discovery() discovery.DiscoveryInterface         { return c.discovery }
+func (c *defaultClient) APIExtensions() apiextensionsclientset.Interface { return c.apiExtensions }
+func (c *defaultClient) Metadata() metadata.Interface                    { return c.metadata }
+func (c *defaultClient) RESTMapper() meta.RESTMapper                     { return c.restMapper }
+func (c *defaultClient) OLM() OLMReader                                  { return c.olmReader }
+func (c *defaultClient) OLMClient() olmclientset.Interface               { return c.olm }
 
 // NewClientWithConfig creates a client from a pre-configured REST config.
 // This allows callers to customize throttling settings before client creation.
-func NewClientWithConfig(restConfig *rest.Config) (*Client, error) {
+func NewClientWithConfig(restConfig *rest.Config) (Client, error) {
 	dynamicClient, err := dynamic.NewForConfig(restConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create dynamic client: %w", err)
@@ -54,24 +67,25 @@ func NewClientWithConfig(restConfig *rest.Config) (*Client, error) {
 		return nil, fmt.Errorf("failed to create metadata client: %w", err)
 	}
 
-	// Create RESTMapper with caching for efficient GVK→GVR mapping
+	// Create RESTMapper with caching for efficient GVK->GVR mapping.
 	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(
 		memory.NewMemCacheClient(discoveryClient),
 	)
 
-	return &Client{
-		Dynamic:       dynamicClient,
-		Discovery:     discoveryClient,
-		APIExtensions: apiExtensionsClient,
-		OLM:           olmClient,
-		Metadata:      metadataClient,
-		RESTMapper:    restMapper,
+	return &defaultClient{
+		dynamic:       dynamicClient,
+		discovery:     discoveryClient,
+		apiExtensions: apiExtensionsClient,
+		olm:           olmClient,
+		metadata:      metadataClient,
+		restMapper:    restMapper,
+		olmReader:     newOLMReader(olmClient),
 	}, nil
 }
 
 // NewClient creates a unified client with default throttling settings.
 // The client is configured with appropriate throttling for parallel CLI operations.
-func NewClient(configFlags *genericclioptions.ConfigFlags) (*Client, error) {
+func NewClient(configFlags *genericclioptions.ConfigFlags) (Client, error) {
 	restConfig, err := NewRESTConfig(configFlags, DefaultQPS, DefaultBurst)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create REST config: %w", err)

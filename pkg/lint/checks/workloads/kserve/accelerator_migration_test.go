@@ -37,10 +37,10 @@ func TestAcceleratorMigrationCheck_NoInferenceServices(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, acceleratorListKinds)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -87,10 +87,10 @@ func TestAcceleratorMigrationCheck_ISVCWithoutAcceleratorProfile(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, acceleratorListKinds, isvc)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(isvc)...)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -152,10 +152,10 @@ func TestAcceleratorMigrationCheck_ISVCWithExistingAcceleratorProfile(t *testing
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, acceleratorListKinds, isvc, profile)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(isvc, profile)...)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -209,10 +209,10 @@ func TestAcceleratorMigrationCheck_ISVCWithMissingAcceleratorProfile(t *testing.
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, acceleratorListKinds, isvc)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(isvc)...)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -316,10 +316,10 @@ func TestAcceleratorMigrationCheck_MixedInferenceServices(t *testing.T) {
 		toPartialObjectMetadata(isvc1, isvc2, isvc3, profile)...,
 	)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -428,10 +428,10 @@ func TestAcceleratorMigrationCheck_AnnotationTargetVersion(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, acceleratorListKinds)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")
@@ -486,10 +486,10 @@ func TestAcceleratorMigrationCheck_DefaultNamespace(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, acceleratorListKinds, isvc, profile)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(isvc, profile)...)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	currentVer := semver.MustParse("2.17.0")
 	targetVer := semver.MustParse("3.0.0")

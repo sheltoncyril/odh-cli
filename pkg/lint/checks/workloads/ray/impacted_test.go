@@ -62,10 +62,10 @@ func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	ver := semver.MustParse("3.0.0")
 	target := check.Target{
@@ -110,10 +110,10 @@ func TestImpactedWorkloadsCheck_WithCodeFlareFinalizer(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, rayCluster)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(rayCluster)...)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	ver := semver.MustParse("3.0.0")
 	target := check.Target{
@@ -161,10 +161,10 @@ func TestImpactedWorkloadsCheck_WithoutCodeFlareFinalizer(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, rayCluster)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(rayCluster)...)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	ver := semver.MustParse("3.0.0")
 	target := check.Target{
@@ -204,10 +204,10 @@ func TestImpactedWorkloadsCheck_NoFinalizers(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, rayCluster)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(rayCluster)...)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	ver := semver.MustParse("3.0.0")
 	target := check.Target{
@@ -282,10 +282,10 @@ func TestImpactedWorkloadsCheck_MultipleClusters(t *testing.T) {
 	)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(cluster1, cluster2, cluster3)...)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
 		Metadata: metadataClient,
-	}
+	})
 
 	ver := semver.MustParse("3.0.0")
 	target := check.Target{

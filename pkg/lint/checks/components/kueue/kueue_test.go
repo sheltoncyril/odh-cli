@@ -34,9 +34,9 @@ func TestKueueManagedRemovalCheck_NoDSC(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.0.0")
 	target := check.Target{
@@ -82,9 +82,9 @@ func TestKueueManagedRemovalCheck_NotConfigured(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsc)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.0.0")
 	target := check.Target{
@@ -130,9 +130,9 @@ func TestKueueManagedRemovalCheck_ManagedBlocking(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsc)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.0.0")
 	target := check.Target{
@@ -182,9 +182,9 @@ func TestKueueManagedRemovalCheck_UnmanagedAllowed(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsc)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.1.0")
 	target := check.Target{
@@ -231,9 +231,9 @@ func TestKueueManagedRemovalCheck_RemovedAllowed(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsc)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.0.0")
 	target := check.Target{

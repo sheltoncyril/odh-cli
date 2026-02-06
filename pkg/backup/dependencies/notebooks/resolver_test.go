@@ -198,7 +198,7 @@ func createConfigMap(
 func createFakeClient(
 	t *testing.T,
 	objs ...runtime.Object,
-) *client.Client {
+) client.Client {
 	t.Helper()
 
 	scheme := runtime.NewScheme()
@@ -209,7 +209,7 @@ func createFakeClient(
 
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, objs...)
 
-	return &client.Client{
+	return client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/operators"
+	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 )
 
 const (
@@ -48,7 +49,7 @@ func (c *Check) CanApply(target check.Target) bool {
 		return false
 	}
 
-	dsc, err := target.Client.GetDataScienceCluster(context.Background())
+	dsc, err := client.GetDataScienceCluster(context.Background(), target.Client)
 	if err != nil {
 		return false
 	}

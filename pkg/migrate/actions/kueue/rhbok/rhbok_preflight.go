@@ -9,6 +9,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/migrate/action"
 	"github.com/lburgazzoli/odh-cli/pkg/migrate/action/result"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
+	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 )
 
@@ -21,7 +22,7 @@ func (a *RHBOKMigrationAction) checkCurrentKueueState(
 		"Verify current Kueue state",
 	)
 
-	dsc, err := target.Client.GetDataScienceCluster(ctx)
+	dsc, err := client.GetDataScienceCluster(ctx, target.Client)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			step.Complete(result.StepFailed, "DataScienceCluster not found - OpenShift AI may not be installed")
@@ -59,7 +60,7 @@ func (a *RHBOKMigrationAction) checkNoRHBOKConflicts(
 		"Check for RHBOK operator conflicts",
 	)
 
-	subscription, err := target.Client.Dynamic.Resource(resources.Subscription.GVR()).
+	subscription, err := target.Client.Dynamic().Resource(resources.Subscription.GVR()).
 		Namespace("openshift-kueue-operator").
 		Get(ctx, "kueue-operator", metav1.GetOptions{})
 

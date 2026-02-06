@@ -34,9 +34,9 @@ func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.3.0")
 	target := check.Target{
@@ -84,9 +84,9 @@ func TestImpactedWorkloadsCheck_ActiveJobs(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, activeJob)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.3.0")
 	target := check.Target{
@@ -137,9 +137,9 @@ func TestImpactedWorkloadsCheck_CompletedJobsSucceeded(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, completedJob)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.3.0")
 	target := check.Target{
@@ -189,9 +189,9 @@ func TestImpactedWorkloadsCheck_CompletedJobsFailed(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, failedJob)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.3.0")
 	target := check.Target{
@@ -285,9 +285,9 @@ func TestImpactedWorkloadsCheck_MixedActiveAndCompleted(t *testing.T) {
 		completedJob,
 	)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.3.0")
 	target := check.Target{
@@ -329,9 +329,9 @@ func TestImpactedWorkloadsCheck_JobWithoutStatus(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, jobWithoutStatus)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.3.0")
 	target := check.Target{

@@ -13,9 +13,9 @@ import (
 
 // DetectFromDataScienceCluster attempts to detect version from DataScienceCluster resource
 // Returns version string and true if found, empty string and false otherwise.
-func DetectFromDataScienceCluster(ctx context.Context, c *client.Client) (string, bool, error) {
+func DetectFromDataScienceCluster(ctx context.Context, c client.Reader) (string, bool, error) {
 	// Get the DataScienceCluster singleton
-	dsc, err := c.GetDataScienceCluster(ctx)
+	dsc, err := client.GetDataScienceCluster(ctx, c)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return "", false, nil
@@ -39,9 +39,9 @@ func DetectFromDataScienceCluster(ctx context.Context, c *client.Client) (string
 
 // DetectFromDSCInitialization attempts to detect version from DSCInitialization resource
 // Returns version string and true if found, empty string and false otherwise.
-func DetectFromDSCInitialization(ctx context.Context, c *client.Client) (string, bool, error) {
+func DetectFromDSCInitialization(ctx context.Context, c client.Reader) (string, bool, error) {
 	// Get the DSCInitialization singleton
-	dsci, err := c.GetDSCInitialization(ctx)
+	dsci, err := client.GetDSCInitialization(ctx, c)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return "", false, nil
@@ -65,14 +65,14 @@ func DetectFromDSCInitialization(ctx context.Context, c *client.Client) (string,
 
 // DetectFromOLM attempts to detect version from OLM ClusterServiceVersion
 // Returns version string and true if found, empty string and false otherwise.
-func DetectFromOLM(ctx context.Context, c *client.Client) (string, bool, error) {
+func DetectFromOLM(ctx context.Context, c client.Reader) (string, bool, error) {
 	// Check if OLM client is available
-	if c.OLM == nil {
+	if !c.OLM().Available() {
 		return "", false, nil
 	}
 
 	// List ClusterServiceVersions with label selector for OpenShift AI operator
-	csvList, err := c.OLM.OperatorsV1alpha1().ClusterServiceVersions("").List(ctx, metav1.ListOptions{
+	csvList, err := c.OLM().ClusterServiceVersions("").List(ctx, metav1.ListOptions{
 		LabelSelector: "operators.coreos.com/rhods-operator.redhat-ods-operator",
 	})
 	if err != nil {

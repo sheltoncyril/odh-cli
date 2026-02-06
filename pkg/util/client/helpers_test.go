@@ -63,9 +63,10 @@ func TestListResources_SinglePage(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme, objects...)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, objects...)
 
-	client := &Client{
-		Dynamic:  dynamicClient,
-		Metadata: metadataClient,
+	client := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
 	}
 
 	gvr := schema.GroupVersionResource{
@@ -94,9 +95,10 @@ func TestListResources_MultiplePages(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme, objects...)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, objects...)
 
-	client := &Client{
-		Dynamic:  dynamicClient,
-		Metadata: metadataClient,
+	client := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
 	}
 
 	gvr := schema.GroupVersionResource{
@@ -133,9 +135,10 @@ func TestListResources_EmptyResults(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, gvrListMap)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme)
 
-	client := &Client{
-		Dynamic:  dynamicClient,
-		Metadata: metadataClient,
+	client := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
 	}
 
 	gvr := schema.GroupVersionResource{
@@ -161,9 +164,10 @@ func TestListResources_NamespaceScoped(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme, objects...)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, objects...)
 
-	client := &Client{
-		Dynamic:  dynamicClient,
-		Metadata: metadataClient,
+	client := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
 	}
 
 	gvr := schema.GroupVersionResource{
@@ -194,9 +198,10 @@ func TestList_DelegatesToListResources(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme, objects...)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, objects...)
 
-	client := &Client{
-		Dynamic:  dynamicClient,
-		Metadata: metadataClient,
+	client := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
 	}
 
 	resourceType := resources.ResourceType{
@@ -229,9 +234,10 @@ func TestGetSingleton_WithPointers(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme, objects...)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, objects...)
 
-	client := &Client{
-		Dynamic:  dynamicClient,
-		Metadata: metadataClient,
+	client := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
 	}
 
 	resourceType := resources.ResourceType{
@@ -241,7 +247,7 @@ func TestGetSingleton_WithPointers(t *testing.T) {
 		Kind:     "ConfigMap",
 	}
 
-	result, err := client.GetSingleton(ctx, resourceType)
+	result, err := GetSingleton(ctx, client, resourceType)
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result).ToNot(BeNil())
@@ -259,9 +265,10 @@ func TestGetSingleton_MultipleInstances(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme, objects...)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, objects...)
 
-	client := &Client{
-		Dynamic:  dynamicClient,
-		Metadata: metadataClient,
+	client := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
 	}
 
 	resourceType := resources.ResourceType{
@@ -271,7 +278,7 @@ func TestGetSingleton_MultipleInstances(t *testing.T) {
 		Kind:     "ConfigMap",
 	}
 
-	_, err := client.GetSingleton(ctx, resourceType)
+	_, err := GetSingleton(ctx, client, resourceType)
 
 	g.Expect(err).To(HaveOccurred())
 	g.Expect(err.Error()).To(ContainSubstring("expected single"))
@@ -292,9 +299,10 @@ func TestGetSingleton_NoInstances(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, gvrListMap)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme)
 
-	client := &Client{
-		Dynamic:  dynamicClient,
-		Metadata: metadataClient,
+	client := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
 	}
 
 	resourceType := resources.ResourceType{
@@ -304,7 +312,7 @@ func TestGetSingleton_NoInstances(t *testing.T) {
 		Kind:     "ConfigMap",
 	}
 
-	_, err := client.GetSingleton(ctx, resourceType)
+	_, err := GetSingleton(ctx, client, resourceType)
 
 	g.Expect(err).To(HaveOccurred())
 }
@@ -335,9 +343,10 @@ func TestListResources_ClusterScoped(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme, objects...)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, objects...)
 
-	client := &Client{
-		Dynamic:  dynamicClient,
-		Metadata: metadataClient,
+	client := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
 	}
 
 	gvr := schema.GroupVersionResource{
@@ -416,12 +425,13 @@ func TestGetApplicationsNamespace_DSCINotFound(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, gvrListMap)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme)
 
-	client := &Client{
-		Dynamic:  dynamicClient,
-		Metadata: metadataClient,
+	client := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
 	}
 
-	namespace, err := client.GetApplicationsNamespace(ctx)
+	namespace, err := GetApplicationsNamespace(ctx, client)
 
 	g.Expect(err).To(Satisfy(apierrors.IsNotFound))
 	g.Expect(namespace).To(BeEmpty())
@@ -440,12 +450,13 @@ func TestGetApplicationsNamespace_NamespaceSet(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme, dsci)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, dsci)
 
-	client := &Client{
-		Dynamic:  dynamicClient,
-		Metadata: metadataClient,
+	client := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
 	}
 
-	namespace, err := client.GetApplicationsNamespace(ctx)
+	namespace, err := GetApplicationsNamespace(ctx, client)
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(namespace).To(Equal(expectedNamespace))
@@ -462,12 +473,13 @@ func TestGetApplicationsNamespace_NamespaceNotSet(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme, dsci)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, dsci)
 
-	client := &Client{
-		Dynamic:  dynamicClient,
-		Metadata: metadataClient,
+	client := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
 	}
 
-	namespace, err := client.GetApplicationsNamespace(ctx)
+	namespace, err := GetApplicationsNamespace(ctx, client)
 
 	g.Expect(err).To(Satisfy(apierrors.IsNotFound))
 	g.Expect(namespace).To(BeEmpty())
@@ -485,12 +497,13 @@ func TestGetApplicationsNamespace_EmptyNamespace(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme, dsci)
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, dsci)
 
-	client := &Client{
-		Dynamic:  dynamicClient,
-		Metadata: metadataClient,
+	client := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
 	}
 
-	namespace, err := client.GetApplicationsNamespace(ctx)
+	namespace, err := GetApplicationsNamespace(ctx, client)
 
 	g.Expect(err).To(Satisfy(apierrors.IsNotFound))
 	g.Expect(namespace).To(BeEmpty())

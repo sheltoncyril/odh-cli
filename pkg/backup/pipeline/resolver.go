@@ -14,7 +14,7 @@ import (
 
 // ResolverStage resolves dependencies for workload instances.
 type ResolverStage struct {
-	Client      *client.Client
+	Client      client.Client
 	DepRegistry *dependencies.Registry
 	Verbose     bool
 	IO          iostreams.Interface

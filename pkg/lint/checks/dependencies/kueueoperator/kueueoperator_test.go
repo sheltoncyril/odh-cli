@@ -28,10 +28,10 @@ func TestKueueOperatorCheck_NotInstalled(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, nil)
 	olmClient := operatorfake.NewSimpleClientset()
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
 		OLM:     olmClient,
-	}
+	})
 
 	ver := semver.MustParse("2.17.0")
 	target := check.Target{
@@ -70,10 +70,10 @@ func TestKueueOperatorCheck_Installed(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, nil)
 	olmClient := operatorfake.NewSimpleClientset(sub)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
 		OLM:     olmClient,
-	}
+	})
 
 	ver := semver.MustParse("2.17.0")
 	target := check.Target{

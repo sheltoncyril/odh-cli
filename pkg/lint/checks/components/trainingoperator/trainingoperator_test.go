@@ -34,9 +34,9 @@ func TestTrainingOperatorDeprecationCheck_NoDSC(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.3.0")
 	target := check.Target{
@@ -81,9 +81,9 @@ func TestTrainingOperatorDeprecationCheck_NotConfigured(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsc)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.3.0")
 	target := check.Target{
@@ -128,9 +128,9 @@ func TestTrainingOperatorDeprecationCheck_ManagedDeprecated(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsc)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.3.0")
 	target := check.Target{
@@ -180,9 +180,9 @@ func TestTrainingOperatorDeprecationCheck_UnmanagedDeprecated(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsc)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.4.0")
 	target := check.Target{
@@ -229,9 +229,9 @@ func TestTrainingOperatorDeprecationCheck_RemovedReady(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsc)
 
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("3.3.0")
 	target := check.Target{

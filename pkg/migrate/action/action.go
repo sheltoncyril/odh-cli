@@ -44,7 +44,7 @@ type Action interface {
 
 // Target holds all context needed for executing migration actions.
 type Target struct {
-	Client         *client.Client
+	Client         client.Client
 	CurrentVersion *semver.Version // Version being migrated FROM
 	TargetVersion  *semver.Version // Version being migrated TO
 	DryRun         bool

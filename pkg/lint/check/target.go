@@ -11,8 +11,9 @@ import (
 
 // Target holds all context needed for executing diagnostic checks, including cluster version and optional resource.
 type Target struct {
-	// Client provides access to Kubernetes API for querying resources
-	Client *client.Client
+	// Client provides read-only access to Kubernetes API for querying resources.
+	// Uses the Reader interface to enforce that lint checks cannot perform write operations.
+	Client client.Reader
 
 	// CurrentVersion contains the current/source cluster version as parsed semver
 	// For lint mode: same as TargetVersion

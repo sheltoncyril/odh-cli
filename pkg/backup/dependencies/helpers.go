@@ -21,7 +21,7 @@ import (
 // Returns an error if an unsupported source type is provided.
 func ResolveConfigMaps(
 	ctx context.Context,
-	c *client.Client,
+	c client.Reader,
 	namespace string,
 	sources ...any,
 ) ([]Dependency, error) {
@@ -60,7 +60,7 @@ func ResolveConfigMaps(
 // Returns an error if an unsupported source type is provided.
 func ResolveSecrets(
 	ctx context.Context,
-	c *client.Client,
+	c client.Reader,
 	namespace string,
 	sources ...any,
 ) ([]Dependency, error) {
@@ -111,7 +111,7 @@ func ResolveSecrets(
 // Returns an error if an unsupported source type is provided.
 func ResolvePVCs(
 	ctx context.Context,
-	c *client.Client,
+	c client.Reader,
 	namespace string,
 	sources ...any,
 ) ([]Dependency, error) {

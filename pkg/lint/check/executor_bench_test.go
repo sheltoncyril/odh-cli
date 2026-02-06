@@ -22,9 +22,9 @@ func BenchmarkExecuteSelective_FullSuite(b *testing.B) {
 
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("2.17.0")
 	target := check.Target{
@@ -50,9 +50,9 @@ func BenchmarkExecuteSelective_GroupFilter(b *testing.B) {
 
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("2.17.0")
 	target := check.Target{
@@ -78,9 +78,9 @@ func BenchmarkExecuteSelective_SingleCheck(b *testing.B) {
 
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
-	c := &client.Client{
+	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
-	}
+	})
 
 	ver := semver.MustParse("2.17.0")
 	target := check.Target{

@@ -104,7 +104,7 @@ func WithConditionBuilder(builder ConditionBuilder) Option {
 //	)
 func CheckOperatorPresence(
 	ctx context.Context,
-	k8sClient *client.Client,
+	k8sClient client.Reader,
 	operatorKind string,
 	opts ...Option,
 ) (*result.DiagnosticResult, error) {
@@ -137,7 +137,7 @@ func CheckOperatorPresence(
 	dr := result.New(config.Group, config.Kind, config.Name, config.Description)
 
 	// Check if OLM client is available
-	if k8sClient.OLM == nil {
+	if !k8sClient.OLM().Available() {
 		// Use the custom condition builder if provided, otherwise treat as "not found"
 		condition := config.ConditionBuilder(false, "")
 		condition.Message = "OLM client not available"
@@ -147,7 +147,7 @@ func CheckOperatorPresence(
 	}
 
 	// List subscriptions
-	subscriptions, err := k8sClient.OLM.OperatorsV1alpha1().Subscriptions("").List(ctx, metav1.ListOptions{})
+	subscriptions, err := k8sClient.OLM().Subscriptions("").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("listing subscriptions: %w", err)
 	}

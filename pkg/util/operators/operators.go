@@ -49,7 +49,7 @@ type InstallConfig struct {
 // Then it waits for the CSV to be ready.
 func EnsureOperatorInstalled(
 	ctx context.Context,
-	k8sClient *client.Client,
+	k8sClient client.Client,
 	config InstallConfig,
 ) error {
 	if config.PollInterval == 0 {
@@ -67,7 +67,7 @@ func EnsureOperatorInstalled(
 	}
 
 	// Check if subscription exists
-	_, err := k8sClient.OLM.OperatorsV1alpha1().Subscriptions(config.Namespace).Get(ctx, config.Name, metav1.GetOptions{})
+	_, err := k8sClient.OLMClient().OperatorsV1alpha1().Subscriptions(config.Namespace).Get(ctx, config.Name, metav1.GetOptions{})
 
 	switch {
 	case err == nil:
@@ -92,7 +92,7 @@ func EnsureOperatorInstalled(
 
 func dryRunOperatorInstall(
 	ctx context.Context,
-	k8sClient *client.Client,
+	k8sClient client.Client,
 	config InstallConfig,
 ) error {
 	if config.Recorder == nil {
@@ -102,7 +102,7 @@ func dryRunOperatorInstall(
 	checkStep := config.Recorder.Child("check-subscription",
 		fmt.Sprintf("Checking if subscription '%s' exists in namespace '%s'", config.Name, config.Namespace))
 
-	_, err := k8sClient.OLM.OperatorsV1alpha1().Subscriptions(config.Namespace).Get(ctx, config.Name, metav1.GetOptions{})
+	_, err := k8sClient.OLMClient().OperatorsV1alpha1().Subscriptions(config.Namespace).Get(ctx, config.Name, metav1.GetOptions{})
 
 	switch {
 	case err == nil:
@@ -151,7 +151,7 @@ func dryRunOperatorInstall(
 
 func createSubscription(
 	ctx context.Context,
-	k8sClient *client.Client,
+	k8sClient client.Client,
 	config InstallConfig,
 ) error {
 	subscription := &operatorsv1alpha1.Subscription{
@@ -172,7 +172,7 @@ func createSubscription(
 		subscription.Spec.StartingCSV = config.StartingCSV
 	}
 
-	_, err := k8sClient.OLM.OperatorsV1alpha1().Subscriptions(config.Namespace).Create(ctx, subscription, metav1.CreateOptions{})
+	_, err := k8sClient.OLMClient().OperatorsV1alpha1().Subscriptions(config.Namespace).Create(ctx, subscription, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create subscription: %w", err)
 	}
@@ -183,7 +183,7 @@ func createSubscription(
 // WaitForCSV waits for a ClusterServiceVersion with the given name prefix to reach Succeeded phase.
 func WaitForCSV(
 	ctx context.Context,
-	k8sClient *client.Client,
+	k8sClient client.Client,
 	namespace string,
 	csvNamePrefix string,
 	pollInterval time.Duration,
@@ -202,7 +202,7 @@ func WaitForCSV(
 		timeout,
 		true,
 		func(ctx context.Context) (bool, error) {
-			csvList, err := k8sClient.OLM.OperatorsV1alpha1().ClusterServiceVersions(namespace).List(ctx, metav1.ListOptions{})
+			csvList, err := k8sClient.OLMClient().OperatorsV1alpha1().ClusterServiceVersions(namespace).List(ctx, metav1.ListOptions{})
 
 			if err != nil {
 				if client.IsUnrecoverableError(err) {
