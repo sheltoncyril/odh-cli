@@ -38,19 +38,13 @@ func (c *RemovalCheck) CanApply(_ context.Context, target check.Target) bool {
 // Validate executes the check against the provided target.
 func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
 	return validate.Component(c, target).
+		InState(check.ManagementStateManaged).
 		Run(ctx, func(_ context.Context, req *validate.ComponentRequest) error {
-			switch req.ManagementState {
-			case check.ManagementStateManaged:
-				// CodeFlare is enabled - blocks upgrade (Unmanaged not supported for this component)
-				results.SetCompatibilityFailuref(req.Result,
-					"CodeFlare is enabled (state: %s) but will be removed in RHOAI 3.x",
-					req.ManagementState)
-			default:
-				// CodeFlare is disabled (Removed, Unmanaged, or not configured) - check passes
-				results.SetCompatibilitySuccessf(req.Result,
-					"CodeFlare is disabled (state: %s) - ready for RHOAI 3.x upgrade",
-					req.ManagementState)
-			}
+			results.SetCompatibilityFailuref(
+				req.Result,
+				"CodeFlare is enabled (state: %s) but will be removed in RHOAI 3.x",
+				req.ManagementState,
+			)
 
 			return nil
 		})

@@ -38,15 +38,13 @@ func (c *RemovalCheck) CanApply(_ context.Context, target check.Target) bool {
 func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
 	// Note: No InState filter - we need to handle all states explicitly
 	return validate.Component(c, target).
+		InState(check.ManagementStateManaged).
 		Run(ctx, func(_ context.Context, req *validate.ComponentRequest) error {
-			// Check if modelmesh is enabled (Managed or Unmanaged)
-			switch req.ManagementState {
-			case check.ManagementStateManaged, check.ManagementStateUnmanaged:
-				results.SetCompatibilityFailuref(req.Result, "ModelMesh is enabled (state: %s) but will be removed in RHOAI 3.x", req.ManagementState)
-			default:
-				// ModelMesh is disabled (Removed or not configured) - check passes
-				results.SetCompatibilitySuccessf(req.Result, "ModelMesh is disabled (state: %s) - ready for RHOAI 3.x upgrade", req.ManagementState)
-			}
+			results.SetCompatibilityFailuref(
+				req.Result,
+				"ModelMesh is enabled (state: %s) but will be removed in RHOAI 3.x",
+				req.ManagementState,
+			)
 
 			return nil
 		})
