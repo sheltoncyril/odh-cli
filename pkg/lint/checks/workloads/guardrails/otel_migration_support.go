@@ -9,6 +9,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
+	"github.com/lburgazzoli/odh-cli/pkg/util/inspect"
 )
 
 // deprecatedOtelExpressions lists JQ expressions for the deprecated otelExporter section in 3.x.
@@ -17,6 +18,17 @@ import (
 //nolint:gochecknoglobals // Package-level constant for deprecated field expressions.
 var deprecatedOtelExpressions = []string{
 	".spec.otelExporter",
+}
+
+// hasDeprecatedOtelFields returns true if the object contains any deprecated otelExporter fields.
+func hasDeprecatedOtelFields(obj *unstructured.Unstructured) (bool, error) {
+	found, err := inspect.HasFields(obj.Object, deprecatedOtelExpressions...)
+	if err != nil {
+		//nolint:wrapcheck // WorkloadBuilder.Run wraps filter errors with resource-type context.
+		return false, err
+	}
+
+	return len(found) > 0, nil
 }
 
 func newOtelMigrationCondition(
