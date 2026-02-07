@@ -2,17 +2,15 @@ package ray
 
 import (
 	"context"
-	"fmt"
 	"slices"
-	"strconv"
 
-	"k8s.io/apimachinery/pkg/types"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
-	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -54,59 +52,9 @@ func (c *ImpactedWorkloadsCheck) Validate(
 	ctx context.Context,
 	target check.Target,
 ) (*result.DiagnosticResult, error) {
-	dr := c.NewResult()
-
-	if target.TargetVersion != nil {
-		dr.Annotations[check.AnnotationCheckTargetVersion] = target.TargetVersion.String()
-	}
-
-	// Find impacted RayClusters
-	impactedClusters, err := c.findImpactedRayClusters(ctx, target)
-	if err != nil {
-		return nil, err
-	}
-
-	totalImpacted := len(impactedClusters)
-	dr.Annotations[check.AnnotationImpactedWorkloadCount] = strconv.Itoa(totalImpacted)
-
-	// Add condition for CodeFlare RayClusters
-	dr.Status.Conditions = append(dr.Status.Conditions,
-		newCodeFlareRayClusterCondition(totalImpacted),
-	)
-
-	// Populate ImpactedObjects if any workloads found
-	if totalImpacted > 0 {
-		populateImpactedObjects(dr, impactedClusters)
-	}
-
-	return dr, nil
-}
-
-func (c *ImpactedWorkloadsCheck) findImpactedRayClusters(
-	ctx context.Context,
-	target check.Target,
-) ([]types.NamespacedName, error) {
-	rayClusters, err := target.Client.ListMetadata(ctx, resources.RayCluster)
-	if err != nil {
-		if client.IsResourceTypeNotFound(err) {
-			return nil, nil
-		}
-
-		return nil, fmt.Errorf("listing RayClusters: %w", err)
-	}
-
-	var impacted []types.NamespacedName
-
-	for _, cluster := range rayClusters {
-		finalizers := cluster.GetFinalizers()
-
-		if slices.Contains(finalizers, finalizerCodeFlareOAuth) {
-			impacted = append(impacted, types.NamespacedName{
-				Namespace: cluster.GetNamespace(),
-				Name:      cluster.GetName(),
-			})
-		}
-	}
-
-	return impacted, nil
+	return validate.WorkloadsMetadata(c, target, resources.RayCluster).
+		Filter(func(cluster *metav1.PartialObjectMetadata) (bool, error) {
+			return slices.Contains(cluster.GetFinalizers(), finalizerCodeFlareOAuth), nil
+		}).
+		Complete(ctx, newCodeFlareRayClusterCondition)
 }

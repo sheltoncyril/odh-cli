@@ -1,12 +1,13 @@
 package ray
 
 import (
+	"context"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/resources"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 )
 
 // newWorkloadCompatibilityCondition creates a compatibility condition based on workload count.
@@ -37,31 +38,13 @@ func newWorkloadCompatibilityCondition(
 	)
 }
 
-func newCodeFlareRayClusterCondition(count int) result.Condition {
-	return newWorkloadCompatibilityCondition(
+func newCodeFlareRayClusterCondition(
+	_ context.Context,
+	req *validate.WorkloadRequest[*metav1.PartialObjectMetadata],
+) ([]result.Condition, error) {
+	return []result.Condition{newWorkloadCompatibilityCondition(
 		ConditionTypeCodeFlareRayClusterCompatible,
-		count,
+		len(req.Items),
 		"CodeFlare-managed RayCluster(s)",
-	)
-}
-
-func populateImpactedObjects(
-	dr *result.DiagnosticResult,
-	impactedClusters []types.NamespacedName,
-) {
-	dr.ImpactedObjects = make([]metav1.PartialObjectMetadata, 0, len(impactedClusters))
-
-	for _, r := range impactedClusters {
-		obj := metav1.PartialObjectMetadata{
-			TypeMeta: resources.RayCluster.TypeMeta(),
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: r.Namespace,
-				Name:      r.Name,
-				Annotations: map[string]string{
-					"managed-by": "CodeFlare",
-				},
-			},
-		}
-		dr.ImpactedObjects = append(dr.ImpactedObjects, obj)
-	}
+	)}, nil
 }

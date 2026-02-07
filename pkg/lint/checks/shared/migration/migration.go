@@ -13,6 +13,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/util/kube"
 )
 
 // Config holds the resource-specific configuration for a migration check.
@@ -97,14 +98,5 @@ func listResources(
 		return nil, fmt.Errorf("listing %ss: %w", cfg.ResourceLabel, err)
 	}
 
-	names := make([]types.NamespacedName, 0, len(profiles))
-
-	for _, profile := range profiles {
-		names = append(names, types.NamespacedName{
-			Namespace: profile.GetNamespace(),
-			Name:      profile.GetName(),
-		})
-	}
-
-	return names, nil
+	return kube.ToNamespacedNames(profiles), nil
 }

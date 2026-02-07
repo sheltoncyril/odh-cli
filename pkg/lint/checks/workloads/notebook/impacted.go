@@ -2,17 +2,12 @@ package notebook
 
 import (
 	"context"
-	"fmt"
-	"strconv"
-
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
-	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -51,55 +46,6 @@ func (c *ImpactedWorkloadsCheck) Validate(
 	ctx context.Context,
 	target check.Target,
 ) (*result.DiagnosticResult, error) {
-	dr := c.NewResult()
-
-	if target.TargetVersion != nil {
-		dr.Annotations[check.AnnotationCheckTargetVersion] = target.TargetVersion.String()
-	}
-
-	// Find all notebooks
-	notebooks, err := c.findImpactedNotebooks(ctx, target)
-	if err != nil {
-		return nil, err
-	}
-
-	totalImpacted := len(notebooks)
-	dr.Annotations[check.AnnotationImpactedWorkloadCount] = strconv.Itoa(totalImpacted)
-
-	// Add condition
-	dr.Status.Conditions = append(dr.Status.Conditions,
-		newNotebookCondition(totalImpacted),
-	)
-
-	// Populate ImpactedObjects if any notebooks found
-	if totalImpacted > 0 {
-		results.PopulateImpactedObjects(dr, resources.Notebook, notebooks)
-	}
-
-	return dr, nil
-}
-
-func (c *ImpactedWorkloadsCheck) findImpactedNotebooks(
-	ctx context.Context,
-	target check.Target,
-) ([]types.NamespacedName, error) {
-	notebooks, err := target.Client.ListMetadata(ctx, resources.Notebook)
-	if err != nil {
-		if client.IsResourceTypeNotFound(err) {
-			return nil, nil
-		}
-
-		return nil, fmt.Errorf("listing Notebooks: %w", err)
-	}
-
-	impacted := make([]types.NamespacedName, 0, len(notebooks))
-
-	for _, nb := range notebooks {
-		impacted = append(impacted, types.NamespacedName{
-			Namespace: nb.GetNamespace(),
-			Name:      nb.GetName(),
-		})
-	}
-
-	return impacted, nil
+	return validate.WorkloadsMetadata(c, target, resources.Notebook).
+		Complete(ctx, newNotebookCondition)
 }
