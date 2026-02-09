@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -78,7 +79,7 @@ func (c *AcceleratorMigrationCheck) Validate(
 	// Add condition based on findings
 	dr.Status.Conditions = append(
 		dr.Status.Conditions,
-		newAcceleratorMigrationCondition(totalImpacted, missingCount, c.CheckRemediation),
+		c.newAcceleratorMigrationCondition(totalImpacted, missingCount),
 	)
 
 	// Populate ImpactedObjects if any notebooks found
@@ -165,4 +166,43 @@ func (c *AcceleratorMigrationCheck) buildAcceleratorProfileCache(
 	}
 
 	return cache, nil
+}
+
+func (c *AcceleratorMigrationCheck) newAcceleratorMigrationCondition(
+	totalImpacted int,
+	totalMissing int,
+) result.Condition {
+	if totalImpacted == 0 {
+		return check.NewCondition(
+			ConditionTypeAcceleratorProfileCompatible,
+			metav1.ConditionTrue,
+			check.ReasonVersionCompatible,
+			"No Notebooks found using AcceleratorProfiles - no migration needed",
+		)
+	}
+
+	// If there are missing profiles, this is a blocking issue
+	if totalMissing > 0 {
+		return check.NewCondition(
+			ConditionTypeAcceleratorProfileCompatible,
+			metav1.ConditionFalse,
+			check.ReasonResourceNotFound,
+			"Found %d Notebook(s) referencing AcceleratorProfiles (%d missing) - ensure AcceleratorProfiles exist and migrate to HardwareProfiles",
+			totalImpacted,
+			totalMissing,
+			check.WithImpact(result.ImpactAdvisory),
+			check.WithRemediation(c.CheckRemediation),
+		)
+	}
+
+	// All referenced profiles exist - advisory only
+	return check.NewCondition(
+		ConditionTypeAcceleratorProfileCompatible,
+		metav1.ConditionFalse,
+		check.ReasonConfigurationInvalid,
+		"Found %d Notebook(s) using AcceleratorProfiles - migrate to HardwareProfiles before upgrading",
+		totalImpacted,
+		check.WithImpact(result.ImpactAdvisory),
+		check.WithRemediation(c.CheckRemediation),
+	)
 }
