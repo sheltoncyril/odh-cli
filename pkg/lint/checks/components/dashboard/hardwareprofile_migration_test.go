@@ -17,6 +17,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/dashboard"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/util/kube"
 
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -148,7 +149,7 @@ func TestHardwareProfileMigrationCheck_Validate_WithProfiles(t *testing.T) {
 	)
 	metadataClient := metadatafake.NewSimpleMetadataClient(
 		scheme,
-		toHardwareProfilePartialObjectMetadata(profile1, profile2)...,
+		kube.ToPartialObjectMetadata(profile1, profile2)...,
 	)
 
 	c := client.NewForTesting(client.TestClientConfig{
@@ -248,28 +249,4 @@ func createHardwareProfile(namespace string, name string) *unstructured.Unstruct
 	profile.SetName(name)
 
 	return profile
-}
-
-// toHardwareProfilePartialObjectMetadata converts unstructured objects to PartialObjectMetadata for the metadata client.
-func toHardwareProfilePartialObjectMetadata(objs ...*unstructured.Unstructured) []runtime.Object {
-	res := make([]runtime.Object, 0, len(objs))
-
-	for _, obj := range objs {
-		pom := &metav1.PartialObjectMetadata{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: obj.GetAPIVersion(),
-				Kind:       obj.GetKind(),
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        obj.GetName(),
-				Namespace:   obj.GetNamespace(),
-				Labels:      obj.GetLabels(),
-				Annotations: obj.GetAnnotations(),
-				Finalizers:  obj.GetFinalizers(),
-			},
-		}
-		res = append(res, pom)
-	}
-
-	return res
 }
