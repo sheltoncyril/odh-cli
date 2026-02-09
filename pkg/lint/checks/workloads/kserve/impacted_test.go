@@ -78,7 +78,7 @@ func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(3))
+	g.Expect(result.Status.Conditions).To(HaveLen(4))
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ServerlessInferenceServicesCompatible"),
 		"Status":  Equal(metav1.ConditionTrue),
@@ -96,6 +96,12 @@ func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
 		"Message": ContainSubstring("No ModelMesh ServingRuntime(s) found"),
+	}))
+	g.Expect(result.Status.Conditions[3].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal("RemovedServingRuntimesCompatible"),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal(check.ReasonVersionCompatible),
+		"Message": ContainSubstring("No InferenceService(s) using removed ServingRuntime(s) found"),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
 }
@@ -138,7 +144,7 @@ func TestImpactedWorkloadsCheck_ModelMeshInferenceService(t *testing.T) {
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(3))
+	g.Expect(result.Status.Conditions).To(HaveLen(4))
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ServerlessInferenceServicesCompatible"),
 		"Status":  Equal(metav1.ConditionTrue),
@@ -156,6 +162,12 @@ func TestImpactedWorkloadsCheck_ModelMeshInferenceService(t *testing.T) {
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
 		"Message": ContainSubstring("No ModelMesh ServingRuntime(s) found"),
+	}))
+	g.Expect(result.Status.Conditions[3].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal("RemovedServingRuntimesCompatible"),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal(check.ReasonVersionCompatible),
+		"Message": ContainSubstring("No InferenceService(s) using removed ServingRuntime(s) found"),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 }
@@ -198,7 +210,7 @@ func TestImpactedWorkloadsCheck_ServerlessInferenceService(t *testing.T) {
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(3))
+	g.Expect(result.Status.Conditions).To(HaveLen(4))
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ServerlessInferenceServicesCompatible"),
 		"Status":  Equal(metav1.ConditionFalse),
@@ -216,6 +228,12 @@ func TestImpactedWorkloadsCheck_ServerlessInferenceService(t *testing.T) {
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
 		"Message": ContainSubstring("No ModelMesh ServingRuntime(s) found"),
+	}))
+	g.Expect(result.Status.Conditions[3].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal("RemovedServingRuntimesCompatible"),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal(check.ReasonVersionCompatible),
+		"Message": ContainSubstring("No InferenceService(s) using removed ServingRuntime(s) found"),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 }
@@ -258,7 +276,7 @@ func TestImpactedWorkloadsCheck_ModelMeshServingRuntime(t *testing.T) {
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(3))
+	g.Expect(result.Status.Conditions).To(HaveLen(4))
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ServerlessInferenceServicesCompatible"),
 		"Status":  Equal(metav1.ConditionTrue),
@@ -276,6 +294,12 @@ func TestImpactedWorkloadsCheck_ModelMeshServingRuntime(t *testing.T) {
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),
 		"Message": ContainSubstring("Found 1 ModelMesh ServingRuntime(s)"),
+	}))
+	g.Expect(result.Status.Conditions[3].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal("RemovedServingRuntimesCompatible"),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal(check.ReasonVersionCompatible),
+		"Message": ContainSubstring("No InferenceService(s) using removed ServingRuntime(s) found"),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 }
@@ -319,7 +343,7 @@ func TestImpactedWorkloadsCheck_ServerlessServingRuntime_NotFlagged(t *testing.T
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(3))
+	g.Expect(result.Status.Conditions).To(HaveLen(4))
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal("ServerlessInferenceServicesCompatible"),
 		"Status": Equal(metav1.ConditionTrue),
@@ -330,6 +354,10 @@ func TestImpactedWorkloadsCheck_ServerlessServingRuntime_NotFlagged(t *testing.T
 	}))
 	g.Expect(result.Status.Conditions[2].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal("ModelMeshServingRuntimesCompatible"),
+		"Status": Equal(metav1.ConditionTrue),
+	}))
+	g.Expect(result.Status.Conditions[3].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal("RemovedServingRuntimesCompatible"),
 		"Status": Equal(metav1.ConditionTrue),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
@@ -373,7 +401,7 @@ func TestImpactedWorkloadsCheck_RawDeploymentAnnotation(t *testing.T) {
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(3))
+	g.Expect(result.Status.Conditions).To(HaveLen(4))
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal("ServerlessInferenceServicesCompatible"),
 		"Status": Equal(metav1.ConditionTrue),
@@ -384,6 +412,10 @@ func TestImpactedWorkloadsCheck_RawDeploymentAnnotation(t *testing.T) {
 	}))
 	g.Expect(result.Status.Conditions[2].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal("ModelMeshServingRuntimesCompatible"),
+		"Status": Equal(metav1.ConditionTrue),
+	}))
+	g.Expect(result.Status.Conditions[3].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal("RemovedServingRuntimesCompatible"),
 		"Status": Equal(metav1.ConditionTrue),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
@@ -427,7 +459,7 @@ func TestImpactedWorkloadsCheck_NoAnnotation(t *testing.T) {
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(3))
+	g.Expect(result.Status.Conditions).To(HaveLen(4))
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal("ServerlessInferenceServicesCompatible"),
 		"Status": Equal(metav1.ConditionTrue),
@@ -438,6 +470,10 @@ func TestImpactedWorkloadsCheck_NoAnnotation(t *testing.T) {
 	}))
 	g.Expect(result.Status.Conditions[2].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":   Equal("ModelMeshServingRuntimesCompatible"),
+		"Status": Equal(metav1.ConditionTrue),
+	}))
+	g.Expect(result.Status.Conditions[3].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal("RemovedServingRuntimesCompatible"),
 		"Status": Equal(metav1.ConditionTrue),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
@@ -523,7 +559,7 @@ func TestImpactedWorkloadsCheck_MixedWorkloads(t *testing.T) {
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(3))
+	g.Expect(result.Status.Conditions).To(HaveLen(4))
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal("ServerlessInferenceServicesCompatible"),
 		"Status":  Equal(metav1.ConditionFalse),
@@ -542,7 +578,327 @@ func TestImpactedWorkloadsCheck_MixedWorkloads(t *testing.T) {
 		"Reason":  Equal(check.ReasonVersionIncompatible),
 		"Message": ContainSubstring("Found 1 ModelMesh ServingRuntime(s)"),
 	}))
+	g.Expect(result.Status.Conditions[3].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal("RemovedServingRuntimesCompatible"),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal(check.ReasonVersionCompatible),
+		"Message": ContainSubstring("No InferenceService(s) using removed ServingRuntime(s) found"),
+	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "3"))
+}
+
+func TestImpactedWorkloadsCheck_RemovedRuntime_OVMS(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	isvc := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.InferenceService.APIVersion(),
+			"kind":       resources.InferenceService.Kind,
+			"metadata": map[string]any{
+				"name":      "ovms-model",
+				"namespace": "test-ns",
+			},
+			"spec": map[string]any{
+				"predictor": map[string]any{
+					"model": map[string]any{
+						"runtime": "ovms",
+					},
+				},
+			},
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	_ = metav1.AddMetaToScheme(scheme)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, isvc)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(isvc)...)
+
+	c := client.NewForTesting(client.TestClientConfig{
+		Dynamic:  dynamicClient,
+		Metadata: metadataClient,
+	})
+
+	ver := semver.MustParse("3.0.0")
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
+	}
+
+	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
+	result, err := impactedCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result.Status.Conditions).To(HaveLen(4))
+	g.Expect(result.Status.Conditions[3].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal("RemovedServingRuntimesCompatible"),
+		"Status":  Equal(metav1.ConditionFalse),
+		"Reason":  Equal(check.ReasonVersionIncompatible),
+		"Message": ContainSubstring("Found 1 InferenceService(s) using removed ServingRuntime(s)"),
+	}))
+	g.Expect(result.ImpactedObjects).To(ContainElement(MatchFields(IgnoreExtras, Fields{
+		"ObjectMeta": MatchFields(IgnoreExtras, Fields{
+			"Name":      Equal("ovms-model"),
+			"Namespace": Equal("test-ns"),
+			"Annotations": And(
+				HaveKeyWithValue("serving.kserve.io/runtime", "ovms"),
+			),
+		}),
+	})))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
+}
+
+func TestImpactedWorkloadsCheck_RemovedRuntime_CaikitTGIS(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	isvc := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.InferenceService.APIVersion(),
+			"kind":       resources.InferenceService.Kind,
+			"metadata": map[string]any{
+				"name":      "caikit-model",
+				"namespace": "test-ns",
+			},
+			"spec": map[string]any{
+				"predictor": map[string]any{
+					"model": map[string]any{
+						"runtime": "caikit-tgis-serving-template",
+					},
+				},
+			},
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	_ = metav1.AddMetaToScheme(scheme)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, isvc)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(isvc)...)
+
+	c := client.NewForTesting(client.TestClientConfig{
+		Dynamic:  dynamicClient,
+		Metadata: metadataClient,
+	})
+
+	ver := semver.MustParse("3.0.0")
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
+	}
+
+	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
+	result, err := impactedCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result.Status.Conditions).To(HaveLen(4))
+	g.Expect(result.Status.Conditions[3].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal("RemovedServingRuntimesCompatible"),
+		"Status":  Equal(metav1.ConditionFalse),
+		"Reason":  Equal(check.ReasonVersionIncompatible),
+		"Message": ContainSubstring("Found 1 InferenceService(s) using removed ServingRuntime(s)"),
+	}))
+	g.Expect(result.ImpactedObjects).To(ContainElement(MatchFields(IgnoreExtras, Fields{
+		"ObjectMeta": MatchFields(IgnoreExtras, Fields{
+			"Name":      Equal("caikit-model"),
+			"Namespace": Equal("test-ns"),
+			"Annotations": And(
+				HaveKeyWithValue("serving.kserve.io/runtime", "caikit-tgis-serving-template"),
+			),
+		}),
+	})))
+}
+
+func TestImpactedWorkloadsCheck_NonRemovedRuntime(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	isvc := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.InferenceService.APIVersion(),
+			"kind":       resources.InferenceService.Kind,
+			"metadata": map[string]any{
+				"name":      "custom-model",
+				"namespace": "test-ns",
+			},
+			"spec": map[string]any{
+				"predictor": map[string]any{
+					"model": map[string]any{
+						"runtime": "my-custom-runtime",
+					},
+				},
+			},
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	_ = metav1.AddMetaToScheme(scheme)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, isvc)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(isvc)...)
+
+	c := client.NewForTesting(client.TestClientConfig{
+		Dynamic:  dynamicClient,
+		Metadata: metadataClient,
+	})
+
+	ver := semver.MustParse("3.0.0")
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
+	}
+
+	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
+	result, err := impactedCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result.Status.Conditions).To(HaveLen(4))
+	g.Expect(result.Status.Conditions[3].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal("RemovedServingRuntimesCompatible"),
+		"Status": Equal(metav1.ConditionTrue),
+		"Reason": Equal(check.ReasonVersionCompatible),
+	}))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
+}
+
+func TestImpactedWorkloadsCheck_NoRuntimeField(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	// ISVC without spec.predictor.model.runtime should not be flagged
+	isvc := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.InferenceService.APIVersion(),
+			"kind":       resources.InferenceService.Kind,
+			"metadata": map[string]any{
+				"name":      "no-runtime-model",
+				"namespace": "test-ns",
+			},
+			"spec": map[string]any{
+				"predictor": map[string]any{
+					"model": map[string]any{
+						"modelFormat": map[string]any{
+							"name": "sklearn",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	_ = metav1.AddMetaToScheme(scheme)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, isvc)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(isvc)...)
+
+	c := client.NewForTesting(client.TestClientConfig{
+		Dynamic:  dynamicClient,
+		Metadata: metadataClient,
+	})
+
+	ver := semver.MustParse("3.0.0")
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
+	}
+
+	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
+	result, err := impactedCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result.Status.Conditions).To(HaveLen(4))
+	g.Expect(result.Status.Conditions[3].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal("RemovedServingRuntimesCompatible"),
+		"Status": Equal(metav1.ConditionTrue),
+		"Reason": Equal(check.ReasonVersionCompatible),
+	}))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
+}
+
+func TestImpactedWorkloadsCheck_MixedRemovedAndNonRemovedRuntimes(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	isvc1 := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.InferenceService.APIVersion(),
+			"kind":       resources.InferenceService.Kind,
+			"metadata": map[string]any{
+				"name":      "ovms-model",
+				"namespace": "ns1",
+			},
+			"spec": map[string]any{
+				"predictor": map[string]any{
+					"model": map[string]any{
+						"runtime": "ovms",
+					},
+				},
+			},
+		},
+	}
+
+	isvc2 := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.InferenceService.APIVersion(),
+			"kind":       resources.InferenceService.Kind,
+			"metadata": map[string]any{
+				"name":      "caikit-model",
+				"namespace": "ns2",
+			},
+			"spec": map[string]any{
+				"predictor": map[string]any{
+					"model": map[string]any{
+						"runtime": "caikit-standalone-serving-template",
+					},
+				},
+			},
+		},
+	}
+
+	isvc3 := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.InferenceService.APIVersion(),
+			"kind":       resources.InferenceService.Kind,
+			"metadata": map[string]any{
+				"name":      "custom-model",
+				"namespace": "ns3",
+			},
+			"spec": map[string]any{
+				"predictor": map[string]any{
+					"model": map[string]any{
+						"runtime": "my-custom-runtime",
+					},
+				},
+			},
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	_ = metav1.AddMetaToScheme(scheme)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, isvc1, isvc2, isvc3)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(isvc1, isvc2, isvc3)...)
+
+	c := client.NewForTesting(client.TestClientConfig{
+		Dynamic:  dynamicClient,
+		Metadata: metadataClient,
+	})
+
+	ver := semver.MustParse("3.0.0")
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
+	}
+
+	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
+	result, err := impactedCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result.Status.Conditions).To(HaveLen(4))
+	g.Expect(result.Status.Conditions[3].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal("RemovedServingRuntimesCompatible"),
+		"Status":  Equal(metav1.ConditionFalse),
+		"Reason":  Equal(check.ReasonVersionIncompatible),
+		"Message": ContainSubstring("Found 2 InferenceService(s) using removed ServingRuntime(s)"),
+	}))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "2"))
 }
 
 func TestImpactedWorkloadsCheck_Metadata(t *testing.T) {

@@ -1,12 +1,16 @@
 package kserve
 
 import (
+	"errors"
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
+	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 	"github.com/lburgazzoli/odh-cli/pkg/util/kube"
 )
 
@@ -128,4 +132,59 @@ func appendModelMeshSRCondition(
 			},
 		})
 	}
+}
+
+// isUsingRemovedRuntime returns true for InferenceServices referencing a removed ServingRuntime.
+func isUsingRemovedRuntime(obj *unstructured.Unstructured) (bool, error) {
+	runtime, err := jq.Query[string](obj, ".spec.predictor.model.runtime")
+
+	switch {
+	case errors.Is(err, jq.ErrNotFound):
+		return false, nil
+	case err != nil:
+		return false, fmt.Errorf("querying runtime for %s/%s: %w", obj.GetNamespace(), obj.GetName(), err)
+	case runtime == runtimeOVMS:
+		return true, nil
+	case runtime == runtimeCaikitStandalone:
+		return true, nil
+	case runtime == runtimeCaikitTGIS:
+		return true, nil
+	default:
+		return false, nil
+	}
+}
+
+// appendRemovedRuntimeISVCCondition appends the condition and impacted objects for
+// InferenceServices using removed ServingRuntimes to the result.
+func appendRemovedRuntimeISVCCondition(
+	dr *result.DiagnosticResult,
+	items []*unstructured.Unstructured,
+) error {
+	dr.Status.Conditions = append(dr.Status.Conditions,
+		newWorkloadCompatibilityCondition(
+			ConditionTypeRemovedSRCompatible,
+			len(items),
+			"InferenceService(s) using removed ServingRuntime(s)",
+		),
+	)
+
+	for _, r := range items {
+		runtime, err := jq.Query[string](r, ".spec.predictor.model.runtime")
+		if err != nil {
+			return fmt.Errorf("querying runtime for %s/%s: %w", r.GetNamespace(), r.GetName(), err)
+		}
+
+		dr.ImpactedObjects = append(dr.ImpactedObjects, metav1.PartialObjectMetadata{
+			TypeMeta: resources.InferenceService.TypeMeta(),
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: r.GetNamespace(),
+				Name:      r.GetName(),
+				Annotations: map[string]string{
+					"serving.kserve.io/runtime": runtime,
+				},
+			},
+		})
+	}
+
+	return nil
 }

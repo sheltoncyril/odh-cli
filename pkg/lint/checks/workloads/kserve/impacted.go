@@ -26,6 +26,13 @@ const (
 	ConditionTypeServerlessISVCCompatible = "ServerlessInferenceServicesCompatible"
 	ConditionTypeModelMeshISVCCompatible  = "ModelMeshInferenceServicesCompatible"
 	ConditionTypeModelMeshSRCompatible    = "ModelMeshServingRuntimesCompatible"
+	ConditionTypeRemovedSRCompatible      = "RemovedServingRuntimesCompatible"
+)
+
+const (
+	runtimeOVMS             = "ovms"
+	runtimeCaikitStandalone = "caikit-standalone-serving-template"
+	runtimeCaikitTGIS       = "caikit-tgis-serving-template"
 )
 
 // ImpactedWorkloadsCheck lists InferenceServices and ServingRuntimes using deprecated deployment modes.
@@ -41,7 +48,7 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 			Type:             check.CheckTypeImpactedWorkloads,
 			CheckID:          "workloads.kserve.impacted-workloads",
 			CheckName:        "Workloads :: KServe :: Impacted Workloads (3.x)",
-			CheckDescription: "Lists InferenceServices and ServingRuntimes using deprecated deployment modes (ModelMesh, Serverless) that will be impacted in RHOAI 3.x",
+			CheckDescription: "Lists InferenceServices and ServingRuntimes using deprecated deployment modes (ModelMesh, Serverless) or removed ServingRuntimes that will be impacted in RHOAI 3.x",
 		},
 	}
 }
@@ -79,10 +86,22 @@ func (c *ImpactedWorkloadsCheck) Validate(
 		return nil, err
 	}
 
+	// Fetch InferenceServices referencing removed ServingRuntimes
+	removedRuntimeISVCs, err := client.List[*unstructured.Unstructured](
+		ctx, target.Client, resources.InferenceService, isUsingRemovedRuntime,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	// Each function appends its condition and impacted objects to the result
 	appendServerlessISVCCondition(dr, allISVCs)
 	appendModelMeshISVCCondition(dr, allISVCs)
 	appendModelMeshSRCondition(dr, impactedSRs)
+
+	if err := appendRemovedRuntimeISVCCondition(dr, removedRuntimeISVCs); err != nil {
+		return nil, err
+	}
 
 	dr.Annotations[check.AnnotationImpactedWorkloadCount] = strconv.Itoa(len(dr.ImpactedObjects))
 
