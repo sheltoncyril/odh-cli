@@ -37,6 +37,7 @@ func NewConfigMapManagedCheck() *ConfigMapManagedCheck {
 			CheckID:          "components.kueue.configmap-managed",
 			CheckName:        "Components :: Kueue :: ConfigMap Managed Check (3.x)",
 			CheckDescription: "Validates that kueue-manager-config ConfigMap is managed by the operator before upgrading from RHOAI 2.x to 3.x",
+			CheckRemediation: "Remove the annotation opendatahub.io/managed=false from the kueue-manager-config ConfigMap, or back up your custom configuration for manual re-application after upgrade",
 		},
 	}
 }
@@ -77,6 +78,7 @@ func (c *ConfigMapManagedCheck) Validate(ctx context.Context, target check.Targe
 					"ConfigMap %s/%s has annotation %s=false - migration will not update this ConfigMap and it may become out of sync with operator defaults",
 					req.ApplicationsNamespace, configMapName, kube.AnnotationManaged,
 					check.WithImpact(result.ImpactAdvisory),
+					check.WithRemediation(c.CheckRemediation),
 				))
 			}
 

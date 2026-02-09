@@ -31,6 +31,7 @@ func NewRemovalCheck() *RemovalCheck {
 			CheckID:          "services.servicemesh.removal",
 			CheckName:        "Services :: ServiceMesh :: Removal (3.x)",
 			CheckDescription: "Validates that ServiceMesh is disabled before upgrading from RHOAI 2.x to 3.x (service mesh will be removed)",
+			CheckRemediation: "Disable ServiceMesh by setting managementState to 'Removed' in DSCInitialization before upgrading",
 		},
 	}
 }
@@ -52,7 +53,8 @@ func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*resu
 		case err != nil:
 			return fmt.Errorf("querying servicemesh managementState: %w", err)
 		case managementState == check.ManagementStateManaged || managementState == check.ManagementStateUnmanaged:
-			results.SetCompatibilityFailuref(dr, "ServiceMesh is enabled (state: %s) but will be removed in RHOAI 3.x", managementState)
+			results.SetCompatibilityFailuref(dr, "ServiceMesh is enabled (state: %s) but will be removed in RHOAI 3.x", managementState,
+				check.WithRemediation(c.CheckRemediation))
 		default:
 			results.SetCompatibilitySuccessf(dr, "ServiceMesh is disabled (state: %s) - ready for RHOAI 3.x upgrade", managementState)
 		}

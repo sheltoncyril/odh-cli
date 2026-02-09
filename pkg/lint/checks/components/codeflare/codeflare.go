@@ -26,6 +26,7 @@ func NewRemovalCheck() *RemovalCheck {
 			CheckID:          "components.codeflare.removal",
 			CheckName:        "Components :: CodeFlare :: Removal (3.x)",
 			CheckDescription: "Validates that CodeFlare is disabled before upgrading from RHOAI 2.x to 3.x (component will be removed)",
+			CheckRemediation: "Disable CodeFlare by setting managementState to 'Removed' in DataScienceCluster before upgrading",
 		},
 	}
 }
@@ -40,5 +41,6 @@ func (c *RemovalCheck) CanApply(_ context.Context, target check.Target) bool {
 func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
 	return validate.Component(c, target).
 		InState(check.ManagementStateManaged).
-		Run(ctx, validate.Removal("CodeFlare is enabled (state: %s) but will be removed in RHOAI 3.x"))
+		Run(ctx, validate.Removal("CodeFlare is enabled (state: %s) but will be removed in RHOAI 3.x",
+			check.WithRemediation(c.CheckRemediation)))
 }

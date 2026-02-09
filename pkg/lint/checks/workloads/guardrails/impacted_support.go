@@ -278,6 +278,7 @@ func (c *ImpactedWorkloadsCheck) newConfigurationCondition(
 		"Found %d misconfigured GuardrailsOrchestrator(s)",
 		impacted,
 		check.WithImpact(result.ImpactAdvisory),
+		check.WithRemediation(c.CheckRemediation),
 	)
 }
 

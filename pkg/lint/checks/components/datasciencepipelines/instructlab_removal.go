@@ -36,6 +36,7 @@ func NewInstructLabRemovalCheck() *InstructLabRemovalCheck {
 			CheckID:          "components.datasciencepipelines.instructlab-removal",
 			CheckName:        "Components :: DataSciencePipelines :: InstructLab ManagedPipelines Removal (3.x)",
 			CheckDescription: "Validates that DSPA objects do not use the removed InstructLab managedPipelines field before upgrading to RHOAI 3.x",
+			CheckRemediation: "Remove the '.spec.apiServer.managedPipelines.instructLab' field from affected DSPA objects before upgrading",
 		},
 	}
 }
@@ -86,6 +87,7 @@ func (c *InstructLabRemovalCheck) Validate(ctx context.Context, target check.Tar
 					"Found %d DataSciencePipelinesApplication(s) with deprecated '.spec.apiServer.managedPipelines.instructLab' field - InstructLab feature was removed in RHOAI 3.x",
 					len(impactedDSPAs),
 					check.WithImpact(result.ImpactAdvisory),
+					check.WithRemediation(c.CheckRemediation),
 				))
 
 				results.PopulateImpactedObjects(req.Result, usedResourceType, impactedDSPAs)

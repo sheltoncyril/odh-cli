@@ -33,6 +33,7 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 			CheckID:          "workloads.notebook.impacted-workloads",
 			CheckName:        "Workloads :: Notebook :: Impacted Workloads (3.x)",
 			CheckDescription: "Lists Notebook (workbench) instances that will be impacted in RHOAI 3.x",
+			CheckRemediation: "Stop all running Notebook workbenches and back up any unsaved work before upgrading",
 		},
 	}
 }
@@ -74,5 +75,6 @@ func (c *ImpactedWorkloadsCheck) newNotebookCondition(
 		"Found %d Notebook(s) - workloads will be impacted in RHOAI 3.x",
 		count,
 		check.WithImpact(result.ImpactAdvisory),
+		check.WithRemediation(c.CheckRemediation),
 	)}, nil
 }

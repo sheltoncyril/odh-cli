@@ -82,12 +82,14 @@ func NewCompatibilitySuccess(format string, args ...any) result.Condition {
 }
 
 // NewCompatibilityFailure creates a failure condition for version compatibility checks.
-func NewCompatibilityFailure(format string, args ...any) result.Condition {
+// Supports both printf-style format args and check.ConditionOption values (e.g. check.WithRemediation).
+func NewCompatibilityFailure(format string, argsAndOptions ...any) result.Condition {
 	return check.NewCondition(
 		check.ConditionTypeCompatible,
 		metav1.ConditionFalse,
 		check.ReasonVersionIncompatible,
-		fmt.Sprintf(format, args...),
+		format,
+		argsAndOptions...,
 	)
 }
 
@@ -122,13 +124,14 @@ func SetCompatibilitySuccessf(dr *result.DiagnosticResult, format string, args .
 }
 
 // SetCompatibilityFailuref sets a failure condition for version compatibility checks.
-// Supports printf-style formatting for cleaner message construction.
+// Supports both printf-style formatting and check.ConditionOption values (e.g. check.WithRemediation).
 //
 // Example:
 //
 //	SetCompatibilityFailuref(dr, "State: %s is incompatible with RHOAI %s", state, version)
-func SetCompatibilityFailuref(dr *result.DiagnosticResult, format string, args ...any) {
-	SetCondition(dr, NewCompatibilityFailure(format, args...))
+//	SetCompatibilityFailuref(dr, "Component %s will be removed", name, check.WithRemediation("Disable before upgrading"))
+func SetCompatibilityFailuref(dr *result.DiagnosticResult, format string, argsAndOptions ...any) {
+	SetCondition(dr, NewCompatibilityFailure(format, argsAndOptions...))
 }
 
 // SetAvailabilitySuccessf sets a success condition for resource availability checks.

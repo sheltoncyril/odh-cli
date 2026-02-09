@@ -49,6 +49,7 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 			CheckID:          "workloads.kserve.impacted-workloads",
 			CheckName:        "Workloads :: KServe :: Impacted Workloads (3.x)",
 			CheckDescription: "Lists InferenceServices and ServingRuntimes using deprecated deployment modes (ModelMesh, Serverless) or removed ServingRuntimes that will be impacted in RHOAI 3.x",
+			CheckRemediation: "Migrate InferenceServices from Serverless/ModelMesh to RawDeployment mode, and update ServingRuntimes to supported versions before upgrading",
 		},
 	}
 }

@@ -36,6 +36,7 @@ func NewInferenceServiceConfigCheck() *InferenceServiceConfigCheck {
 			CheckID:          "components.kserve.inferenceservice-config",
 			CheckName:        "Components :: KServe :: InferenceService Config Migration",
 			CheckDescription: "Validates that inferenceservice-config ConfigMap is managed by the operator before upgrading to RHOAI 3.x",
+			CheckRemediation: "Remove the annotation opendatahub.io/managed=false from the inferenceservice-config ConfigMap, or back up your custom configuration for manual re-application after upgrade",
 		},
 	}
 }
@@ -78,6 +79,7 @@ func (c *InferenceServiceConfigCheck) Validate(ctx context.Context, target check
 					"inferenceservice-config ConfigMap has %s=false - migration will not update it and configuration may become out of sync after upgrade to RHOAI 3.x",
 					kube.AnnotationManaged,
 					check.WithImpact(result.ImpactAdvisory),
+					check.WithRemediation(c.CheckRemediation),
 				))
 			}
 

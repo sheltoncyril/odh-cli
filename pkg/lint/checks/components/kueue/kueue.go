@@ -29,6 +29,7 @@ func NewManagedRemovalCheck() *ManagedRemovalCheck {
 			CheckID:          "components.kueue.managed-removal",
 			CheckName:        "Components :: Kueue :: Managed Removal (3.x)",
 			CheckDescription: "Validates that Kueue managed option is not used before upgrading from RHOAI 2.x to 3.x (managed option will be removed)",
+			CheckRemediation: "Migrate to the standalone Kueue operator (RHBOK) and set managementState to 'Removed' in DataScienceCluster before upgrading",
 		},
 	}
 }
@@ -42,5 +43,6 @@ func (c *ManagedRemovalCheck) CanApply(_ context.Context, target check.Target) b
 func (c *ManagedRemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
 	return validate.Component(c, target).
 		InState(check.ManagementStateManaged).
-		Run(ctx, validate.Removal("Kueue is managed by OpenShift AI (state: %s) but will be removed in RHOAI 3.x - migrate to RHBOK operator"))
+		Run(ctx, validate.Removal("Kueue is managed by OpenShift AI (state: %s) but will be removed in RHOAI 3.x - migrate to RHBOK operator",
+			check.WithRemediation(c.CheckRemediation)))
 }

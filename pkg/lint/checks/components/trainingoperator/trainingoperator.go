@@ -27,6 +27,7 @@ func NewDeprecationCheck() *DeprecationCheck {
 			CheckID:          "components.trainingoperator.deprecation",
 			CheckName:        "Components :: TrainingOperator :: Deprecation (3.3+)",
 			CheckDescription: "Validates that TrainingOperator (Kubeflow Training Operator v1) deprecation is acknowledged - will be replaced by Trainer v2 in future RHOAI releases",
+			CheckRemediation: "Plan migration from TrainingOperator (Kubeflow v1) to Trainer v2 in a future release",
 		},
 	}
 }
@@ -51,6 +52,7 @@ func newDeprecationCondition(_ context.Context, req *validate.ComponentRequest) 
 			"TrainingOperator (Kubeflow Training Operator v1) is enabled (state: %s) but is deprecated in RHOAI 3.3 and will be replaced by Trainer v2 in a future release",
 			req.ManagementState,
 			check.WithImpact(result.ImpactAdvisory),
+			check.WithRemediation("Plan migration from TrainingOperator (Kubeflow v1) to Trainer v2 in a future release"),
 		),
 	}, nil
 }

@@ -30,6 +30,7 @@ func NewRenamingCheck() *RenamingCheck {
 			CheckID:          "components.datasciencepipelines.renaming",
 			CheckName:        "Components :: DataSciencePipelines :: Component Renaming (3.x)",
 			CheckDescription: "Informs about DataSciencePipelines component renaming to AIPipelines in DSC v2 (RHOAI 3.x)",
+			CheckRemediation: "No action required - the component will be automatically renamed. Update any automation referencing '.spec.components.datasciencepipelines' to use '.spec.components.aipipelines' after upgrade",
 		},
 	}
 }
@@ -55,6 +56,7 @@ func newRenamingCondition(_ context.Context, req *validate.ComponentRequest) ([]
 			"DataSciencePipelines component (state: %s) will be renamed to AIPipelines in DSC v2 (RHOAI 3.x). The field path changes from '.spec.components.datasciencepipelines' to '.spec.components.aipipelines'",
 			req.ManagementState,
 			check.WithImpact(result.ImpactAdvisory),
+			check.WithRemediation("No action required - the component will be automatically renamed. Update any automation referencing '.spec.components.datasciencepipelines' to use '.spec.components.aipipelines' after upgrade"),
 		),
 	}, nil
 }

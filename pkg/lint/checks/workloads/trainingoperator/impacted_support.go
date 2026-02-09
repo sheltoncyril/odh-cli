@@ -37,6 +37,7 @@ func (c *ImpactedWorkloadsCheck) newPyTorchJobCondition(
 			activeCount,
 			completedCount,
 			check.WithImpact(result.ImpactAdvisory),
+			check.WithRemediation(c.CheckRemediation),
 		)
 	}
 
@@ -48,6 +49,7 @@ func (c *ImpactedWorkloadsCheck) newPyTorchJobCondition(
 			"Found %d active PyTorchJob(s) - workloads use deprecated TrainingOperator (Kubeflow v1) which will be replaced by Trainer v2",
 			activeCount,
 			check.WithImpact(result.ImpactAdvisory),
+			check.WithRemediation(c.CheckRemediation),
 		)
 	}
 

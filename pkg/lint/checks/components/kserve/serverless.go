@@ -30,6 +30,7 @@ func NewServerlessRemovalCheck() *ServerlessRemovalCheck {
 			CheckID:          "components.kserve.serverless-removal",
 			CheckName:        "Components :: KServe :: Serverless Removal (3.x)",
 			CheckDescription: "Validates that KServe serverless mode is disabled before upgrading from RHOAI 2.x to 3.x (serverless support will be removed)",
+			CheckRemediation: "Disable KServe serverless mode by setting serving.managementState to 'Removed' in DataScienceCluster before upgrading",
 		},
 	}
 }
@@ -52,7 +53,8 @@ func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target check.Targ
 			case err != nil:
 				return fmt.Errorf("querying kserve serving managementState: %w", err)
 			case state == check.ManagementStateManaged || state == check.ManagementStateUnmanaged:
-				results.SetCompatibilityFailuref(req.Result, "KServe serverless mode is enabled (state: %s) but will be removed in RHOAI 3.x", state)
+				results.SetCompatibilityFailuref(req.Result, "KServe serverless mode is enabled (state: %s) but will be removed in RHOAI 3.x", state,
+					check.WithRemediation(c.CheckRemediation))
 			default:
 				results.SetCompatibilitySuccessf(req.Result, "KServe serverless mode is disabled (state: %s) - ready for RHOAI 3.x upgrade", state)
 			}

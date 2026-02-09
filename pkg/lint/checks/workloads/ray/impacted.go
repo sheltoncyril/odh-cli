@@ -37,6 +37,7 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 			CheckID:          "workloads.ray.impacted-workloads",
 			CheckName:        "Workloads :: Ray :: Impacted Workloads (3.x)",
 			CheckDescription: "Lists RayClusters managed by CodeFlare that will be impacted in RHOAI 3.x (CodeFlare not available)",
+			CheckRemediation: "Delete or back up CodeFlare-managed RayClusters before upgrading, as CodeFlare will not be available in RHOAI 3.x",
 		},
 	}
 }

@@ -27,6 +27,7 @@ func (c *ImpactedWorkloadsCheck) newWorkloadCompatibilityCondition(
 			count,
 			workloadDescription,
 			check.WithImpact(result.ImpactAdvisory),
+			check.WithRemediation(c.CheckRemediation),
 		)
 	}
 

@@ -43,6 +43,7 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 			CheckID:          "workloads.guardrails.impacted-workloads",
 			CheckName:        "Workloads :: Guardrails :: Impacted Workloads (3.x)",
 			CheckDescription: "Detects GuardrailsOrchestrator CRs with configuration that will be impacted in RHOAI 3.x upgrade",
+			CheckRemediation: "Review and fix GuardrailsOrchestrator configuration before upgrading to ensure correct operation in RHOAI 3.x",
 		},
 	}
 }
