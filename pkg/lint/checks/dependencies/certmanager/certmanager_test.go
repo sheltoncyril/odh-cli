@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
+	resultpkg "github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/certmanager"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/testutil"
 
@@ -36,6 +37,7 @@ func TestCertManagerCheck_NotInstalled(t *testing.T) {
 		"Reason":  Equal(check.ReasonResourceNotFound),
 		"Message": ContainSubstring("not installed"),
 	}))
+	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
 }
 
 func TestCertManagerCheck_InstalledCertManager(t *testing.T) {
