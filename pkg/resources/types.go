@@ -235,6 +235,14 @@ var (
 		Resource: "guardrailsorchestrators",
 	}
 
+	// AppWrapper is the CodeFlare AppWrapper resource.
+	AppWrapper = ResourceType{
+		Group:    "workload.codeflare.dev",
+		Version:  "v1beta2",
+		Kind:     "AppWrapper",
+		Resource: "appwrappers",
+	}
+
 	// ClusterVersion is the OpenShift cluster version resource.
 	ClusterVersion = ResourceType{
 		Group:    "config.openshift.io",
