@@ -2,13 +2,16 @@ package kueue
 
 import (
 	"context"
+	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
+	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -40,9 +43,25 @@ func NewManagementStateCheck() *ManagementStateCheck {
 }
 
 // CanApply returns whether this check should run for the given target.
-// This check only applies when upgrading FROM 2.x TO 3.x.
-func (c *ManagementStateCheck) CanApply(_ context.Context, target check.Target) (bool, error) {
-	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion), nil
+// This check only applies when upgrading FROM 2.x TO 3.x and Kueue is Managed or Unmanaged.
+func (c *ManagementStateCheck) CanApply(ctx context.Context, target check.Target) (bool, error) {
+	if !version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion) {
+		return false, nil
+	}
+
+	if target.Client == nil {
+		return false, nil
+	}
+
+	dsc, err := client.GetDataScienceCluster(ctx, target.Client)
+	if err != nil {
+		return false, fmt.Errorf("getting DataScienceCluster: %w", err)
+	}
+
+	return components.HasManagementState(
+		dsc, "kueue",
+		check.ManagementStateManaged, check.ManagementStateUnmanaged,
+	), nil
 }
 
 func (c *ManagementStateCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
@@ -57,7 +76,7 @@ func (c *ManagementStateCheck) Validate(ctx context.Context, target check.Target
 					check.WithMessage("Kueue is managed by OpenShift AI (state: %s) but Managed option will be removed in RHOAI 3.x", req.ManagementState),
 					check.WithRemediation(c.CheckRemediation),
 				))
-			default:
+			case check.ManagementStateUnmanaged:
 				req.Result.SetCondition(check.NewCondition(
 					check.ConditionTypeCompatible,
 					metav1.ConditionTrue,

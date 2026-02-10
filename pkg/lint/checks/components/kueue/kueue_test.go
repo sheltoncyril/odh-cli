@@ -21,50 +21,39 @@ var listKinds = map[schema.GroupVersionResource]string{
 	resources.DataScienceCluster.GVR(): resources.DataScienceCluster.ListKind(),
 }
 
-func TestManagementStateCheck_NoDSC(t *testing.T) {
+func TestManagementStateCheck_CanApply_NoDSC(t *testing.T) {
 	g := NewWithT(t)
-	ctx := t.Context()
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	chk := kueue.NewManagementStateCheck()
-	result, err := chk.Validate(ctx, target)
+	canApply, err := chk.CanApply(t.Context(), target)
 
-	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeAvailable),
-		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonResourceNotFound),
-		"Message": ContainSubstring("No DataScienceCluster"),
-	}))
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(canApply).To(BeFalse())
 }
 
-func TestManagementStateCheck_NotConfigured(t *testing.T) {
+func TestManagementStateCheck_CanApply_NotConfigured(t *testing.T) {
 	g := NewWithT(t)
-	ctx := t.Context()
 
-	// DSC without kueue component — state defaults to empty, which is not Managed
+	// DSC without kueue component — state defaults to empty, not Managed/Unmanaged
+	dsc := testutil.NewDSC(map[string]string{"dashboard": "Managed"})
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"dashboard": "Managed"})},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{dsc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	chk := kueue.NewManagementStateCheck()
-	result, err := chk.Validate(ctx, target)
+	canApply, err := chk.CanApply(t.Context(), target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeCompatible),
-		"Status":  Equal(metav1.ConditionTrue),
-		"Reason":  Equal(check.ReasonVersionCompatible),
-		"Message": ContainSubstring("compatible with RHOAI 3.x"),
-	}))
+	g.Expect(canApply).To(BeFalse())
 }
 
 func TestManagementStateCheck_ManagedBlocking(t *testing.T) {
@@ -72,9 +61,10 @@ func TestManagementStateCheck_ManagedBlocking(t *testing.T) {
 	ctx := t.Context()
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kueue": "Managed"})},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kueue": "Managed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	chk := kueue.NewManagementStateCheck()
@@ -99,9 +89,10 @@ func TestManagementStateCheck_UnmanagedAllowed(t *testing.T) {
 	ctx := t.Context()
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kueue": "Unmanaged"})},
-		TargetVersion: "3.1.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kueue": "Unmanaged"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.1.0",
 	})
 
 	chk := kueue.NewManagementStateCheck()
@@ -117,27 +108,36 @@ func TestManagementStateCheck_UnmanagedAllowed(t *testing.T) {
 	}))
 }
 
-func TestManagementStateCheck_RemovedAllowed(t *testing.T) {
+func TestManagementStateCheck_CanApply_ManagementState(t *testing.T) {
 	g := NewWithT(t)
-	ctx := t.Context()
-
-	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kueue": "Removed"})},
-		TargetVersion: "3.0.0",
-	})
 
 	chk := kueue.NewManagementStateCheck()
-	result, err := chk.Validate(ctx, target)
 
-	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeCompatible),
-		"Status":  Equal(metav1.ConditionTrue),
-		"Reason":  Equal(check.ReasonVersionCompatible),
-		"Message": ContainSubstring("compatible with RHOAI 3.x"),
-	}))
+	testCases := []struct {
+		name     string
+		state    string
+		expected bool
+	}{
+		{name: "Managed", state: "Managed", expected: true},
+		{name: "Unmanaged", state: "Unmanaged", expected: true},
+		{name: "Removed", state: "Removed", expected: false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dsc := testutil.NewDSC(map[string]string{"kueue": tc.state})
+			target := testutil.NewTarget(t, testutil.TargetConfig{
+				ListKinds:      listKinds,
+				Objects:        []*unstructured.Unstructured{dsc},
+				CurrentVersion: "2.17.0",
+				TargetVersion:  "3.0.0",
+			})
+
+			canApply, err := chk.CanApply(t.Context(), target)
+			g.Expect(err).ToNot(HaveOccurred())
+			g.Expect(canApply).To(Equal(tc.expected))
+		})
+	}
 }
 
 func TestManagementStateCheck_Metadata(t *testing.T) {
