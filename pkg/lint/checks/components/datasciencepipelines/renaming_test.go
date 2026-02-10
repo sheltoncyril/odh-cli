@@ -22,26 +22,20 @@ var listKinds = map[schema.GroupVersionResource]string{
 	resources.DataScienceCluster.GVR(): resources.DataScienceCluster.ListKind(),
 }
 
-func TestRenamingCheck_NoDSC(t *testing.T) {
+func TestRenamingCheck_CanApply_NoDSC(t *testing.T) {
 	g := NewWithT(t)
-	ctx := t.Context()
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
-	renamingCheck := datasciencepipelines.NewRenamingCheck()
-	dr, err := renamingCheck.Validate(ctx, target)
+	chk := datasciencepipelines.NewRenamingCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 
-	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(dr.Status.Conditions).To(HaveLen(1))
-	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeAvailable),
-		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonResourceNotFound),
-		"Message": ContainSubstring("No DataScienceCluster"),
-	}))
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(canApply).To(BeFalse())
 }
 
 func TestRenamingCheck_ManagedRenamed(t *testing.T) {
@@ -49,9 +43,10 @@ func TestRenamingCheck_ManagedRenamed(t *testing.T) {
 	ctx := t.Context()
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"datasciencepipelines": "Managed"})},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"datasciencepipelines": "Managed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	renamingCheck := datasciencepipelines.NewRenamingCheck()
@@ -72,69 +67,78 @@ func TestRenamingCheck_ManagedRenamed(t *testing.T) {
 	))
 }
 
-func TestRenamingCheck_UnmanagedNotApplicable(t *testing.T) {
+func TestRenamingCheck_CanApply_Unmanaged(t *testing.T) {
 	g := NewWithT(t)
-	ctx := t.Context()
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"datasciencepipelines": "Unmanaged"})},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"datasciencepipelines": "Unmanaged"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
-	renamingCheck := datasciencepipelines.NewRenamingCheck()
-	dr, err := renamingCheck.Validate(ctx, target)
+	chk := datasciencepipelines.NewRenamingCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(dr.Status.Conditions).To(HaveLen(1))
-	// Unmanaged is not in InState(Managed), so the builder passes (check doesn't apply)
-	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":   Equal(check.ConditionTypeConfigured),
-		"Status": Equal(metav1.ConditionTrue),
-		"Reason": Equal(check.ReasonRequirementsMet),
-	}))
+	g.Expect(canApply).To(BeFalse())
 }
 
-func TestRenamingCheck_RemovedNotApplicable(t *testing.T) {
+func TestRenamingCheck_CanApply_Removed(t *testing.T) {
 	g := NewWithT(t)
-	ctx := t.Context()
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"datasciencepipelines": "Removed"})},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"datasciencepipelines": "Removed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
-	renamingCheck := datasciencepipelines.NewRenamingCheck()
-	dr, err := renamingCheck.Validate(ctx, target)
+	chk := datasciencepipelines.NewRenamingCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(dr.Status.Conditions).To(HaveLen(1))
-	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":   Equal(check.ConditionTypeConfigured),
-		"Status": Equal(metav1.ConditionTrue),
-		"Reason": Equal(check.ReasonRequirementsMet),
-	}))
+	g.Expect(canApply).To(BeFalse())
 }
 
-func TestRenamingCheck_CanApply(t *testing.T) {
+func TestRenamingCheck_CanApply_Managed(t *testing.T) {
+	g := NewWithT(t)
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"datasciencepipelines": "Managed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	chk := datasciencepipelines.NewRenamingCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeTrue())
+}
+
+func TestRenamingCheck_CanApply_VersionFiltering(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
-	renamingCheck := datasciencepipelines.NewRenamingCheck()
+	chk := datasciencepipelines.NewRenamingCheck()
+	dsc := testutil.NewDSC(map[string]string{"datasciencepipelines": "Managed"})
 
 	// Should not apply in lint mode (same version)
-	canApply, err := renamingCheck.CanApply(ctx, testutil.NewTarget(t, testutil.TargetConfig{
+	canApply, err := chk.CanApply(ctx, testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{dsc},
 		CurrentVersion: "2.17.0",
 		TargetVersion:  "2.17.0",
 	}))
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
 
-	// Should apply for 2.x -> 3.x upgrade
-	canApply, err = renamingCheck.CanApply(ctx, testutil.NewTarget(t, testutil.TargetConfig{
+	// Should apply for 2.x -> 3.x upgrade with Managed
+	canApply, err = chk.CanApply(ctx, testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{dsc},
 		CurrentVersion: "2.17.0",
 		TargetVersion:  "3.0.0",
 	}))
@@ -142,8 +146,9 @@ func TestRenamingCheck_CanApply(t *testing.T) {
 	g.Expect(canApply).To(BeTrue())
 
 	// Should not apply for 3.x -> 3.x upgrade
-	canApply, err = renamingCheck.CanApply(ctx, testutil.NewTarget(t, testutil.TargetConfig{
+	canApply, err = chk.CanApply(ctx, testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{dsc},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.1.0",
 	}))
@@ -151,7 +156,7 @@ func TestRenamingCheck_CanApply(t *testing.T) {
 	g.Expect(canApply).To(BeFalse())
 
 	// Should not apply with nil versions
-	canApply, err = renamingCheck.CanApply(ctx, check.Target{})
+	canApply, err = chk.CanApply(ctx, check.Target{})
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
 }

@@ -3,8 +3,6 @@ package kserve_test
 import (
 	"testing"
 
-	"github.com/blang/semver/v4"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -324,39 +322,71 @@ func TestInferenceServiceConfigCheck_Metadata(t *testing.T) {
 
 func TestInferenceServiceConfigCheck_CanApply(t *testing.T) {
 	g := NewWithT(t)
-
-	inferenceConfigCheck := kserve.NewInferenceServiceConfigCheck()
-
 	ctx := t.Context()
 
-	// Test 2.x to 3.x upgrade - should apply
-	currentVer2x := semver.MustParse("2.17.0")
-	targetVer3x := semver.MustParse("3.0.0")
-	target2xTo3x := check.Target{
-		CurrentVersion: &currentVer2x,
-		TargetVersion:  &targetVer3x,
-	}
-	canApply, err := inferenceConfigCheck.CanApply(ctx, target2xTo3x)
+	chk := kserve.NewInferenceServiceConfigCheck()
+	dsc := testutil.NewDSC(map[string]string{"kserve": "Managed"})
+
+	// Should apply for 2.x to 3.x with Managed
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      inferenceServiceConfigListKinds,
+		Objects:        []*unstructured.Unstructured{dsc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+	canApply, err := chk.CanApply(ctx, target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeTrue())
 
-	// Test 3.x to 3.x upgrade - should not apply
-	currentVer3x := semver.MustParse("3.0.0")
-	targetVer31 := semver.MustParse("3.1.0")
-	target3xTo3x := check.Target{
-		CurrentVersion: &currentVer3x,
-		TargetVersion:  &targetVer31,
-	}
-	canApply, err = inferenceConfigCheck.CanApply(ctx, target3xTo3x)
+	// Should not apply for 3.x to 3.x
+	target = testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      inferenceServiceConfigListKinds,
+		Objects:        []*unstructured.Unstructured{dsc},
+		CurrentVersion: "3.0.0",
+		TargetVersion:  "3.1.0",
+	})
+	canApply, err = chk.CanApply(ctx, target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
 
-	// Test nil versions - should not apply
-	targetNil := check.Target{
-		CurrentVersion: nil,
-		TargetVersion:  nil,
-	}
-	canApply, err = inferenceConfigCheck.CanApply(ctx, targetNil)
+	// Should not apply with nil versions
+	target = testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds: inferenceServiceConfigListKinds,
+		Objects:   []*unstructured.Unstructured{dsc},
+	})
+	canApply, err = chk.CanApply(ctx, target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
+}
+
+func TestInferenceServiceConfigCheck_CanApply_ManagementState(t *testing.T) {
+	g := NewWithT(t)
+
+	chk := kserve.NewInferenceServiceConfigCheck()
+
+	testCases := []struct {
+		name     string
+		state    string
+		expected bool
+	}{
+		{name: "Managed", state: "Managed", expected: true},
+		{name: "Unmanaged", state: "Unmanaged", expected: false},
+		{name: "Removed", state: "Removed", expected: false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dsc := testutil.NewDSC(map[string]string{"kserve": tc.state})
+			target := testutil.NewTarget(t, testutil.TargetConfig{
+				ListKinds:      inferenceServiceConfigListKinds,
+				Objects:        []*unstructured.Unstructured{dsc},
+				CurrentVersion: "2.17.0",
+				TargetVersion:  "3.0.0",
+			})
+
+			canApply, err := chk.CanApply(t.Context(), target)
+			g.Expect(err).ToNot(HaveOccurred())
+			g.Expect(canApply).To(Equal(tc.expected))
+		})
+	}
 }

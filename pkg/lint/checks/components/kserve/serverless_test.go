@@ -21,76 +21,52 @@ var listKinds = map[schema.GroupVersionResource]string{
 	resources.DataScienceCluster.GVR(): resources.DataScienceCluster.ListKind(),
 }
 
-func TestKServeServerlessRemovalCheck_NoDSC(t *testing.T) {
+func TestKServeServerlessRemovalCheck_CanApply_NoDSC(t *testing.T) {
 	g := NewWithT(t)
-	ctx := t.Context()
 
-	// Create empty cluster (no DataScienceCluster)
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
-	kserveCheck := kserve.NewServerlessRemovalCheck()
-	result, err := kserveCheck.Validate(ctx, target)
+	chk := kserve.NewServerlessRemovalCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 
-	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeAvailable),
-		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonResourceNotFound),
-		"Message": ContainSubstring("No DataScienceCluster"),
-	}))
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(canApply).To(BeFalse())
 }
 
-func TestKServeServerlessRemovalCheck_KServeNotConfigured(t *testing.T) {
+func TestKServeServerlessRemovalCheck_CanApply_ManagementState(t *testing.T) {
 	g := NewWithT(t)
-	ctx := t.Context()
 
-	// Create DataScienceCluster without kserve component
-	// "Not configured" is now treated as "Removed" - both mean component is not active
-	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"dashboard": "Managed"})},
-		TargetVersion: "3.0.0",
-	})
+	chk := kserve.NewServerlessRemovalCheck()
 
-	kserveCheck := kserve.NewServerlessRemovalCheck()
-	result, err := kserveCheck.Validate(ctx, target)
+	testCases := []struct {
+		name     string
+		state    string
+		expected bool
+	}{
+		{name: "Managed", state: "Managed", expected: true},
+		{name: "Unmanaged", state: "Unmanaged", expected: false},
+		{name: "Removed", state: "Removed", expected: false},
+	}
 
-	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	// When KServe is not configured, InState filter passes (check doesn't apply)
-	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":   Equal(check.ConditionTypeConfigured),
-		"Status": Equal(metav1.ConditionTrue),
-		"Reason": Equal(check.ReasonRequirementsMet),
-	}))
-}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dsc := testutil.NewDSC(map[string]string{"kserve": tc.state})
+			target := testutil.NewTarget(t, testutil.TargetConfig{
+				ListKinds:      listKinds,
+				Objects:        []*unstructured.Unstructured{dsc},
+				CurrentVersion: "2.17.0",
+				TargetVersion:  "3.0.0",
+			})
 
-func TestKServeServerlessRemovalCheck_KServeNotManaged(t *testing.T) {
-	g := NewWithT(t)
-	ctx := t.Context()
-
-	// Create DataScienceCluster with kserve Removed (not managed)
-	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kserve": "Removed"})},
-		TargetVersion: "3.0.0",
-	})
-
-	kserveCheck := kserve.NewServerlessRemovalCheck()
-	result, err := kserveCheck.Validate(ctx, target)
-
-	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	// When KServe is Removed, InState filter passes (check doesn't apply)
-	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":   Equal(check.ConditionTypeConfigured),
-		"Status": Equal(metav1.ConditionTrue),
-		"Reason": Equal(check.ReasonRequirementsMet),
-	}))
+			canApply, err := chk.CanApply(t.Context(), target)
+			g.Expect(err).ToNot(HaveOccurred())
+			g.Expect(canApply).To(Equal(tc.expected))
+		})
+	}
 }
 
 func TestKServeServerlessRemovalCheck_ServerlessNotConfigured(t *testing.T) {
@@ -117,9 +93,10 @@ func TestKServeServerlessRemovalCheck_ServerlessNotConfigured(t *testing.T) {
 	}
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{dsc},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{dsc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	kserveCheck := kserve.NewServerlessRemovalCheck()
@@ -162,9 +139,10 @@ func TestKServeServerlessRemovalCheck_ServerlessManagedBlocking(t *testing.T) {
 	}
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{dsc},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{dsc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	kserveCheck := kserve.NewServerlessRemovalCheck()
@@ -210,9 +188,10 @@ func TestKServeServerlessRemovalCheck_ServerlessUnmanagedBlocking(t *testing.T) 
 	}
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{dsc},
-		TargetVersion: "3.1.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{dsc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.1.0",
 	})
 
 	kserveCheck := kserve.NewServerlessRemovalCheck()
@@ -255,9 +234,10 @@ func TestKServeServerlessRemovalCheck_ServerlessRemovedReady(t *testing.T) {
 	}
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{dsc},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{dsc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	kserveCheck := kserve.NewServerlessRemovalCheck()

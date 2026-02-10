@@ -22,51 +22,36 @@ var listKinds = map[schema.GroupVersionResource]string{
 	resources.DataScienceCluster.GVR(): resources.DataScienceCluster.ListKind(),
 }
 
-func TestTrainingOperatorDeprecationCheck_NoDSC(t *testing.T) {
+func TestTrainingOperatorDeprecationCheck_CanApply_NoDSC(t *testing.T) {
 	g := NewWithT(t)
-	ctx := t.Context()
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:     listKinds,
 		TargetVersion: "3.3.0",
 	})
 
-	trainingoperatorCheck := trainingoperator.NewDeprecationCheck()
-	result, err := trainingoperatorCheck.Validate(ctx, target)
+	chk := trainingoperator.NewDeprecationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 
-	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeAvailable),
-		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonResourceNotFound),
-		"Message": ContainSubstring("No DataScienceCluster"),
-	}))
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(canApply).To(BeFalse())
 }
 
-func TestTrainingOperatorDeprecationCheck_NotConfigured(t *testing.T) {
+func TestTrainingOperatorDeprecationCheck_CanApply_NotConfigured(t *testing.T) {
 	g := NewWithT(t)
-	ctx := t.Context()
 
-	// Create DataScienceCluster without trainingoperator component
-	// "Not configured" is now treated as "Removed" - both mean component is not active
+	// DSC without trainingoperator component — should not apply
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:     listKinds,
 		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"dashboard": "Managed"})},
 		TargetVersion: "3.3.0",
 	})
 
-	trainingoperatorCheck := trainingoperator.NewDeprecationCheck()
-	result, err := trainingoperatorCheck.Validate(ctx, target)
+	chk := trainingoperator.NewDeprecationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	// When component is not configured, InState(Managed) filter passes (check doesn't apply)
-	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":   Equal(check.ConditionTypeConfigured),
-		"Status": Equal(metav1.ConditionTrue),
-		"Reason": Equal(check.ReasonRequirementsMet),
-	}))
+	g.Expect(canApply).To(BeFalse())
 }
 
 func TestTrainingOperatorDeprecationCheck_ManagedDeprecated(t *testing.T) {
@@ -97,9 +82,8 @@ func TestTrainingOperatorDeprecationCheck_ManagedDeprecated(t *testing.T) {
 	))
 }
 
-func TestTrainingOperatorDeprecationCheck_UnmanagedDeprecated(t *testing.T) {
+func TestTrainingOperatorDeprecationCheck_CanApply_Unmanaged(t *testing.T) {
 	g := NewWithT(t)
-	ctx := t.Context()
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:     listKinds,
@@ -107,22 +91,15 @@ func TestTrainingOperatorDeprecationCheck_UnmanagedDeprecated(t *testing.T) {
 		TargetVersion: "3.4.0",
 	})
 
-	trainingoperatorCheck := trainingoperator.NewDeprecationCheck()
-	result, err := trainingoperatorCheck.Validate(ctx, target)
+	chk := trainingoperator.NewDeprecationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	// Unmanaged is not in InState(Managed), so the builder passes (check doesn't apply)
-	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":   Equal(check.ConditionTypeConfigured),
-		"Status": Equal(metav1.ConditionTrue),
-		"Reason": Equal(check.ReasonRequirementsMet),
-	}))
+	g.Expect(canApply).To(BeFalse())
 }
 
-func TestTrainingOperatorDeprecationCheck_RemovedReady(t *testing.T) {
+func TestTrainingOperatorDeprecationCheck_CanApply_Removed(t *testing.T) {
 	g := NewWithT(t)
-	ctx := t.Context()
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:     listKinds,
@@ -130,17 +107,27 @@ func TestTrainingOperatorDeprecationCheck_RemovedReady(t *testing.T) {
 		TargetVersion: "3.3.0",
 	})
 
-	trainingoperatorCheck := trainingoperator.NewDeprecationCheck()
-	result, err := trainingoperatorCheck.Validate(ctx, target)
+	chk := trainingoperator.NewDeprecationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	// Removed is not in InState(Managed), so the builder passes (check doesn't apply)
-	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":   Equal(check.ConditionTypeConfigured),
-		"Status": Equal(metav1.ConditionTrue),
-		"Reason": Equal(check.ReasonRequirementsMet),
-	}))
+	g.Expect(canApply).To(BeFalse())
+}
+
+func TestTrainingOperatorDeprecationCheck_CanApply_Managed(t *testing.T) {
+	g := NewWithT(t)
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:     listKinds,
+		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"trainingoperator": "Managed"})},
+		TargetVersion: "3.3.0",
+	})
+
+	chk := trainingoperator.NewDeprecationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeTrue())
 }
 
 func TestTrainingOperatorDeprecationCheck_CanApply_Version32(t *testing.T) {
@@ -148,11 +135,12 @@ func TestTrainingOperatorDeprecationCheck_CanApply_Version32(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:     listKinds,
+		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"trainingoperator": "Managed"})},
 		TargetVersion: "3.2.0",
 	})
 
-	trainingoperatorCheck := trainingoperator.NewDeprecationCheck()
-	canApply, err := trainingoperatorCheck.CanApply(t.Context(), target)
+	chk := trainingoperator.NewDeprecationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
 }
@@ -162,11 +150,12 @@ func TestTrainingOperatorDeprecationCheck_CanApply_Version33(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:     listKinds,
+		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"trainingoperator": "Managed"})},
 		TargetVersion: "3.3.0",
 	})
 
-	trainingoperatorCheck := trainingoperator.NewDeprecationCheck()
-	canApply, err := trainingoperatorCheck.CanApply(t.Context(), target)
+	chk := trainingoperator.NewDeprecationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeTrue())
 }
@@ -176,11 +165,12 @@ func TestTrainingOperatorDeprecationCheck_CanApply_Version34(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:     listKinds,
+		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"trainingoperator": "Managed"})},
 		TargetVersion: "3.4.0",
 	})
 
-	trainingoperatorCheck := trainingoperator.NewDeprecationCheck()
-	canApply, err := trainingoperatorCheck.CanApply(t.Context(), target)
+	chk := trainingoperator.NewDeprecationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeTrue())
 }
