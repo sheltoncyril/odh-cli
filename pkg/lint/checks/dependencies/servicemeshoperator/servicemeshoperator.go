@@ -3,10 +3,11 @@ package servicemeshoperator
 import (
 	"context"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
@@ -46,10 +47,20 @@ func (c *Check) Validate(ctx context.Context, target check.Target) (*result.Diag
 		WithConditionBuilder(func(found bool, version string) result.Condition {
 			// Inverted logic: NOT finding the operator is good.
 			if !found {
-				return results.NewCompatibilitySuccess("Service Mesh Operator v2 is not installed - ready for RHOAI 3.x upgrade")
+				return check.NewCondition(
+					check.ConditionTypeCompatible,
+					metav1.ConditionTrue,
+					check.WithReason(check.ReasonVersionCompatible),
+					check.WithMessage("Service Mesh Operator v2 is not installed - ready for RHOAI 3.x upgrade"),
+				)
 			}
 
-			return results.NewCompatibilityFailure("Service Mesh Operator v2 (%s) is installed but RHOAI 3.x requires v3", version)
+			return check.NewCondition(
+				check.ConditionTypeCompatible,
+				metav1.ConditionFalse,
+				check.WithReason(check.ReasonVersionIncompatible),
+				check.WithMessage("Service Mesh Operator v2 (%s) is installed but RHOAI 3.x requires v3", version),
+			)
 		}).
 		Run(ctx)
 }

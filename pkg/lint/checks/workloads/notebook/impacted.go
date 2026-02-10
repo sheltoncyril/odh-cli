@@ -63,17 +63,16 @@ func (c *ImpactedWorkloadsCheck) newNotebookCondition(
 		return []result.Condition{check.NewCondition(
 			ConditionTypeNotebooksCompatible,
 			metav1.ConditionTrue,
-			check.ReasonVersionCompatible,
-			"No Notebooks found - no workloads impacted by deprecation",
+			check.WithReason(check.ReasonVersionCompatible),
+			check.WithMessage("No Notebooks found - no workloads impacted by deprecation"),
 		)}, nil
 	}
 
 	return []result.Condition{check.NewCondition(
 		ConditionTypeNotebooksCompatible,
 		metav1.ConditionFalse,
-		check.ReasonWorkloadsImpacted,
-		"Found %d Notebook(s) - workloads will be impacted in RHOAI 3.x",
-		count,
+		check.WithReason(check.ReasonWorkloadsImpacted),
+		check.WithMessage("Found %d Notebook(s) - workloads will be impacted in RHOAI 3.x", count),
 		check.WithImpact(result.ImpactAdvisory),
 		check.WithRemediation(c.CheckRemediation),
 	)}, nil

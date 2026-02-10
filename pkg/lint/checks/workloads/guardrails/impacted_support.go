@@ -256,8 +256,8 @@ func (c *ImpactedWorkloadsCheck) newConfigurationCondition(
 		return check.NewCondition(
 			ConditionTypeConfigurationValid,
 			metav1.ConditionTrue,
-			check.ReasonVersionCompatible,
-			"No GuardrailsOrchestrators found",
+			check.WithReason(check.ReasonVersionCompatible),
+			check.WithMessage("No GuardrailsOrchestrators found"),
 		)
 	}
 
@@ -265,18 +265,16 @@ func (c *ImpactedWorkloadsCheck) newConfigurationCondition(
 		return check.NewCondition(
 			ConditionTypeConfigurationValid,
 			metav1.ConditionTrue,
-			check.ReasonConfigurationValid,
-			"All %d GuardrailsOrchestrator(s) configured correctly",
-			total,
+			check.WithReason(check.ReasonConfigurationValid),
+			check.WithMessage("All %d GuardrailsOrchestrator(s) configured correctly", total),
 		)
 	}
 
 	return check.NewCondition(
 		ConditionTypeConfigurationValid,
 		metav1.ConditionFalse,
-		check.ReasonConfigurationInvalid,
-		"Found %d misconfigured GuardrailsOrchestrator(s)",
-		impacted,
+		check.WithReason(check.ReasonConfigurationInvalid),
+		check.WithMessage("Found %d misconfigured GuardrailsOrchestrator(s)", impacted),
 		check.WithImpact(result.ImpactAdvisory),
 		check.WithRemediation(c.CheckRemediation),
 	)

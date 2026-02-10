@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
@@ -49,14 +50,29 @@ func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*resu
 
 		switch {
 		case errors.Is(err, jq.ErrNotFound):
-			results.SetServiceNotConfigured(dr, "ServiceMesh")
+			results.SetCondition(dr, check.NewCondition(
+				check.ConditionTypeConfigured,
+				metav1.ConditionFalse,
+				check.WithReason(check.ReasonResourceNotFound),
+				check.WithMessage("ServiceMesh is not configured in DSCInitialization"),
+			))
 		case err != nil:
 			return fmt.Errorf("querying servicemesh managementState: %w", err)
 		case managementState == check.ManagementStateManaged || managementState == check.ManagementStateUnmanaged:
-			results.SetCompatibilityFailuref(dr, "ServiceMesh is enabled (state: %s) but will be removed in RHOAI 3.x", managementState,
-				check.WithRemediation(c.CheckRemediation))
+			results.SetCondition(dr, check.NewCondition(
+				check.ConditionTypeCompatible,
+				metav1.ConditionFalse,
+				check.WithReason(check.ReasonVersionIncompatible),
+				check.WithMessage("ServiceMesh is enabled (state: %s) but will be removed in RHOAI 3.x", managementState),
+				check.WithRemediation(c.CheckRemediation),
+			))
 		default:
-			results.SetCompatibilitySuccessf(dr, "ServiceMesh is disabled (state: %s) - ready for RHOAI 3.x upgrade", managementState)
+			results.SetCondition(dr, check.NewCondition(
+				check.ConditionTypeCompatible,
+				metav1.ConditionTrue,
+				check.WithReason(check.ReasonVersionCompatible),
+				check.WithMessage("ServiceMesh is disabled (state: %s) - ready for RHOAI 3.x upgrade", managementState),
+			))
 		}
 
 		return nil

@@ -83,8 +83,8 @@ func (c *AcceleratorMigrationCheck) newAcceleratorMigrationCondition(
 		return check.NewCondition(
 			ConditionTypeAcceleratorProfileCompatible,
 			metav1.ConditionTrue,
-			check.ReasonVersionCompatible,
-			"No Notebooks found using AcceleratorProfiles - no migration needed",
+			check.WithReason(check.ReasonVersionCompatible),
+			check.WithMessage("No Notebooks found using AcceleratorProfiles - no migration needed"),
 		)
 	}
 
@@ -93,10 +93,8 @@ func (c *AcceleratorMigrationCheck) newAcceleratorMigrationCondition(
 		return check.NewCondition(
 			ConditionTypeAcceleratorProfileCompatible,
 			metav1.ConditionFalse,
-			check.ReasonResourceNotFound,
-			"Found %d Notebook(s) referencing AcceleratorProfiles (%d missing) - ensure AcceleratorProfiles exist and migrate to HardwareProfiles",
-			totalImpacted,
-			totalMissing,
+			check.WithReason(check.ReasonResourceNotFound),
+			check.WithMessage("Found %d Notebook(s) referencing AcceleratorProfiles (%d missing) - ensure AcceleratorProfiles exist and migrate to HardwareProfiles", totalImpacted, totalMissing),
 			check.WithImpact(result.ImpactAdvisory),
 			check.WithRemediation(c.CheckRemediation),
 		)
@@ -106,9 +104,8 @@ func (c *AcceleratorMigrationCheck) newAcceleratorMigrationCondition(
 	return check.NewCondition(
 		ConditionTypeAcceleratorProfileCompatible,
 		metav1.ConditionFalse,
-		check.ReasonConfigurationInvalid,
-		"Found %d Notebook(s) using AcceleratorProfiles - migrate to HardwareProfiles before upgrading",
-		totalImpacted,
+		check.WithReason(check.ReasonConfigurationInvalid),
+		check.WithMessage("Found %d Notebook(s) using AcceleratorProfiles - migrate to HardwareProfiles before upgrading", totalImpacted),
 		check.WithImpact(result.ImpactAdvisory),
 		check.WithRemediation(c.CheckRemediation),
 	)

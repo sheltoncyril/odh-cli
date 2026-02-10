@@ -109,9 +109,17 @@ func (b *ComponentBuilder) WithApplicationsNamespace() *ComponentBuilder {
 //	validate.Component(c, target).
 //	    InState(check.ManagementStateManaged).
 //	    Run(ctx, validate.Removal("CodeFlare is enabled (state: %s) but will be removed in RHOAI 3.x"))
-func Removal(format string, args ...any) ComponentValidateFn {
+func Removal(format string, opts ...check.ConditionOption) ComponentValidateFn {
 	return func(_ context.Context, req *ComponentRequest) error {
-		results.SetCompatibilityFailuref(req.Result, format, append([]any{req.ManagementState}, args...)...)
+		allOpts := append([]check.ConditionOption{
+			check.WithReason(check.ReasonVersionIncompatible),
+			check.WithMessage(format, req.ManagementState),
+		}, opts...)
+		results.SetCondition(req.Result, check.NewCondition(
+			check.ConditionTypeCompatible,
+			metav1.ConditionFalse,
+			allOpts...,
+		))
 
 		return nil
 	}
@@ -134,12 +142,17 @@ func (b *ComponentBuilder) Run(
 	dsc, err := client.GetDataScienceCluster(ctx, b.target.Client)
 	switch {
 	case apierrors.IsNotFound(err):
-		return results.DataScienceClusterNotFound(
-			string(b.check.Group()),
-			b.check.CheckKind(),
-			b.check.CheckType(),
-			b.check.Description(),
-		), nil
+		dr := result.New(string(b.check.Group()), b.check.CheckKind(), b.check.CheckType(), b.check.Description())
+		dr.Status.Conditions = []result.Condition{
+			check.NewCondition(
+				check.ConditionTypeAvailable,
+				metav1.ConditionFalse,
+				check.WithReason(check.ReasonResourceNotFound),
+				check.WithMessage("No DataScienceCluster found"),
+			),
+		}
+
+		return dr, nil
 	case err != nil:
 		return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
 	}
@@ -162,8 +175,7 @@ func (b *ComponentBuilder) Run(
 		results.SetCondition(dr, check.NewCondition(
 			check.ConditionTypeConfigured,
 			metav1.ConditionTrue,
-			check.ReasonRequirementsMet,
-			"",
+			check.WithReason(check.ReasonRequirementsMet),
 		))
 
 		return dr, nil
@@ -195,7 +207,12 @@ func (b *ComponentBuilder) Run(
 		ns, nsErr := client.GetApplicationsNamespace(ctx, b.target.Client)
 		switch {
 		case apierrors.IsNotFound(nsErr):
-			results.SetDSCInitializationNotFound(dr)
+			results.SetCondition(dr, check.NewCondition(
+				check.ConditionTypeAvailable,
+				metav1.ConditionFalse,
+				check.WithReason(check.ReasonResourceNotFound),
+				check.WithMessage("No DSCInitialization found"),
+			))
 
 			return dr, nil
 		case nsErr != nil:

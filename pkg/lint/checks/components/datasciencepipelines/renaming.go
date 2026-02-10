@@ -52,9 +52,8 @@ func newRenamingCondition(_ context.Context, req *validate.ComponentRequest) ([]
 		check.NewCondition(
 			check.ConditionTypeCompatible,
 			metav1.ConditionFalse,
-			check.ReasonComponentRenamed,
-			"DataSciencePipelines component (state: %s) will be renamed to AIPipelines in DSC v2 (RHOAI 3.x). The field path changes from '.spec.components.datasciencepipelines' to '.spec.components.aipipelines'",
-			req.ManagementState,
+			check.WithReason(check.ReasonComponentRenamed),
+			check.WithMessage("DataSciencePipelines component (state: %s) will be renamed to AIPipelines in DSC v2 (RHOAI 3.x). The field path changes from '.spec.components.datasciencepipelines' to '.spec.components.aipipelines'", req.ManagementState),
 			check.WithImpact(result.ImpactAdvisory),
 			check.WithRemediation("No action required - the component will be automatically renamed. Update any automation referencing '.spec.components.datasciencepipelines' to use '.spec.components.aipipelines' after upgrade"),
 		),

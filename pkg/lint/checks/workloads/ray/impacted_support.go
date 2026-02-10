@@ -22,10 +22,8 @@ func (c *ImpactedWorkloadsCheck) newWorkloadCompatibilityCondition(
 		return check.NewCondition(
 			conditionType,
 			metav1.ConditionFalse,
-			check.ReasonVersionIncompatible,
-			"Found %d %s - will be impacted in RHOAI 3.x (CodeFlare not available)",
-			count,
-			workloadDescription,
+			check.WithReason(check.ReasonVersionIncompatible),
+			check.WithMessage("Found %d %s - will be impacted in RHOAI 3.x (CodeFlare not available)", count, workloadDescription),
 			check.WithImpact(result.ImpactAdvisory),
 			check.WithRemediation(c.CheckRemediation),
 		)
@@ -34,9 +32,8 @@ func (c *ImpactedWorkloadsCheck) newWorkloadCompatibilityCondition(
 	return check.NewCondition(
 		conditionType,
 		metav1.ConditionTrue,
-		check.ReasonVersionCompatible,
-		"No %s found - ready for RHOAI 3.x upgrade",
-		workloadDescription,
+		check.WithReason(check.ReasonVersionCompatible),
+		check.WithMessage("No %s found - ready for RHOAI 3.x upgrade", workloadDescription),
 	)
 }
 

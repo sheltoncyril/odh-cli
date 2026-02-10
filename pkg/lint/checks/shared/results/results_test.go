@@ -17,7 +17,7 @@ func TestSetCondition_AddNew(t *testing.T) {
 	g := NewWithT(t)
 
 	dr := result.New("component", "test", "check", "description")
-	results.SetCondition(dr, check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionTrue, "TestReason", "test message"))
+	results.SetCondition(dr, check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionTrue, check.WithReason("TestReason"), check.WithMessage("test message")))
 
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
@@ -34,11 +34,11 @@ func TestSetCondition_UpdateExisting(t *testing.T) {
 	dr := result.New("component", "test", "check", "description")
 
 	// First call adds new condition
-	results.SetCondition(dr, check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionTrue, "reason1", "message1"))
+	results.SetCondition(dr, check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionTrue, check.WithReason("reason1"), check.WithMessage("message1")))
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 
 	// Second call with same type updates existing
-	results.SetCondition(dr, check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionFalse, "reason2", "message2"))
+	results.SetCondition(dr, check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionFalse, check.WithReason("reason2"), check.WithMessage("message2")))
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Status":  Equal(metav1.ConditionFalse),
@@ -53,15 +53,15 @@ func TestSetCondition_MultipleConditionTypes(t *testing.T) {
 	dr := result.New("component", "test", "check", "description")
 
 	// Add first condition type
-	results.SetCondition(dr, check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionTrue, "reason1", "message1"))
+	results.SetCondition(dr, check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionTrue, check.WithReason("reason1"), check.WithMessage("message1")))
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 
 	// Add different condition type
-	results.SetCondition(dr, check.NewCondition(check.ConditionTypeAvailable, metav1.ConditionTrue, "reason2", "message2"))
+	results.SetCondition(dr, check.NewCondition(check.ConditionTypeAvailable, metav1.ConditionTrue, check.WithReason("reason2"), check.WithMessage("message2")))
 	g.Expect(dr.Status.Conditions).To(HaveLen(2))
 
 	// Update first condition type
-	results.SetCondition(dr, check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionFalse, "reason3", "message3"))
+	results.SetCondition(dr, check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionFalse, check.WithReason("reason3"), check.WithMessage("message3")))
 	g.Expect(dr.Status.Conditions).To(HaveLen(2))
 
 	// Verify both conditions exist with correct values
@@ -79,7 +79,12 @@ func TestSetCompatibilitySuccess_Simple(t *testing.T) {
 	g := NewWithT(t)
 
 	dr := result.New("component", "test", "check", "description")
-	results.SetCompatibilitySuccessf(dr, "simple success message")
+	results.SetCondition(dr, check.NewCondition(
+		check.ConditionTypeCompatible,
+		metav1.ConditionTrue,
+		check.WithReason(check.ReasonVersionCompatible),
+		check.WithMessage("simple success message"),
+	))
 
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
@@ -94,7 +99,12 @@ func TestSetCompatibilitySuccess_WithFormatting(t *testing.T) {
 	g := NewWithT(t)
 
 	dr := result.New("component", "test", "check", "description")
-	results.SetCompatibilitySuccessf(dr, "State: %s is compatible with version %s", "Managed", "3.0")
+	results.SetCondition(dr, check.NewCondition(
+		check.ConditionTypeCompatible,
+		metav1.ConditionTrue,
+		check.WithReason(check.ReasonVersionCompatible),
+		check.WithMessage("State: %s is compatible with version %s", "Managed", "3.0"),
+	))
 
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
@@ -109,7 +119,12 @@ func TestSetCompatibilityFailure_Simple(t *testing.T) {
 	g := NewWithT(t)
 
 	dr := result.New("component", "test", "check", "description")
-	results.SetCompatibilityFailuref(dr, "simple failure message")
+	results.SetCondition(dr, check.NewCondition(
+		check.ConditionTypeCompatible,
+		metav1.ConditionFalse,
+		check.WithReason(check.ReasonVersionIncompatible),
+		check.WithMessage("simple failure message"),
+	))
 
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
@@ -124,7 +139,12 @@ func TestSetCompatibilityFailure_WithFormatting(t *testing.T) {
 	g := NewWithT(t)
 
 	dr := result.New("component", "test", "check", "description")
-	results.SetCompatibilityFailuref(dr, "State: %s is incompatible with version %s", "Removed", "3.0")
+	results.SetCondition(dr, check.NewCondition(
+		check.ConditionTypeCompatible,
+		metav1.ConditionFalse,
+		check.WithReason(check.ReasonVersionIncompatible),
+		check.WithMessage("State: %s is incompatible with version %s", "Removed", "3.0"),
+	))
 
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
@@ -132,138 +152,5 @@ func TestSetCompatibilityFailure_WithFormatting(t *testing.T) {
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),
 		"Message": Equal("State: Removed is incompatible with version 3.0"),
-	}))
-}
-
-func TestSetAvailabilitySuccess_Simple(t *testing.T) {
-	g := NewWithT(t)
-
-	dr := result.New("component", "test", "check", "description")
-	results.SetAvailabilitySuccessf(dr, "resource found")
-
-	g.Expect(dr.Status.Conditions).To(HaveLen(1))
-	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeAvailable),
-		"Status":  Equal(metav1.ConditionTrue),
-		"Reason":  Equal(check.ReasonResourceFound),
-		"Message": Equal("resource found"),
-	}))
-}
-
-func TestSetAvailabilitySuccess_WithFormatting(t *testing.T) {
-	g := NewWithT(t)
-
-	dr := result.New("component", "test", "check", "description")
-	results.SetAvailabilitySuccessf(dr, "Found %d resources of type %s", 5, "Pod")
-
-	g.Expect(dr.Status.Conditions).To(HaveLen(1))
-	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeAvailable),
-		"Status":  Equal(metav1.ConditionTrue),
-		"Reason":  Equal(check.ReasonResourceFound),
-		"Message": Equal("Found 5 resources of type Pod"),
-	}))
-}
-
-func TestSetAvailabilityFailure_Simple(t *testing.T) {
-	g := NewWithT(t)
-
-	dr := result.New("component", "test", "check", "description")
-	results.SetAvailabilityFailuref(dr, "resource not found")
-
-	g.Expect(dr.Status.Conditions).To(HaveLen(1))
-	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeAvailable),
-		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonResourceNotFound),
-		"Message": Equal("resource not found"),
-	}))
-}
-
-func TestSetAvailabilityFailure_WithFormatting(t *testing.T) {
-	g := NewWithT(t)
-
-	dr := result.New("component", "test", "check", "description")
-	results.SetAvailabilityFailuref(dr, "Resource %s not found in namespace %s", "my-deployment", "default")
-
-	g.Expect(dr.Status.Conditions).To(HaveLen(1))
-	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeAvailable),
-		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonResourceNotFound),
-		"Message": Equal("Resource my-deployment not found in namespace default"),
-	}))
-}
-
-func TestSetComponentNotConfigured(t *testing.T) {
-	g := NewWithT(t)
-
-	dr := result.New("component", "test", "check", "description")
-	results.SetComponentNotConfigured(dr, "kserve")
-
-	g.Expect(dr.Status.Conditions).To(HaveLen(1))
-	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeConfigured),
-		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonResourceNotFound),
-		"Message": Equal("kserve component is not configured in DataScienceCluster"),
-	}))
-}
-
-func TestSetServiceNotConfigured(t *testing.T) {
-	g := NewWithT(t)
-
-	dr := result.New("service", "test", "check", "description")
-	results.SetServiceNotConfigured(dr, "servicemesh")
-
-	g.Expect(dr.Status.Conditions).To(HaveLen(1))
-	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeConfigured),
-		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonResourceNotFound),
-		"Message": Equal("servicemesh is not configured in DSCInitialization"),
-	}))
-}
-
-func TestSetComponentNotManaged(t *testing.T) {
-	g := NewWithT(t)
-
-	dr := result.New("component", "test", "check", "description")
-	results.SetComponentNotManaged(dr, "kueue", "Removed")
-
-	g.Expect(dr.Status.Conditions).To(HaveLen(1))
-	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeConfigured),
-		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal("ComponentNotManaged"),
-		"Message": Equal("kueue component is not managed (state: Removed)"),
-	}))
-}
-
-func TestDataScienceClusterNotFound(t *testing.T) {
-	g := NewWithT(t)
-
-	dr := results.DataScienceClusterNotFound("component", "test", "check", "description")
-
-	g.Expect(dr.Status.Conditions).To(HaveLen(1))
-	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeAvailable),
-		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonResourceNotFound),
-		"Message": Equal("No DataScienceCluster found"),
-	}))
-}
-
-func TestDSCInitializationNotFound(t *testing.T) {
-	g := NewWithT(t)
-
-	dr := results.DSCInitializationNotFound("service", "test", "check", "description")
-
-	g.Expect(dr.Status.Conditions).To(HaveLen(1))
-	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeAvailable),
-		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonResourceNotFound),
-		"Message": Equal("No DSCInitialization found"),
 	}))
 }

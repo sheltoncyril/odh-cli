@@ -11,20 +11,27 @@ import (
 // ConditionOption is a functional option for customizing condition creation.
 type ConditionOption func(*result.Condition)
 
+// WithReason sets the condition reason.
+func WithReason(reason string) ConditionOption {
+	return func(c *result.Condition) {
+		c.Reason = reason
+	}
+}
+
+// WithMessage sets the condition message. Supports printf-style formatting:
+// if args are provided, the message is formatted with fmt.Sprintf.
+func WithMessage(format string, args ...any) ConditionOption {
+	return func(c *result.Condition) {
+		if len(args) > 0 {
+			c.Message = fmt.Sprintf(format, args...)
+		} else {
+			c.Message = format
+		}
+	}
+}
+
 // WithImpact sets the impact explicitly, overriding auto-derivation.
 // Use this when the default impact (derived from Status) is not appropriate.
-//
-// Example:
-//
-//	// Status=False normally derives Impact=Blocking
-//	// Override to Advisory for deprecation warnings
-//	check.NewCondition(
-//	    check.ConditionTypeCompatible,
-//	    metav1.ConditionFalse,
-//	    check.ReasonDeprecated,
-//	    "TrainingOperator deprecated in RHOAI 3.3",
-//	    check.WithImpact(result.ImpactAdvisory),
-//	)
 func WithImpact(impact result.Impact) ConditionOption {
 	return func(c *result.Condition) {
 		c.Impact = impact
@@ -32,17 +39,6 @@ func WithImpact(impact result.Impact) ConditionOption {
 }
 
 // WithRemediation sets actionable guidance on how to resolve the condition.
-//
-// Example:
-//
-//	check.NewCondition(
-//	    check.ConditionTypeCompatible,
-//	    metav1.ConditionFalse,
-//	    check.ReasonConfigurationInvalid,
-//	    "Found %d Notebook(s) using AcceleratorProfiles",
-//	    count,
-//	    check.WithRemediation("Migrate AcceleratorProfiles to HardwareProfiles before upgrading"),
-//	)
 func WithRemediation(remediation string) ConditionOption {
 	return func(c *result.Condition) {
 		c.Remediation = remediation
@@ -61,84 +57,48 @@ func deriveImpact(status metav1.ConditionStatus) result.Impact {
 }
 
 // NewCondition creates a new Condition with automatic Impact derivation.
-// Impact is derived from Status unless explicitly overridden via WithImpact option:
+// Impact is derived from Status unless explicitly overridden via WithImpact:
 //   - Status=True    → Impact=None     (requirement met, no issues)
 //   - Status=False   → Impact=Advisory (requirement not met, warning)
 //   - Status=Unknown → Impact=Advisory (unable to determine, proceed with caution)
 //
 // Use WithImpact(result.ImpactBlocking) for conditions that truly block upgrades.
 //
-// The message parameter supports printf-style formatting when args are provided.
-//
 // Examples:
 //
-//	// Default behavior: Impact auto-derived as Blocking
 //	condition := check.NewCondition(
 //	    check.ConditionTypeAvailable,
 //	    metav1.ConditionFalse,
-//	    check.ReasonResourceNotFound,
-//	    "DataScienceCluster not found",
+//	    check.WithReason(check.ReasonResourceNotFound),
+//	    check.WithMessage("DataScienceCluster not found"),
 //	)
 //
-//	// Override impact: Deprecation is non-blocking
 //	condition := check.NewCondition(
 //	    check.ConditionTypeCompatible,
 //	    metav1.ConditionFalse,
-//	    check.ReasonDeprecated,
-//	    "TrainingOperator deprecated in RHOAI 3.3",
+//	    check.WithReason(check.ReasonVersionIncompatible),
+//	    check.WithMessage("Found %d resources using deprecated API version %s", count, apiVersion),
 //	    check.WithImpact(result.ImpactAdvisory),
-//	)
-//
-//	// Formatted message
-//	condition := check.NewCondition(
-//	    check.ConditionTypeCompatible,
-//	    metav1.ConditionFalse,
-//	    check.ReasonVersionIncompatible,
-//	    "Found %d resources using deprecated API version %s",
-//	    count, apiVersion,
+//	    check.WithRemediation("Migrate resources before upgrading"),
 //	)
 func NewCondition(
 	conditionType string,
 	status metav1.ConditionStatus,
-	reason string,
-	message string,
-	argsAndOptions ...any,
+	opts ...ConditionOption,
 ) result.Condition {
-	// Separate printf args from functional options.
-	var options []ConditionOption
-	var messageArgs []any
-
-	for _, arg := range argsAndOptions {
-		if opt, ok := arg.(ConditionOption); ok {
-			options = append(options, opt)
-		} else {
-			messageArgs = append(messageArgs, arg)
-		}
-	}
-
-	// Format message if args provided.
-	if len(messageArgs) > 0 {
-		message = fmt.Sprintf(message, messageArgs...)
-	}
-
-	// Create condition with auto-derived impact.
 	c := result.Condition{
 		Condition: metav1.Condition{
 			Type:               conditionType,
 			Status:             status,
-			Reason:             reason,
-			Message:            message,
 			LastTransitionTime: metav1.Now(),
 		},
-		Impact: deriveImpact(status), // Auto-derive by default
+		Impact: deriveImpact(status),
 	}
 
-	// Apply functional options (can override Impact).
-	for _, opt := range options {
+	for _, opt := range opts {
 		opt(&c)
 	}
 
-	// Validate the final condition.
 	if err := c.Validate(); err != nil {
 		panic(fmt.Sprintf("invalid condition: %v", err))
 	}

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
@@ -49,14 +51,29 @@ func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target check.Targ
 
 			switch {
 			case errors.Is(err, jq.ErrNotFound):
-				results.SetCompatibilitySuccessf(req.Result, "KServe serverless mode is not configured - ready for RHOAI 3.x upgrade")
+				results.SetCondition(req.Result, check.NewCondition(
+					check.ConditionTypeCompatible,
+					metav1.ConditionTrue,
+					check.WithReason(check.ReasonVersionCompatible),
+					check.WithMessage("KServe serverless mode is not configured - ready for RHOAI 3.x upgrade"),
+				))
 			case err != nil:
 				return fmt.Errorf("querying kserve serving managementState: %w", err)
 			case state == check.ManagementStateManaged || state == check.ManagementStateUnmanaged:
-				results.SetCompatibilityFailuref(req.Result, "KServe serverless mode is enabled (state: %s) but will be removed in RHOAI 3.x", state,
-					check.WithRemediation(c.CheckRemediation))
+				results.SetCondition(req.Result, check.NewCondition(
+					check.ConditionTypeCompatible,
+					metav1.ConditionFalse,
+					check.WithReason(check.ReasonVersionIncompatible),
+					check.WithMessage("KServe serverless mode is enabled (state: %s) but will be removed in RHOAI 3.x", state),
+					check.WithRemediation(c.CheckRemediation),
+				))
 			default:
-				results.SetCompatibilitySuccessf(req.Result, "KServe serverless mode is disabled (state: %s) - ready for RHOAI 3.x upgrade", state)
+				results.SetCondition(req.Result, check.NewCondition(
+					check.ConditionTypeCompatible,
+					metav1.ConditionTrue,
+					check.WithReason(check.ReasonVersionCompatible),
+					check.WithMessage("KServe serverless mode is disabled (state: %s) - ready for RHOAI 3.x upgrade", state),
+				))
 			}
 
 			return nil

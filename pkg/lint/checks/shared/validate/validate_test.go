@@ -146,7 +146,12 @@ func TestComponentBuilder(t *testing.T) {
 				g.Expect(req.ManagementState).To(Equal(check.ManagementStateManaged))
 				g.Expect(req.DSC).ToNot(BeNil())
 				g.Expect(req.Client).ToNot(BeNil())
-				results.SetCompatibilitySuccessf(req.Result, "Test passed")
+				results.SetCondition(req.Result, check.NewCondition(
+					check.ConditionTypeCompatible,
+					metav1.ConditionTrue,
+					check.WithReason(check.ReasonVersionCompatible),
+					check.WithMessage("Test passed"),
+				))
 
 				return nil
 			})
@@ -182,7 +187,12 @@ func TestComponentBuilder(t *testing.T) {
 			Run(ctx, func(_ context.Context, req *validate.ComponentRequest) error {
 				validationCalled = true
 				g.Expect(req.ManagementState).To(Equal(check.ManagementStateRemoved))
-				results.SetCompatibilitySuccessf(req.Result, "Test passed")
+				results.SetCondition(req.Result, check.NewCondition(
+					check.ConditionTypeCompatible,
+					metav1.ConditionTrue,
+					check.WithReason(check.ReasonVersionCompatible),
+					check.WithMessage("Test passed"),
+				))
 
 				return nil
 			})
@@ -238,7 +248,12 @@ func TestComponentBuilder_Complete_SetsConditions(t *testing.T) {
 		InState(check.ManagementStateManaged).
 		Complete(ctx, func(_ context.Context, req *validate.ComponentRequest) ([]result.Condition, error) {
 			return []result.Condition{
-				results.NewCompatibilitySuccess("Component %s is valid", req.ManagementState),
+				check.NewCondition(
+					check.ConditionTypeCompatible,
+					metav1.ConditionTrue,
+					check.WithReason(check.ReasonVersionCompatible),
+					check.WithMessage("Component %s is valid", req.ManagementState),
+				),
 			}, nil
 		})
 
@@ -331,7 +346,12 @@ func TestDSCIBuilder(t *testing.T) {
 		dr, err := validate.DSCI(chk).
 			Run(ctx, target, func(dr *result.DiagnosticResult, dsci *unstructured.Unstructured) error {
 				validationCalled = true
-				results.SetCompatibilitySuccessf(dr, "Test passed")
+				results.SetCondition(dr, check.NewCondition(
+					check.ConditionTypeCompatible,
+					metav1.ConditionTrue,
+					check.WithReason(check.ReasonVersionCompatible),
+					check.WithMessage("Test passed"),
+				))
 
 				return nil
 			})
@@ -639,10 +659,20 @@ func TestOperatorBuilder(t *testing.T) {
 		dr, err := validate.Operator(chk, target).
 			WithConditionBuilder(func(found bool, version string) result.Condition {
 				if !found {
-					return results.NewCompatibilitySuccess("Operator not installed - good")
+					return check.NewCondition(
+						check.ConditionTypeCompatible,
+						metav1.ConditionTrue,
+						check.WithReason(check.ReasonVersionCompatible),
+						check.WithMessage("Operator not installed - good"),
+					)
 				}
 
-				return results.NewCompatibilityFailure("Operator (%s) should not be installed", version)
+				return check.NewCondition(
+					check.ConditionTypeCompatible,
+					metav1.ConditionFalse,
+					check.WithReason(check.ReasonVersionIncompatible),
+					check.WithMessage("Operator (%s) should not be installed", version),
+				)
 			}).
 			Run(ctx)
 

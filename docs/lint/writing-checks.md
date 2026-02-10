@@ -270,34 +270,33 @@ import (
 condition := check.NewCondition(
     check.ConditionTypeAvailable,
     metav1.ConditionTrue,
-    check.ReasonResourceAvailable,
-    "Dashboard component is ready",
+    check.WithReason(check.ReasonResourceAvailable),
+    check.WithMessage("Dashboard component is ready"),
 )
 
 // Failure: Status=False → Impact=Advisory (auto-derived)
 condition := check.NewCondition(
     check.ConditionTypeConfigured,
     metav1.ConditionFalse,
-    check.ReasonConfigurationInvalid,
-    "Required configuration parameter 'replicas' not set",
+    check.WithReason(check.ReasonConfigurationInvalid),
+    check.WithMessage("Required configuration parameter 'replicas' not set"),
 )
 
 // Override impact: Status=False and blocking
 condition := check.NewCondition(
     check.ConditionTypeCompatible,
     metav1.ConditionFalse,
-    check.ReasonDeprecated,
-    "TrainingOperator is deprecated in RHOAI 3.3",
+    check.WithReason(check.ReasonDeprecated),
+    check.WithMessage("TrainingOperator is deprecated in RHOAI 3.3"),
     check.WithImpact(result.ImpactBlocking),  // Override to blocking
 )
 
-// Printf-style formatting
+// Printf-style formatting via WithMessage
 condition := check.NewCondition(
     check.ConditionTypeCompatible,
     metav1.ConditionFalse,
-    check.ReasonWorkloadsImpacted,
-    "Found %d active PyTorchJobs - workloads use deprecated TrainingOperator",
-    activeCount,
+    check.WithReason(check.ReasonWorkloadsImpacted),
+    check.WithMessage("Found %d active PyTorchJobs - workloads use deprecated TrainingOperator", activeCount),
     check.WithImpact(result.ImpactAdvisory),
 )
 ```
@@ -686,13 +685,28 @@ func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*resu
 
         switch {
         case errors.Is(err, jq.ErrNotFound):
-            results.SetServiceNotConfigured(dr, "ServiceMesh")
+            results.SetCondition(dr, check.NewCondition(
+                check.ConditionTypeConfigured,
+                metav1.ConditionFalse,
+                check.WithReason(check.ReasonResourceNotFound),
+                check.WithMessage("ServiceMesh is not configured in DSCInitialization"),
+            ))
         case err != nil:
             return fmt.Errorf("querying servicemesh managementState: %w", err)
         case managementState == check.ManagementStateManaged:
-            results.SetCompatibilityFailuref(dr, "ServiceMesh is enabled (state: %s)", managementState)
+            results.SetCondition(dr, check.NewCondition(
+                check.ConditionTypeCompatible,
+                metav1.ConditionFalse,
+                check.WithReason(check.ReasonVersionIncompatible),
+                check.WithMessage("ServiceMesh is enabled (state: %s)", managementState),
+            ))
         default:
-            results.SetCompatibilitySuccessf(dr, "ServiceMesh is disabled (state: %s)", managementState)
+            results.SetCondition(dr, check.NewCondition(
+                check.ConditionTypeCompatible,
+                metav1.ConditionTrue,
+                check.WithReason(check.ReasonVersionCompatible),
+                check.WithMessage("ServiceMesh is disabled (state: %s)", managementState),
+            ))
         }
 
         return nil

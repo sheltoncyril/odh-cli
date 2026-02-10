@@ -116,8 +116,8 @@ func TestDiagnosticCR_AnnotationValidation(t *testing.T) {
 		check.NewCondition(
 			check.ConditionTypeAvailable,
 			metav1.ConditionTrue,
-			check.ReasonResourceFound,
-			"Test condition",
+			check.WithReason(check.ReasonResourceFound),
+			check.WithMessage("Test condition"),
 		),
 	}
 
@@ -185,14 +185,14 @@ func (c *testDiagnosticCheck) Validate(_ context.Context, _ check.Target) (*resu
 		check.NewCondition(
 			check.ConditionTypeAvailable,
 			metav1.ConditionTrue,
-			check.ReasonResourceFound,
-			"First validation condition passed",
+			check.WithReason(check.ReasonResourceFound),
+			check.WithMessage("First validation condition passed"),
 		),
 		check.NewCondition(
 			check.ConditionTypeConfigured,
 			metav1.ConditionTrue,
-			check.ReasonConfigurationValid,
-			"Second validation condition passed",
+			check.WithReason(check.ReasonConfigurationValid),
+			check.WithMessage("Second validation condition passed"),
 		),
 	}
 

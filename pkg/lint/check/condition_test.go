@@ -281,8 +281,8 @@ func TestNewCondition_CreatesValidCondition(t *testing.T) {
 	condition := check.NewCondition(
 		check.ConditionTypeValidated,
 		metav1.ConditionTrue,
-		check.ReasonRequirementsMet,
-		"All requirements validated successfully",
+		check.WithReason(check.ReasonRequirementsMet),
+		check.WithMessage("All requirements validated successfully"),
 	)
 
 	g.Expect(condition.Condition).To(MatchFields(IgnoreExtras, Fields{
@@ -301,8 +301,8 @@ func TestNewCondition_AutomaticallySetsDuration(t *testing.T) {
 	condition := check.NewCondition(
 		check.ConditionTypeReady,
 		metav1.ConditionTrue,
-		"PodsReady",
-		"All pods ready",
+		check.WithReason("PodsReady"),
+		check.WithMessage("All pods ready"),
 	)
 	afterTime := time.Now()
 
@@ -316,8 +316,8 @@ func TestNewCondition_FailureCondition(t *testing.T) {
 	condition := check.NewCondition(
 		check.ConditionTypeAvailable,
 		metav1.ConditionFalse,
-		check.ReasonResourceNotFound,
-		"Resource not found in cluster",
+		check.WithReason(check.ReasonResourceNotFound),
+		check.WithMessage("Resource not found in cluster"),
 	)
 
 	g.Expect(condition.Condition).To(MatchFields(IgnoreExtras, Fields{
@@ -334,8 +334,8 @@ func TestNewCondition_UnknownCondition(t *testing.T) {
 	condition := check.NewCondition(
 		check.ConditionTypeValidated,
 		metav1.ConditionUnknown,
-		check.ReasonCheckExecutionFailed,
-		"Check execution failed: timeout",
+		check.WithReason(check.ReasonCheckExecutionFailed),
+		check.WithMessage("Check execution failed: timeout"),
 	)
 
 	g.Expect(condition.Condition).To(MatchFields(IgnoreExtras, Fields{
@@ -352,8 +352,8 @@ func TestNewCondition_MultipleConditionsHaveDifferentTimestamps(t *testing.T) {
 	condition1 := check.NewCondition(
 		check.ConditionTypeAvailable,
 		metav1.ConditionTrue,
-		check.ReasonResourceFound,
-		"First condition",
+		check.WithReason(check.ReasonResourceFound),
+		check.WithMessage("First condition"),
 	)
 
 	time.Sleep(10 * time.Millisecond)
@@ -361,8 +361,8 @@ func TestNewCondition_MultipleConditionsHaveDifferentTimestamps(t *testing.T) {
 	condition2 := check.NewCondition(
 		check.ConditionTypeReady,
 		metav1.ConditionTrue,
-		"PodsReady",
-		"Second condition",
+		check.WithReason("PodsReady"),
+		check.WithMessage("Second condition"),
 	)
 
 	// Timestamps should be different (second one should be later)
@@ -384,8 +384,8 @@ func TestNewCondition_UsedInDiagnosticResult(t *testing.T) {
 		check.NewCondition(
 			check.ConditionTypeAvailable,
 			metav1.ConditionTrue,
-			check.ReasonResourceFound,
-			"KServe deployment found",
+			check.WithReason(check.ReasonResourceFound),
+			check.WithMessage("KServe deployment found"),
 		),
 	)
 
@@ -393,8 +393,8 @@ func TestNewCondition_UsedInDiagnosticResult(t *testing.T) {
 		check.NewCondition(
 			check.ConditionTypeReady,
 			metav1.ConditionTrue,
-			"PodsReady",
-			"All KServe pods ready",
+			check.WithReason("PodsReady"),
+			check.WithMessage("All KServe pods ready"),
 		),
 	)
 
@@ -418,9 +418,8 @@ func TestNewCondition_WithSingleFormatArg(t *testing.T) {
 	condition := check.NewCondition(
 		check.ConditionTypeCompatible,
 		metav1.ConditionFalse,
-		check.ReasonVersionIncompatible,
-		"Found %d incompatible resources",
-		5,
+		check.WithReason(check.ReasonVersionIncompatible),
+		check.WithMessage("Found %d incompatible resources", 5),
 	)
 
 	g.Expect(condition.Condition).To(MatchFields(IgnoreExtras, Fields{
@@ -437,11 +436,8 @@ func TestNewCondition_WithMultipleFormatArgs(t *testing.T) {
 	condition := check.NewCondition(
 		check.ConditionTypeCompatible,
 		metav1.ConditionFalse,
-		check.ReasonVersionIncompatible,
-		"Found %d %s - will be impacted in RHOAI %s",
-		3,
-		"InferenceServices",
-		"3.x",
+		check.WithReason(check.ReasonVersionIncompatible),
+		check.WithMessage("Found %d %s - will be impacted in RHOAI %s", 3, "InferenceServices", "3.x"),
 	)
 
 	g.Expect(condition.Condition).To(MatchFields(IgnoreExtras, Fields{
@@ -458,8 +454,8 @@ func TestNewCondition_WithNoFormatArgs(t *testing.T) {
 	condition := check.NewCondition(
 		check.ConditionTypeValidated,
 		metav1.ConditionTrue,
-		check.ReasonRequirementsMet,
-		"All requirements validated successfully",
+		check.WithReason(check.ReasonRequirementsMet),
+		check.WithMessage("All requirements validated successfully"),
 	)
 
 	g.Expect(condition.Condition).To(MatchFields(IgnoreExtras, Fields{
@@ -476,9 +472,8 @@ func TestNewCondition_WithStringFormatArg(t *testing.T) {
 	condition := check.NewCondition(
 		check.ConditionTypeAvailable,
 		metav1.ConditionFalse,
-		check.ReasonResourceNotFound,
-		"Resource %s not found",
-		"my-deployment",
+		check.WithReason(check.ReasonResourceNotFound),
+		check.WithMessage("Resource %s not found", "my-deployment"),
 	)
 
 	g.Expect(condition.Condition).To(MatchFields(IgnoreExtras, Fields{
@@ -497,9 +492,8 @@ func TestNewCondition_WithErrorFormatArg(t *testing.T) {
 	condition := check.NewCondition(
 		check.ConditionTypeValidated,
 		metav1.ConditionUnknown,
-		check.ReasonCheckExecutionFailed,
-		"Check execution failed: %v",
-		testErr,
+		check.WithReason(check.ReasonCheckExecutionFailed),
+		check.WithMessage("Check execution failed: %v", testErr),
 	)
 
 	g.Expect(condition.Condition).To(MatchFields(IgnoreExtras, Fields{

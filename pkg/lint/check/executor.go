@@ -102,9 +102,8 @@ func (e *Executor) buildCanApplyError(check Check, err error) CheckExecution {
 		NewCondition(
 			ConditionTypeValidated,
 			metav1.ConditionUnknown,
-			ReasonCheckExecutionFailed,
-			"Check applicability failed: %v",
-			err,
+			WithReason(ReasonCheckExecutionFailed),
+			WithMessage("Check applicability failed: %v", err),
 		),
 	}
 
@@ -167,16 +166,15 @@ func (e *Executor) executeCheck(ctx context.Context, target Target, check Check)
 			condition = NewCondition(
 				ConditionTypeValidated,
 				metav1.ConditionUnknown,
-				reason,
-				"Check execution failed: %v",
-				err,
+				WithReason(reason),
+				WithMessage("Check execution failed: %v", err),
 			)
 		} else {
 			condition = NewCondition(
 				ConditionTypeValidated,
 				metav1.ConditionUnknown,
-				reason,
-				message,
+				WithReason(reason),
+				WithMessage("%s", message),
 			)
 		}
 
@@ -201,9 +199,8 @@ func (e *Executor) executeCheck(ctx context.Context, target Target, check Check)
 			NewCondition(
 				ConditionTypeValidated,
 				metav1.ConditionUnknown,
-				ReasonCheckExecutionFailed,
-				"Invalid check result: %v",
-				err,
+				WithReason(ReasonCheckExecutionFailed),
+				WithMessage("Invalid check result: %v", err),
 			),
 		}
 

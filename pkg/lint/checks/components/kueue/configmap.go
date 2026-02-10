@@ -62,21 +62,28 @@ func (c *ConfigMapManagedCheck) Validate(ctx context.Context, target check.Targe
 
 			switch {
 			case apierrors.IsNotFound(err):
-				results.SetCompatibilitySuccessf(req.Result,
-					"ConfigMap %s/%s not found - no action required", req.ApplicationsNamespace, configMapName)
+				results.SetCondition(req.Result, check.NewCondition(
+					check.ConditionTypeCompatible,
+					metav1.ConditionTrue,
+					check.WithReason(check.ReasonVersionCompatible),
+					check.WithMessage("ConfigMap %s/%s not found - no action required", req.ApplicationsNamespace, configMapName),
+				))
 			case err != nil:
 				return fmt.Errorf("getting ConfigMap %s/%s: %w", req.ApplicationsNamespace, configMapName, err)
 			case kube.IsManaged(res):
-				results.SetCompatibilitySuccessf(req.Result,
-					"ConfigMap %s/%s is managed by operator (annotation %s not set to false)",
-					req.ApplicationsNamespace, configMapName, kube.AnnotationManaged)
+				results.SetCondition(req.Result, check.NewCondition(
+					check.ConditionTypeCompatible,
+					metav1.ConditionTrue,
+					check.WithReason(check.ReasonVersionCompatible),
+					check.WithMessage("ConfigMap %s/%s is managed by operator (annotation %s not set to false)",
+						req.ApplicationsNamespace, configMapName, kube.AnnotationManaged),
+				))
 			default:
 				results.SetCondition(req.Result, check.NewCondition(
 					check.ConditionTypeConfigured,
 					metav1.ConditionFalse,
-					check.ReasonConfigurationInvalid,
-					"ConfigMap %s/%s has annotation %s=false - migration will not update this ConfigMap and it may become out of sync with operator defaults",
-					req.ApplicationsNamespace, configMapName, kube.AnnotationManaged,
+					check.WithReason(check.ReasonConfigurationInvalid),
+					check.WithMessage("ConfigMap %s/%s has annotation %s=false - migration will not update this ConfigMap and it may become out of sync with operator defaults", req.ApplicationsNamespace, configMapName, kube.AnnotationManaged),
 					check.WithImpact(result.ImpactAdvisory),
 					check.WithRemediation(c.CheckRemediation),
 				))

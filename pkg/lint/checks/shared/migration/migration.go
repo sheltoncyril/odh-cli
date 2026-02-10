@@ -61,8 +61,8 @@ func ValidateResources(
 		results.SetCondition(dr, check.NewCondition(
 			check.ConditionTypeMigrationRequired,
 			metav1.ConditionTrue,
-			check.ReasonNoMigrationRequired,
-			cfg.NoMigrationMessage,
+			check.WithReason(check.ReasonNoMigrationRequired),
+			check.WithMessage("%s", cfg.NoMigrationMessage),
 		))
 
 		return nil
@@ -70,21 +70,20 @@ func ValidateResources(
 
 	// Resources found - advisory notice about auto-migration.
 	// Use Status=False (not yet migrated) with advisory impact since this is informational.
-	conditionOpts := []any{
-		totalCount,
+	opts := []check.ConditionOption{
+		check.WithReason(check.ReasonMigrationPending),
+		check.WithMessage(cfg.MigrationPendingMessage, totalCount),
 		check.WithImpact(result.ImpactAdvisory),
 	}
 
 	if cfg.Remediation != "" {
-		conditionOpts = append(conditionOpts, check.WithRemediation(cfg.Remediation))
+		opts = append(opts, check.WithRemediation(cfg.Remediation))
 	}
 
 	results.SetCondition(dr, check.NewCondition(
 		check.ConditionTypeMigrationRequired,
 		metav1.ConditionFalse,
-		check.ReasonMigrationPending,
-		cfg.MigrationPendingMessage,
-		conditionOpts...,
+		opts...,
 	))
 
 	// Populate ImpactedObjects.

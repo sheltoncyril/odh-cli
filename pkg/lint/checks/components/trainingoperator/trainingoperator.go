@@ -48,9 +48,8 @@ func newDeprecationCondition(_ context.Context, req *validate.ComponentRequest) 
 		check.NewCondition(
 			check.ConditionTypeCompatible,
 			metav1.ConditionFalse,
-			check.ReasonDeprecated,
-			"TrainingOperator (Kubeflow Training Operator v1) is enabled (state: %s) but is deprecated in RHOAI 3.3 and will be replaced by Trainer v2 in a future release",
-			req.ManagementState,
+			check.WithReason(check.ReasonDeprecated),
+			check.WithMessage("TrainingOperator (Kubeflow Training Operator v1) is enabled (state: %s) but is deprecated in RHOAI 3.3 and will be replaced by Trainer v2 in a future release", req.ManagementState),
 			check.WithImpact(result.ImpactAdvisory),
 			check.WithRemediation("Plan migration from TrainingOperator (Kubeflow v1) to Trainer v2 in a future release"),
 		),

@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 )
 
@@ -54,12 +54,17 @@ func (b *DSCIBuilder) Run(
 	dsci, err := client.GetDSCInitialization(ctx, target.Client)
 	switch {
 	case apierrors.IsNotFound(err):
-		return results.DSCInitializationNotFound(
-			string(b.check.Group()),
-			b.check.CheckKind(),
-			b.check.CheckType(),
-			b.check.Description(),
-		), nil
+		dr := result.New(string(b.check.Group()), b.check.CheckKind(), b.check.CheckType(), b.check.Description())
+		dr.Status.Conditions = []result.Condition{
+			check.NewCondition(
+				check.ConditionTypeAvailable,
+				metav1.ConditionFalse,
+				check.WithReason(check.ReasonResourceNotFound),
+				check.WithMessage("No DSCInitialization found"),
+			),
+		}
+
+		return dr, nil
 	case err != nil:
 		return nil, fmt.Errorf("getting DSCInitialization: %w", err)
 	}

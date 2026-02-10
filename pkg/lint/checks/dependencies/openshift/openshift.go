@@ -58,23 +58,23 @@ func (c *Check) Validate(
 		results.SetCondition(dr, check.NewCondition(
 			check.ConditionTypeCompatible,
 			metav1.ConditionFalse,
-			check.ReasonInsufficientData,
-			"Unable to detect OpenShift version: %s. RHOAI 3.x requires OpenShift %s or later",
-			err.Error(),
-			minVersion.String(),
+			check.WithReason(check.ReasonInsufficientData),
+			check.WithMessage("Unable to detect OpenShift version: %s. RHOAI 3.x requires OpenShift %s or later", err.Error(), minVersion.String()),
 		))
 	case ver.GTE(minVersion):
-		results.SetCondition(dr, results.NewCompatibilitySuccess(
-			"OpenShift %s meets RHOAI 3.x minimum version requirement (%s+)",
-			ver.String(),
-			minVersion.String(),
+		results.SetCondition(dr, check.NewCondition(
+			check.ConditionTypeCompatible,
+			metav1.ConditionTrue,
+			check.WithReason(check.ReasonVersionCompatible),
+			check.WithMessage("OpenShift %s meets RHOAI 3.x minimum version requirement (%s+)", ver.String(), minVersion.String()),
 		))
 	default:
-		results.SetCondition(dr, results.NewCompatibilityFailure(
-			"OpenShift %s does not meet RHOAI 3.x minimum version requirement (%s+). Upgrade OpenShift to %s or later before upgrading RHOAI",
-			ver.String(),
-			minVersion.String(),
-			minVersion.String(),
+		results.SetCondition(dr, check.NewCondition(
+			check.ConditionTypeCompatible,
+			metav1.ConditionFalse,
+			check.WithReason(check.ReasonVersionIncompatible),
+			check.WithMessage("OpenShift %s does not meet RHOAI 3.x minimum version requirement (%s+). Upgrade OpenShift to %s or later before upgrading RHOAI",
+				ver.String(), minVersion.String(), minVersion.String()),
 		))
 	}
 

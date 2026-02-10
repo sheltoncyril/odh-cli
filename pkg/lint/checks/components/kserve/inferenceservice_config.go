@@ -61,23 +61,28 @@ func (c *InferenceServiceConfigCheck) Validate(ctx context.Context, target check
 
 			switch {
 			case apierrors.IsNotFound(err):
-				results.SetCompatibilitySuccessf(req.Result,
-					"inferenceservice-config ConfigMap not found in namespace %s - no migration needed",
-					req.ApplicationsNamespace,
-				)
+				results.SetCondition(req.Result, check.NewCondition(
+					check.ConditionTypeCompatible,
+					metav1.ConditionTrue,
+					check.WithReason(check.ReasonVersionCompatible),
+					check.WithMessage("inferenceservice-config ConfigMap not found in namespace %s - no migration needed",
+						req.ApplicationsNamespace),
+				))
 			case err != nil:
 				return fmt.Errorf("getting inferenceservice-config ConfigMap: %w", err)
 			case kube.IsManaged(res):
-				results.SetCompatibilitySuccessf(req.Result,
-					"inferenceservice-config ConfigMap is managed by operator - ready for RHOAI 3.x upgrade",
-				)
+				results.SetCondition(req.Result, check.NewCondition(
+					check.ConditionTypeCompatible,
+					metav1.ConditionTrue,
+					check.WithReason(check.ReasonVersionCompatible),
+					check.WithMessage("inferenceservice-config ConfigMap is managed by operator - ready for RHOAI 3.x upgrade"),
+				))
 			default:
 				results.SetCondition(req.Result, check.NewCondition(
 					check.ConditionTypeConfigured,
 					metav1.ConditionFalse,
-					check.ReasonConfigurationInvalid,
-					"inferenceservice-config ConfigMap has %s=false - migration will not update it and configuration may become out of sync after upgrade to RHOAI 3.x",
-					kube.AnnotationManaged,
+					check.WithReason(check.ReasonConfigurationInvalid),
+					check.WithMessage("inferenceservice-config ConfigMap has %s=false - migration will not update it and configuration may become out of sync after upgrade to RHOAI 3.x", kube.AnnotationManaged),
 					check.WithImpact(result.ImpactAdvisory),
 					check.WithRemediation(c.CheckRemediation),
 				))

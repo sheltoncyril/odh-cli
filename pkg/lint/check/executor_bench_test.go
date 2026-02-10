@@ -184,8 +184,8 @@ func (c *benchmarkCheck) Validate(_ context.Context, _ check.Target) (*result.Di
 		check.NewCondition(
 			check.ConditionTypeValidated,
 			metav1.ConditionTrue,
-			check.ReasonResourceFound,
-			"Benchmark check passed",
+			check.WithReason(check.ReasonResourceFound),
+			check.WithMessage("Benchmark check passed"),
 		),
 	}
 

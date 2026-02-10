@@ -83,9 +83,8 @@ func (c *InstructLabRemovalCheck) Validate(ctx context.Context, target check.Tar
 				results.SetCondition(req.Result, check.NewCondition(
 					check.ConditionTypeCompatible,
 					metav1.ConditionFalse,
-					check.ReasonFeatureRemoved,
-					"Found %d DataSciencePipelinesApplication(s) with deprecated '.spec.apiServer.managedPipelines.instructLab' field - InstructLab feature was removed in RHOAI 3.x",
-					len(impactedDSPAs),
+					check.WithReason(check.ReasonFeatureRemoved),
+					check.WithMessage("Found %d DataSciencePipelinesApplication(s) with deprecated '.spec.apiServer.managedPipelines.instructLab' field - InstructLab feature was removed in RHOAI 3.x", len(impactedDSPAs)),
 					check.WithImpact(result.ImpactAdvisory),
 					check.WithRemediation(c.CheckRemediation),
 				))
@@ -95,8 +94,12 @@ func (c *InstructLabRemovalCheck) Validate(ctx context.Context, target check.Tar
 				return nil
 			}
 
-			results.SetCompatibilitySuccessf(req.Result,
-				"No DataSciencePipelinesApplications found using deprecated 'managedPipelines.instructLab' field - ready for RHOAI 3.x upgrade")
+			results.SetCondition(req.Result, check.NewCondition(
+				check.ConditionTypeCompatible,
+				metav1.ConditionTrue,
+				check.WithReason(check.ReasonVersionCompatible),
+				check.WithMessage("No DataSciencePipelinesApplications found using deprecated 'managedPipelines.instructLab' field - ready for RHOAI 3.x upgrade"),
+			))
 
 			return nil
 		})

@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"slices"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/operators"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 )
 
 const annotationInstalledVersion = "operator.opendatahub.io/installed-version"
@@ -45,10 +46,20 @@ func Operator(c check.Check, target check.Target) *OperatorBuilder {
 		// Default condition builder: standard Available condition.
 		conditionBuilder: func(found bool, version string) result.Condition {
 			if !found {
-				return results.NewAvailabilityFailure("%s operator is not installed", kind)
+				return check.NewCondition(
+					check.ConditionTypeAvailable,
+					metav1.ConditionFalse,
+					check.WithReason(check.ReasonResourceNotFound),
+					check.WithMessage("%s operator is not installed", kind),
+				)
 			}
 
-			return results.NewAvailabilitySuccess("%s operator installed: %s", kind, version)
+			return check.NewCondition(
+				check.ConditionTypeAvailable,
+				metav1.ConditionTrue,
+				check.WithReason(check.ReasonResourceFound),
+				check.WithMessage("%s operator installed: %s", kind, version),
+			)
 		},
 	}
 }

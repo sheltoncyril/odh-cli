@@ -38,17 +38,16 @@ func (c *OtelMigrationCheck) newOtelMigrationCondition(
 		return []result.Condition{check.NewCondition(
 			ConditionTypeOtelConfigCompatible,
 			metav1.ConditionTrue,
-			check.ReasonVersionCompatible,
-			"No GuardrailsOrchestrators found using deprecated otelExporter fields",
+			check.WithReason(check.ReasonVersionCompatible),
+			check.WithMessage("No GuardrailsOrchestrators found using deprecated otelExporter fields"),
 		)}, nil
 	}
 
 	return []result.Condition{check.NewCondition(
 		ConditionTypeOtelConfigCompatible,
 		metav1.ConditionFalse,
-		check.ReasonConfigurationInvalid,
-		"Found %d GuardrailsOrchestrator(s) using deprecated otelExporter fields - migrate to new format before upgrading",
-		count,
+		check.WithReason(check.ReasonConfigurationInvalid),
+		check.WithMessage("Found %d GuardrailsOrchestrator(s) using deprecated otelExporter fields - migrate to new format before upgrading", count),
 		check.WithImpact(result.ImpactAdvisory),
 	)}, nil
 }
