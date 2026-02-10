@@ -3,8 +3,6 @@ package datasciencepipelines_test
 import (
 	"testing"
 
-	"github.com/blang/semver/v4"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -51,51 +49,52 @@ func newDSPAv1(name string, namespace string, withInstructLab bool) *unstructure
 	}
 }
 
-func TestInstructLabRemovalCheck_NoDSC(t *testing.T) {
+func TestInstructLabRemovalCheck_CanApply_NoDSC(t *testing.T) {
 	g := NewWithT(t)
-	ctx := t.Context()
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     instructLabListKinds,
-		Objects:       []*unstructured.Unstructured{},
-		TargetVersion: "3.0.0",
+		ListKinds:      instructLabListKinds,
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
-	ilCheck := datasciencepipelines.NewInstructLabRemovalCheck()
-	dr, err := ilCheck.Validate(ctx, target)
+	chk := datasciencepipelines.NewInstructLabRemovalCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 
-	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(dr.Status.Conditions).To(HaveLen(1))
-	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeAvailable),
-		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonResourceNotFound),
-		"Message": ContainSubstring("No DataScienceCluster"),
-	}))
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(canApply).To(BeFalse())
 }
 
-func TestInstructLabRemovalCheck_ComponentNotManaged(t *testing.T) {
+func TestInstructLabRemovalCheck_CanApply_ManagementState(t *testing.T) {
 	g := NewWithT(t)
-	ctx := t.Context()
 
-	dsc := testutil.NewDSC(map[string]string{"datasciencepipelines": "Removed"})
-	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     instructLabListKinds,
-		Objects:       []*unstructured.Unstructured{dsc},
-		TargetVersion: "3.0.0",
-	})
+	chk := datasciencepipelines.NewInstructLabRemovalCheck()
 
-	ilCheck := datasciencepipelines.NewInstructLabRemovalCheck()
-	dr, err := ilCheck.Validate(ctx, target)
+	testCases := []struct {
+		name     string
+		state    string
+		expected bool
+	}{
+		{name: "Managed", state: "Managed", expected: true},
+		{name: "Unmanaged", state: "Unmanaged", expected: false},
+		{name: "Removed", state: "Removed", expected: false},
+	}
 
-	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(dr.Status.Conditions).To(HaveLen(1))
-	// Removed is not in InState(Managed), so the builder passes
-	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":   Equal(check.ConditionTypeConfigured),
-		"Status": Equal(metav1.ConditionTrue),
-		"Reason": Equal(check.ReasonRequirementsMet),
-	}))
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dsc := testutil.NewDSC(map[string]string{"datasciencepipelines": tc.state})
+			target := testutil.NewTarget(t, testutil.TargetConfig{
+				ListKinds:      instructLabListKinds,
+				Objects:        []*unstructured.Unstructured{dsc},
+				CurrentVersion: "2.17.0",
+				TargetVersion:  "3.0.0",
+			})
+
+			canApply, err := chk.CanApply(t.Context(), target)
+			g.Expect(err).ToNot(HaveOccurred())
+			g.Expect(canApply).To(Equal(tc.expected))
+		})
+	}
 }
 
 func TestInstructLabRemovalCheck_NoDSPAs(t *testing.T) {
@@ -104,9 +103,10 @@ func TestInstructLabRemovalCheck_NoDSPAs(t *testing.T) {
 
 	dsc := testutil.NewDSC(map[string]string{"datasciencepipelines": "Managed"})
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     instructLabListKinds,
-		Objects:       []*unstructured.Unstructured{dsc},
-		TargetVersion: "3.0.0",
+		ListKinds:      instructLabListKinds,
+		Objects:        []*unstructured.Unstructured{dsc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	ilCheck := datasciencepipelines.NewInstructLabRemovalCheck()
@@ -130,9 +130,10 @@ func TestInstructLabRemovalCheck_DSPAWithInstructLab(t *testing.T) {
 	dsc := testutil.NewDSC(map[string]string{"datasciencepipelines": "Managed"})
 	dspa := newDSPAv1("my-dspa", "test-ns", true)
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     instructLabListKinds,
-		Objects:       []*unstructured.Unstructured{dsc, dspa},
-		TargetVersion: "3.0.0",
+		ListKinds:      instructLabListKinds,
+		Objects:        []*unstructured.Unstructured{dsc, dspa},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	ilCheck := datasciencepipelines.NewInstructLabRemovalCheck()
@@ -160,9 +161,10 @@ func TestInstructLabRemovalCheck_DSPAWithoutInstructLab(t *testing.T) {
 	dsc := testutil.NewDSC(map[string]string{"datasciencepipelines": "Managed"})
 	dspa := newDSPAv1("clean-dspa", "test-ns", false)
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     instructLabListKinds,
-		Objects:       []*unstructured.Unstructured{dsc, dspa},
-		TargetVersion: "3.0.0",
+		ListKinds:      instructLabListKinds,
+		Objects:        []*unstructured.Unstructured{dsc, dspa},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	ilCheck := datasciencepipelines.NewInstructLabRemovalCheck()
@@ -188,9 +190,10 @@ func TestInstructLabRemovalCheck_MultipleDSPAsMixed(t *testing.T) {
 	dspa2 := newDSPAv1("dspa-clean", "ns2", false)
 	dspa3 := newDSPAv1("dspa-with-il-2", "ns3", true)
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     instructLabListKinds,
-		Objects:       []*unstructured.Unstructured{dsc, dspa1, dspa2, dspa3},
-		TargetVersion: "3.0.0",
+		ListKinds:      instructLabListKinds,
+		Objects:        []*unstructured.Unstructured{dsc, dspa1, dspa2, dspa3},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	ilCheck := datasciencepipelines.NewInstructLabRemovalCheck()
@@ -212,28 +215,48 @@ func TestInstructLabRemovalCheck_CanApply(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
-	ilCheck := datasciencepipelines.NewInstructLabRemovalCheck()
+	chk := datasciencepipelines.NewInstructLabRemovalCheck()
+	dsc := testutil.NewDSC(map[string]string{"datasciencepipelines": "Managed"})
 
 	// Should not apply in lint mode (same version)
-	v217 := semver.MustParse("2.17.0")
-	canApply, err := ilCheck.CanApply(ctx, check.Target{CurrentVersion: &v217, TargetVersion: &v217})
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      instructLabListKinds,
+		Objects:        []*unstructured.Unstructured{dsc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "2.17.0",
+	})
+	canApply, err := chk.CanApply(ctx, target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
 
-	// Should apply for 2.x -> 3.x upgrade
-	v300 := semver.MustParse("3.0.0")
-	canApply, err = ilCheck.CanApply(ctx, check.Target{CurrentVersion: &v217, TargetVersion: &v300})
+	// Should apply for 2.x -> 3.x upgrade with Managed
+	target = testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      instructLabListKinds,
+		Objects:        []*unstructured.Unstructured{dsc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+	canApply, err = chk.CanApply(ctx, target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeTrue())
 
 	// Should not apply for 3.x -> 3.x upgrade
-	v310 := semver.MustParse("3.1.0")
-	canApply, err = ilCheck.CanApply(ctx, check.Target{CurrentVersion: &v300, TargetVersion: &v310})
+	target = testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      instructLabListKinds,
+		Objects:        []*unstructured.Unstructured{dsc},
+		CurrentVersion: "3.0.0",
+		TargetVersion:  "3.1.0",
+	})
+	canApply, err = chk.CanApply(ctx, target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
 
 	// Should not apply with nil versions
-	canApply, err = ilCheck.CanApply(ctx, check.Target{})
+	target = testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds: instructLabListKinds,
+		Objects:   []*unstructured.Unstructured{dsc},
+	})
+	canApply, err = chk.CanApply(ctx, target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
 }
