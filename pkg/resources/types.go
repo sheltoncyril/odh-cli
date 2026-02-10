@@ -267,4 +267,12 @@ var (
 		Kind:     "HardwareProfile",
 		Resource: "hardwareprofiles",
 	}
+
+	// LlamaStackDistribution is the LlamaStack distribution configuration resource.
+	LlamaStackDistribution = ResourceType{
+		Group:    "llamastack.io",
+		Version:  "v1alpha1",
+		Kind:     "LlamaStackDistribution",
+		Resource: "llamastackdistributions",
+	}
 )

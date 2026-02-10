@@ -28,6 +28,7 @@ import (
 	codeflareworkloads "github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/codeflare"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/guardrails"
 	kserveworkloads "github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/kserve"
+	llamastackworkloads "github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/llamastack"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/notebook"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/ray"
 	trainingoperatorworkloads "github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/trainingoperator"
@@ -99,6 +100,7 @@ func NewCommand(
 	registry.MustRegister(guardrails.NewOtelMigrationCheck())
 	registry.MustRegister(kserveworkloads.NewAcceleratorMigrationCheck())
 	registry.MustRegister(kserveworkloads.NewImpactedWorkloadsCheck())
+	registry.MustRegister(llamastackworkloads.NewConfigCheck())
 	registry.MustRegister(notebook.NewAcceleratorMigrationCheck())
 	registry.MustRegister(notebook.NewImpactedWorkloadsCheck())
 	registry.MustRegister(ray.NewImpactedWorkloadsCheck())
