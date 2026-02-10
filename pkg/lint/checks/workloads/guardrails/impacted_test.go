@@ -3,8 +3,6 @@ package guardrails_test
 import (
 	"testing"
 
-	"github.com/blang/semver/v4"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -37,6 +35,7 @@ detectors:
 var impactedListKinds = map[schema.GroupVersionResource]string{
 	resources.GuardrailsOrchestrator.GVR(): resources.GuardrailsOrchestrator.ListKind(),
 	resources.ConfigMap.GVR():              resources.ConfigMap.ListKind(),
+	resources.DataScienceCluster.GVR():     resources.DataScienceCluster.ListKind(),
 }
 
 func newTestOrchestrator(
@@ -396,68 +395,77 @@ func TestImpactedWorkloadsCheck_Metadata(t *testing.T) {
 	g.Expect(chk.Description()).ToNot(BeEmpty())
 }
 
-func TestImpactedWorkloadsCheck_CanApply(t *testing.T) {
-	t.Run("nil versions", func(t *testing.T) {
-		g := NewWithT(t)
+func TestImpactedWorkloadsCheck_CanApply_NilVersions(t *testing.T) {
+	g := NewWithT(t)
 
-		target := check.Target{
-			CurrentVersion: nil,
-			TargetVersion:  nil,
-		}
+	chk := guardrails.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), check.Target{})
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeFalse())
+}
 
-		chk := guardrails.NewImpactedWorkloadsCheck()
-		canApply, err := chk.CanApply(t.Context(), target)
-		g.Expect(err).ToNot(HaveOccurred())
-		g.Expect(canApply).To(BeFalse())
+func TestImpactedWorkloadsCheck_CanApply_2xTo2x(t *testing.T) {
+	g := NewWithT(t)
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      impactedListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"trustyai": "Managed"})},
+		CurrentVersion: "2.16.0",
+		TargetVersion:  "2.17.0",
 	})
 
-	t.Run("2x to 2x", func(t *testing.T) {
-		g := NewWithT(t)
+	chk := guardrails.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeFalse())
+}
 
-		currentVer := semver.MustParse("2.16.0")
-		targetVer := semver.MustParse("2.17.0")
-		target := check.Target{
-			CurrentVersion: &currentVer,
-			TargetVersion:  &targetVer,
-		}
+func TestImpactedWorkloadsCheck_CanApply_2xTo3x_Managed(t *testing.T) {
+	g := NewWithT(t)
 
-		chk := guardrails.NewImpactedWorkloadsCheck()
-		canApply, err := chk.CanApply(t.Context(), target)
-		g.Expect(err).ToNot(HaveOccurred())
-		g.Expect(canApply).To(BeFalse())
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      impactedListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"trustyai": "Managed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
-	t.Run("2x to 3x", func(t *testing.T) {
-		g := NewWithT(t)
+	chk := guardrails.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeTrue())
+}
 
-		currentVer := semver.MustParse("2.17.0")
-		targetVer := semver.MustParse("3.0.0")
-		target := check.Target{
-			CurrentVersion: &currentVer,
-			TargetVersion:  &targetVer,
-		}
+func TestImpactedWorkloadsCheck_CanApply_2xTo3x_Removed(t *testing.T) {
+	g := NewWithT(t)
 
-		chk := guardrails.NewImpactedWorkloadsCheck()
-		canApply, err := chk.CanApply(t.Context(), target)
-		g.Expect(err).ToNot(HaveOccurred())
-		g.Expect(canApply).To(BeTrue())
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      impactedListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"trustyai": "Removed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
-	t.Run("3x to 3x", func(t *testing.T) {
-		g := NewWithT(t)
+	chk := guardrails.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeFalse())
+}
 
-		currentVer := semver.MustParse("3.0.0")
-		targetVer := semver.MustParse("3.3.0")
-		target := check.Target{
-			CurrentVersion: &currentVer,
-			TargetVersion:  &targetVer,
-		}
+func TestImpactedWorkloadsCheck_CanApply_3xTo3x(t *testing.T) {
+	g := NewWithT(t)
 
-		chk := guardrails.NewImpactedWorkloadsCheck()
-		canApply, err := chk.CanApply(t.Context(), target)
-		g.Expect(err).ToNot(HaveOccurred())
-		g.Expect(canApply).To(BeFalse())
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      impactedListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"trustyai": "Managed"})},
+		CurrentVersion: "3.0.0",
+		TargetVersion:  "3.3.0",
 	})
+
+	chk := guardrails.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeFalse())
 }
 
 func TestImpactedWorkloadsCheck_AnnotationTargetVersion(t *testing.T) {

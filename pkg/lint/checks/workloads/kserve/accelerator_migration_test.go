@@ -3,8 +3,6 @@ package kserve_test
 import (
 	"testing"
 
-	"github.com/blang/semver/v4"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -24,6 +22,7 @@ var acceleratorListKinds = map[schema.GroupVersionResource]string{
 	resources.InferenceService.GVR():   resources.InferenceService.ListKind(),
 	resources.AcceleratorProfile.GVR(): resources.AcceleratorProfile.ListKind(),
 	resources.DSCInitialization.GVR():  resources.DSCInitialization.ListKind(),
+	resources.DataScienceCluster.GVR(): resources.DataScienceCluster.ListKind(),
 }
 
 func TestAcceleratorMigrationCheck_NoInferenceServices(t *testing.T) {
@@ -294,64 +293,91 @@ func TestAcceleratorMigrationCheck_Metadata(t *testing.T) {
 	g.Expect(acceleratorCheck.Remediation()).To(ContainSubstring("HardwareProfiles"))
 }
 
+func TestAcceleratorMigrationCheck_CanApply_NilVersions(t *testing.T) {
+	g := NewWithT(t)
+
+	chk := kserve.NewAcceleratorMigrationCheck()
+	canApply, err := chk.CanApply(t.Context(), check.Target{})
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeFalse())
+}
+
 func TestAcceleratorMigrationCheck_CanApply_LintMode2x(t *testing.T) {
 	g := NewWithT(t)
 
-	currentVer := semver.MustParse("2.17.0")
-	target := check.Target{
-		CurrentVersion: &currentVer,
-		TargetVersion:  &currentVer,
-	}
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      acceleratorListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kserve": "Managed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "2.17.0",
+	})
 
-	acceleratorCheck := kserve.NewAcceleratorMigrationCheck()
-	canApply, err := acceleratorCheck.CanApply(t.Context(), target)
+	chk := kserve.NewAcceleratorMigrationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
-	// Lint mode at 2.x should not apply
+	g.Expect(canApply).To(BeFalse())
+}
+
+func TestAcceleratorMigrationCheck_CanApply_UpgradeTo3x_KServeManaged(t *testing.T) {
+	g := NewWithT(t)
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      acceleratorListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kserve": "Managed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	chk := kserve.NewAcceleratorMigrationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeTrue())
+}
+
+func TestAcceleratorMigrationCheck_CanApply_UpgradeTo3x_ModelMeshManaged(t *testing.T) {
+	g := NewWithT(t)
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      acceleratorListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"modelmeshserving": "Managed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	chk := kserve.NewAcceleratorMigrationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeTrue())
+}
+
+func TestAcceleratorMigrationCheck_CanApply_UpgradeTo3x_BothRemoved(t *testing.T) {
+	g := NewWithT(t)
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      acceleratorListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kserve": "Removed", "modelmeshserving": "Removed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	chk := kserve.NewAcceleratorMigrationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
 }
 
 func TestAcceleratorMigrationCheck_CanApply_LintMode3x(t *testing.T) {
 	g := NewWithT(t)
 
-	currentVer := semver.MustParse("3.0.0")
-	target := check.Target{
-		CurrentVersion: &currentVer,
-		TargetVersion:  &currentVer,
-	}
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      acceleratorListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kserve": "Managed"})},
+		CurrentVersion: "3.0.0",
+		TargetVersion:  "3.0.0",
+	})
 
-	acceleratorCheck := kserve.NewAcceleratorMigrationCheck()
-	canApply, err := acceleratorCheck.CanApply(t.Context(), target)
-	g.Expect(err).ToNot(HaveOccurred())
-	// Lint mode at 3.x should not apply — this check is only for 2.x→3.x upgrades.
-	g.Expect(canApply).To(BeFalse())
-}
-
-func TestAcceleratorMigrationCheck_CanApply_UpgradeTo3x(t *testing.T) {
-	g := NewWithT(t)
-
-	currentVer := semver.MustParse("2.17.0")
-	targetVer := semver.MustParse("3.0.0")
-	target := check.Target{
-		CurrentVersion: &currentVer,
-		TargetVersion:  &targetVer,
-	}
-
-	acceleratorCheck := kserve.NewAcceleratorMigrationCheck()
-	canApply, err := acceleratorCheck.CanApply(t.Context(), target)
-	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(canApply).To(BeTrue())
-}
-
-func TestAcceleratorMigrationCheck_CanApply_NilVersions(t *testing.T) {
-	g := NewWithT(t)
-
-	target := check.Target{
-		CurrentVersion: nil,
-		TargetVersion:  nil,
-	}
-
-	acceleratorCheck := kserve.NewAcceleratorMigrationCheck()
-	canApply, err := acceleratorCheck.CanApply(t.Context(), target)
+	chk := kserve.NewAcceleratorMigrationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
 }

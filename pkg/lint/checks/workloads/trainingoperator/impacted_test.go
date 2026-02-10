@@ -3,8 +3,6 @@ package trainingoperator_test
 import (
 	"testing"
 
-	"github.com/blang/semver/v4"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -21,7 +19,8 @@ import (
 
 //nolint:gochecknoglobals
 var listKinds = map[schema.GroupVersionResource]string{
-	resources.PyTorchJob.GVR(): resources.PyTorchJob.ListKind(),
+	resources.PyTorchJob.GVR():         resources.PyTorchJob.ListKind(),
+	resources.DataScienceCluster.GVR(): resources.DataScienceCluster.ListKind(),
 }
 
 func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
@@ -312,41 +311,59 @@ func TestImpactedWorkloadsCheck_Metadata(t *testing.T) {
 func TestImpactedWorkloadsCheck_CanApply_Version32(t *testing.T) {
 	g := NewWithT(t)
 
-	ver := semver.MustParse("3.2.0")
-	target := check.Target{
-		TargetVersion: &ver,
-	}
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:     listKinds,
+		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"trainingoperator": "Managed"})},
+		TargetVersion: "3.2.0",
+	})
 
-	impactedCheck := trainingoperator.NewImpactedWorkloadsCheck()
-	canApply, err := impactedCheck.CanApply(t.Context(), target)
+	chk := trainingoperator.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
 }
 
-func TestImpactedWorkloadsCheck_CanApply_Version33(t *testing.T) {
+func TestImpactedWorkloadsCheck_CanApply_Version33_Managed(t *testing.T) {
 	g := NewWithT(t)
 
-	ver := semver.MustParse("3.3.0")
-	target := check.Target{
-		TargetVersion: &ver,
-	}
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:     listKinds,
+		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"trainingoperator": "Managed"})},
+		TargetVersion: "3.3.0",
+	})
 
-	impactedCheck := trainingoperator.NewImpactedWorkloadsCheck()
-	canApply, err := impactedCheck.CanApply(t.Context(), target)
+	chk := trainingoperator.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeTrue())
+}
+
+func TestImpactedWorkloadsCheck_CanApply_Version33_Removed(t *testing.T) {
+	g := NewWithT(t)
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:     listKinds,
+		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"trainingoperator": "Removed"})},
+		TargetVersion: "3.3.0",
+	})
+
+	chk := trainingoperator.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeFalse())
 }
 
 func TestImpactedWorkloadsCheck_CanApply_Version34(t *testing.T) {
 	g := NewWithT(t)
 
-	ver := semver.MustParse("3.4.0")
-	target := check.Target{
-		TargetVersion: &ver,
-	}
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:     listKinds,
+		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"trainingoperator": "Managed"})},
+		TargetVersion: "3.4.0",
+	})
 
-	impactedCheck := trainingoperator.NewImpactedWorkloadsCheck()
-	canApply, err := impactedCheck.CanApply(t.Context(), target)
+	chk := trainingoperator.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeTrue())
 }

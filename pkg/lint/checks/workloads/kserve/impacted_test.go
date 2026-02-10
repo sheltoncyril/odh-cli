@@ -3,8 +3,6 @@ package kserve_test
 import (
 	"testing"
 
-	"github.com/blang/semver/v4"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -24,8 +22,9 @@ const (
 
 //nolint:gochecknoglobals // Test fixture - shared across test functions
 var listKinds = map[schema.GroupVersionResource]string{
-	resources.InferenceService.GVR(): resources.InferenceService.ListKind(),
-	resources.ServingRuntime.GVR():   resources.ServingRuntime.ListKind(),
+	resources.InferenceService.GVR():   resources.InferenceService.ListKind(),
+	resources.ServingRuntime.GVR():     resources.ServingRuntime.ListKind(),
+	resources.DataScienceCluster.GVR(): resources.DataScienceCluster.ListKind(),
 }
 
 func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
@@ -33,8 +32,9 @@ func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
 	ctx := t.Context()
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -88,9 +88,10 @@ func TestImpactedWorkloadsCheck_ModelMeshInferenceService(t *testing.T) {
 	}
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{isvc},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{isvc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -144,9 +145,10 @@ func TestImpactedWorkloadsCheck_ServerlessInferenceService(t *testing.T) {
 	}
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{isvc},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{isvc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -200,9 +202,10 @@ func TestImpactedWorkloadsCheck_ModelMeshServingRuntime(t *testing.T) {
 	}
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{sr},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{sr},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -257,9 +260,10 @@ func TestImpactedWorkloadsCheck_ServerlessServingRuntime_NotFlagged(t *testing.T
 	}
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{sr},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{sr},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -305,9 +309,10 @@ func TestImpactedWorkloadsCheck_RawDeploymentAnnotation(t *testing.T) {
 	}
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{isvc},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{isvc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -353,9 +358,10 @@ func TestImpactedWorkloadsCheck_NoAnnotation(t *testing.T) {
 	}
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{isvc},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{isvc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -443,9 +449,10 @@ func TestImpactedWorkloadsCheck_MixedWorkloads(t *testing.T) {
 	}
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{isvc1, isvc2, isvc3, sr1},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{isvc1, isvc2, isvc3, sr1},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -503,9 +510,10 @@ func TestImpactedWorkloadsCheck_RemovedRuntime_OVMS(t *testing.T) {
 	}
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{isvc},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{isvc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -554,9 +562,10 @@ func TestImpactedWorkloadsCheck_RemovedRuntime_CaikitTGIS(t *testing.T) {
 	}
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{isvc},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{isvc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -604,9 +613,10 @@ func TestImpactedWorkloadsCheck_NonRemovedRuntime(t *testing.T) {
 	}
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{isvc},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{isvc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -648,9 +658,10 @@ func TestImpactedWorkloadsCheck_NoRuntimeField(t *testing.T) {
 	}
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{isvc},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{isvc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -725,9 +736,10 @@ func TestImpactedWorkloadsCheck_MixedRemovedAndNonRemovedRuntimes(t *testing.T) 
 	}
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:     listKinds,
-		Objects:       []*unstructured.Unstructured{isvc1, isvc2, isvc3},
-		TargetVersion: "3.0.0",
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{isvc1, isvc2, isvc3},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
 	})
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -755,36 +767,91 @@ func TestImpactedWorkloadsCheck_Metadata(t *testing.T) {
 	g.Expect(impactedCheck.Description()).ToNot(BeEmpty())
 }
 
-func TestImpactedWorkloadsCheck_CanApply(t *testing.T) {
+func TestImpactedWorkloadsCheck_CanApply_NilVersions(t *testing.T) {
 	g := NewWithT(t)
 
-	impactedCheck := kserve.NewImpactedWorkloadsCheck()
-	ctx := t.Context()
-
-	// Should not apply when target is nil
-	canApply, err := impactedCheck.CanApply(ctx, check.Target{})
+	chk := kserve.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), check.Target{})
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
+}
 
-	// Should not apply for 2.x to 2.x
-	v2_15 := semver.MustParse("2.15.0")
-	v2_17 := semver.MustParse("2.17.0")
-	target2x := check.Target{CurrentVersion: &v2_15, TargetVersion: &v2_17}
-	canApply, err = impactedCheck.CanApply(ctx, target2x)
+func TestImpactedWorkloadsCheck_CanApply_2xTo2x(t *testing.T) {
+	g := NewWithT(t)
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kserve": "Managed"})},
+		CurrentVersion: "2.15.0",
+		TargetVersion:  "2.17.0",
+	})
+
+	chk := kserve.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
+}
 
-	// Should apply for 2.x to 3.x
-	v3_0 := semver.MustParse("3.0.0")
-	target2xTo3x := check.Target{CurrentVersion: &v2_17, TargetVersion: &v3_0}
-	canApply, err = impactedCheck.CanApply(ctx, target2xTo3x)
+func TestImpactedWorkloadsCheck_CanApply_2xTo3x_KServeManaged(t *testing.T) {
+	g := NewWithT(t)
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kserve": "Managed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	chk := kserve.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeTrue())
+}
 
-	// Should not apply for 3.x to 3.x
-	v3_1 := semver.MustParse("3.1.0")
-	target3x := check.Target{CurrentVersion: &v3_0, TargetVersion: &v3_1}
-	canApply, err = impactedCheck.CanApply(ctx, target3x)
+func TestImpactedWorkloadsCheck_CanApply_2xTo3x_ModelMeshManaged(t *testing.T) {
+	g := NewWithT(t)
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"modelmeshserving": "Managed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	chk := kserve.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeTrue())
+}
+
+func TestImpactedWorkloadsCheck_CanApply_2xTo3x_BothRemoved(t *testing.T) {
+	g := NewWithT(t)
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kserve": "Removed", "modelmeshserving": "Removed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	chk := kserve.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeFalse())
+}
+
+func TestImpactedWorkloadsCheck_CanApply_3xTo3x(t *testing.T) {
+	g := NewWithT(t)
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kserve": "Managed"})},
+		CurrentVersion: "3.0.0",
+		TargetVersion:  "3.1.0",
+	})
+
+	chk := kserve.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
 }

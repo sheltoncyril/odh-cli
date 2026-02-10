@@ -3,8 +3,6 @@ package guardrails_test
 import (
 	"testing"
 
-	"github.com/blang/semver/v4"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -22,6 +20,7 @@ import (
 //nolint:gochecknoglobals
 var listKinds = map[schema.GroupVersionResource]string{
 	resources.GuardrailsOrchestrator.GVR(): resources.GuardrailsOrchestrator.ListKind(),
+	resources.DataScienceCluster.GVR():     resources.DataScienceCluster.ListKind(),
 }
 
 func TestOtelMigrationCheck_NoOrchestrators(t *testing.T) {
@@ -337,84 +336,75 @@ func TestOtelMigrationCheck_Metadata(t *testing.T) {
 	g.Expect(otelCheck.Description()).ToNot(BeEmpty())
 }
 
+func TestOtelMigrationCheck_CanApply_NilVersions(t *testing.T) {
+	g := NewWithT(t)
+
+	chk := guardrails.NewOtelMigrationCheck()
+	canApply, err := chk.CanApply(t.Context(), check.Target{})
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeFalse())
+}
+
 func TestOtelMigrationCheck_CanApply_LintMode(t *testing.T) {
 	g := NewWithT(t)
 
-	currentVer := semver.MustParse("2.17.0")
-	target := check.Target{
-		CurrentVersion: &currentVer,
-		TargetVersion:  &currentVer,
-	}
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"trustyai": "Managed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "2.17.0",
+	})
 
-	otelCheck := guardrails.NewOtelMigrationCheck()
-	canApply, err := otelCheck.CanApply(t.Context(), target)
+	chk := guardrails.NewOtelMigrationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
-
-	// Lint mode at 2.x should not apply
 	g.Expect(canApply).To(BeFalse())
 }
 
-func TestOtelMigrationCheck_CanApply_LintMode3x(t *testing.T) {
+func TestOtelMigrationCheck_CanApply_UpgradeTo3x_Managed(t *testing.T) {
 	g := NewWithT(t)
 
-	currentVer := semver.MustParse("3.0.0")
-	target := check.Target{
-		CurrentVersion: &currentVer,
-		TargetVersion:  &currentVer,
-	}
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"trustyai": "Managed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
 
-	otelCheck := guardrails.NewOtelMigrationCheck()
-	canApply, err := otelCheck.CanApply(t.Context(), target)
-	g.Expect(err).ToNot(HaveOccurred())
-
-	// Lint mode at 3.x should not apply (only 2.x → 3.x upgrades)
-	g.Expect(canApply).To(BeFalse())
-}
-
-func TestOtelMigrationCheck_CanApply_UpgradeTo3x(t *testing.T) {
-	g := NewWithT(t)
-
-	currentVer := semver.MustParse("2.17.0")
-	targetVer := semver.MustParse("3.0.0")
-	target := check.Target{
-		CurrentVersion: &currentVer,
-		TargetVersion:  &targetVer,
-	}
-
-	otelCheck := guardrails.NewOtelMigrationCheck()
-	canApply, err := otelCheck.CanApply(t.Context(), target)
+	chk := guardrails.NewOtelMigrationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeTrue())
 }
 
-func TestOtelMigrationCheck_CanApply_UpgradeTo33(t *testing.T) {
+func TestOtelMigrationCheck_CanApply_UpgradeTo3x_Removed(t *testing.T) {
 	g := NewWithT(t)
 
-	currentVer := semver.MustParse("3.0.0")
-	targetVer := semver.MustParse("3.3.0")
-	target := check.Target{
-		CurrentVersion: &currentVer,
-		TargetVersion:  &targetVer,
-	}
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"trustyai": "Removed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
 
-	otelCheck := guardrails.NewOtelMigrationCheck()
-	canApply, err := otelCheck.CanApply(t.Context(), target)
+	chk := guardrails.NewOtelMigrationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
-
-	// 3.x → 3.x should not apply (only 2.x → 3.x upgrades)
 	g.Expect(canApply).To(BeFalse())
 }
 
-func TestOtelMigrationCheck_CanApply_NilVersions(t *testing.T) {
+func TestOtelMigrationCheck_CanApply_3xTo3x(t *testing.T) {
 	g := NewWithT(t)
 
-	target := check.Target{
-		CurrentVersion: nil,
-		TargetVersion:  nil,
-	}
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"trustyai": "Managed"})},
+		CurrentVersion: "3.0.0",
+		TargetVersion:  "3.3.0",
+	})
 
-	otelCheck := guardrails.NewOtelMigrationCheck()
-	canApply, err := otelCheck.CanApply(t.Context(), target)
+	chk := guardrails.NewOtelMigrationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
 }

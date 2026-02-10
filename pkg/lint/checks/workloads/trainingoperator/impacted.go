@@ -10,8 +10,10 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
+	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -37,9 +39,20 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 	}
 }
 
-func (c *ImpactedWorkloadsCheck) CanApply(_ context.Context, target check.Target) (bool, error) {
+// CanApply returns whether this check should run for the given target.
+// Only applies when target version >= 3.3 and TrainingOperator is Managed.
+func (c *ImpactedWorkloadsCheck) CanApply(ctx context.Context, target check.Target) (bool, error) {
 	//nolint:mnd // Version numbers 3.3
-	return version.IsVersionAtLeast(target.TargetVersion, 3, 3), nil
+	if !version.IsVersionAtLeast(target.TargetVersion, 3, 3) {
+		return false, nil
+	}
+
+	dsc, err := client.GetDataScienceCluster(ctx, target.Client)
+	if err != nil {
+		return false, fmt.Errorf("getting DataScienceCluster: %w", err)
+	}
+
+	return components.HasManagementState(dsc, check.ComponentTrainingOperator, check.ManagementStateManaged), nil
 }
 
 func (c *ImpactedWorkloadsCheck) Validate(

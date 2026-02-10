@@ -3,8 +3,6 @@ package notebook_test
 import (
 	"testing"
 
-	"github.com/blang/semver/v4"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -21,7 +19,8 @@ import (
 
 //nolint:gochecknoglobals
 var listKinds = map[schema.GroupVersionResource]string{
-	resources.Notebook.GVR(): resources.Notebook.ListKind(),
+	resources.Notebook.GVR():           resources.Notebook.ListKind(),
+	resources.DataScienceCluster.GVR(): resources.DataScienceCluster.ListKind(),
 }
 
 func TestImpactedWorkloadsCheck_NoNotebooks(t *testing.T) {
@@ -163,46 +162,63 @@ func TestImpactedWorkloadsCheck_Metadata(t *testing.T) {
 func TestImpactedWorkloadsCheck_CanApply_LintMode(t *testing.T) {
 	g := NewWithT(t)
 
-	currentVer := semver.MustParse("2.17.0")
-	target := check.Target{
-		CurrentVersion: &currentVer,
-		TargetVersion:  &currentVer,
-	}
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "2.17.0",
+	})
 
-	impactedCheck := notebook.NewImpactedWorkloadsCheck()
-	canApply, err := impactedCheck.CanApply(t.Context(), target)
+	chk := notebook.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
 }
 
-func TestImpactedWorkloadsCheck_CanApply_Upgrade2xTo3x(t *testing.T) {
+func TestImpactedWorkloadsCheck_CanApply_Upgrade2xTo3x_Managed(t *testing.T) {
 	g := NewWithT(t)
 
-	currentVer := semver.MustParse("2.17.0")
-	targetVer := semver.MustParse("3.0.0")
-	target := check.Target{
-		CurrentVersion: &currentVer,
-		TargetVersion:  &targetVer,
-	}
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
 
-	impactedCheck := notebook.NewImpactedWorkloadsCheck()
-	canApply, err := impactedCheck.CanApply(t.Context(), target)
+	chk := notebook.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeTrue())
+}
+
+func TestImpactedWorkloadsCheck_CanApply_Upgrade2xTo3x_Removed(t *testing.T) {
+	g := NewWithT(t)
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Removed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	chk := notebook.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeFalse())
 }
 
 func TestImpactedWorkloadsCheck_CanApply_Upgrade3xTo3x(t *testing.T) {
 	g := NewWithT(t)
 
-	currentVer := semver.MustParse("3.0.0")
-	targetVer := semver.MustParse("3.1.0")
-	target := check.Target{
-		CurrentVersion: &currentVer,
-		TargetVersion:  &targetVer,
-	}
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"})},
+		CurrentVersion: "3.0.0",
+		TargetVersion:  "3.1.0",
+	})
 
-	impactedCheck := notebook.NewImpactedWorkloadsCheck()
-	canApply, err := impactedCheck.CanApply(t.Context(), target)
+	chk := notebook.NewImpactedWorkloadsCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
 }
