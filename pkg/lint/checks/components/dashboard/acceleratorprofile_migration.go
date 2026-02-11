@@ -2,12 +2,13 @@ package dashboard //nolint:dupl // Structurally similar to hardwareprofile_migra
 
 import (
 	"context"
-	"fmt"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/migration"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
@@ -46,18 +47,30 @@ func (c *AcceleratorProfileMigrationCheck) Validate(
 	ctx context.Context,
 	target check.Target,
 ) (*result.DiagnosticResult, error) {
-	dr := c.NewResult()
+	return validate.WorkloadsMetadata(c, target, resources.AcceleratorProfile).
+		Complete(ctx, c.newMigrationCondition)
+}
 
-	err := migration.ValidateResources(ctx, target, dr, migration.Config{
-		ResourceType:            resources.AcceleratorProfile,
-		ResourceLabel:           "AcceleratorProfile",
-		NoMigrationMessage:      "No legacy AcceleratorProfiles found - no migration required",
-		MigrationPendingMessage: "Found %d legacy AcceleratorProfile(s) that will be automatically migrated to HardwareProfiles (infrastructure.opendatahub.io) during upgrade",
-		Remediation:             c.CheckRemediation,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("validating AcceleratorProfile migration: %w", err)
+func (c *AcceleratorProfileMigrationCheck) newMigrationCondition(
+	_ context.Context,
+	req *validate.WorkloadRequest[*metav1.PartialObjectMetadata],
+) ([]result.Condition, error) {
+	switch {
+	case len(req.Items) == 0:
+		return []result.Condition{check.NewCondition(
+			check.ConditionTypeMigrationRequired,
+			metav1.ConditionTrue,
+			check.WithReason(check.ReasonNoMigrationRequired),
+			check.WithMessage("No legacy AcceleratorProfiles found - no migration required"),
+		)}, nil
+	default:
+		return []result.Condition{check.NewCondition(
+			check.ConditionTypeMigrationRequired,
+			metav1.ConditionFalse,
+			check.WithReason(check.ReasonMigrationPending),
+			check.WithMessage("Found %d legacy AcceleratorProfile(s) that will be automatically migrated to HardwareProfiles (infrastructure.opendatahub.io) during upgrade", len(req.Items)),
+			check.WithImpact(result.ImpactAdvisory),
+			check.WithRemediation(c.CheckRemediation),
+		)}, nil
 	}
-
-	return dr, nil
 }

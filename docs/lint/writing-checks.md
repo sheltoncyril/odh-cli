@@ -769,42 +769,43 @@ func (c *AcceleratorMigrationCheck) Validate(ctx context.Context, target check.T
 - Impacted workload count annotation
 - `ImpactedObjects` (if callback doesn't set them)
 
-## Migration Helper
+## Migration Checks
 
-The `pkg/lint/checks/shared/migration/` package provides a helper for API group migration checks that follow a common pattern: list resources, report count as advisory if found, report no-migration if empty.
+Migration checks use the `validate.WorkloadsMetadata` builder (same as other workload checks) to list resources and return conditions based on whether any exist:
 
 ```go
-import "github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/migration"
-
 func (c *Check) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
-    dr := c.NewResult()
+    return validate.WorkloadsMetadata(c, target, resources.AcceleratorProfile).
+        Complete(ctx, c.newMigrationCondition)
+}
 
-    err := migration.ValidateResources(ctx, target, dr, migration.Config{
-        ResourceType:           resources.AcceleratorProfile,
-        ResourceLabel:          "AcceleratorProfile",
-        NoMigrationMessage:     "No AcceleratorProfiles found - no migration needed",
-        MigrationPendingMessage: "Found %d AcceleratorProfiles that will be auto-migrated to HardwareProfile API group",
-    })
-    if err != nil {
-        return nil, err
+func (c *Check) newMigrationCondition(
+    _ context.Context,
+    req *validate.WorkloadRequest[*metav1.PartialObjectMetadata],
+) ([]result.Condition, error) {
+    count := len(req.Items)
+
+    if count == 0 {
+        return []result.Condition{check.NewCondition(
+            check.ConditionTypeMigrationRequired,
+            metav1.ConditionTrue,
+            check.WithReason(check.ReasonNoMigrationRequired),
+            check.WithMessage("No AcceleratorProfiles found - no migration needed"),
+        )}, nil
     }
 
-    return dr, nil
+    return []result.Condition{check.NewCondition(
+        check.ConditionTypeMigrationRequired,
+        metav1.ConditionFalse,
+        check.WithReason(check.ReasonMigrationPending),
+        check.WithMessage("Found %d AcceleratorProfile(s) that will be auto-migrated", count),
+        check.WithImpact(result.ImpactAdvisory),
+        check.WithRemediation(c.CheckRemediation),
+    )}, nil
 }
 ```
 
-**`migration.Config` fields:**
-- `ResourceType` - The Kubernetes resource type to discover
-- `ResourceLabel` - Human-readable name used in condition messages
-- `NoMigrationMessage` - Message when no resources are found
-- `MigrationPendingMessage` - Printf format for the message when resources are found (must contain `%d`)
-
-**The helper handles:**
-- Target version annotation population
-- Metadata-only listing for efficiency
-- CRD-not-found treated as empty list
-- Impacted workload count annotation
-- ImpactedObjects population
+The `WorkloadsMetadata` builder handles target version annotation, metadata-only listing, CRD-not-found as empty list, impacted workload count annotation, and `ImpactedObjects` auto-population.
 
 ## Complete Example
 

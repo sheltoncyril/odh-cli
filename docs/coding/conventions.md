@@ -109,6 +109,37 @@ if versionString > "3.0" {
 }
 ```
 
+## Control Flow
+
+Prefer `switch` over `if/else` chains when branching on a value or condition set. This makes the branches explicit, easier to extend, and visually consistent.
+
+```go
+// ✓ GOOD: tagged switch makes branches clear and extensible
+switch count {
+case 0:
+    return noItemsResult()
+default:
+    return normalResult(count)
+}
+
+// ✓ GOOD: untagged switch for complex conditions
+switch {
+case count > maxItems:
+    return tooManyResult(count)
+default:
+    return normalResult(count)
+}
+
+// ❌ AVOID: if/else chain for the same logic
+if count == 0 {
+    return noItemsResult()
+} else {
+    return normalResult(count)
+}
+```
+
+This applies especially to condition callbacks and builder functions where each branch returns a distinct result.
+
 ## Message Constants
 
 User-facing messages MUST be defined as package-level constants, NOT inline strings.
