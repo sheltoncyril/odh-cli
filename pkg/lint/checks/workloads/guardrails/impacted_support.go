@@ -55,10 +55,6 @@ func (c *ImpactedWorkloadsCheck) validateCR(
 		cr.annotations[annotationOrchestratorConfig] = "not set"
 	}
 
-	if sr.replicasFail {
-		cr.annotations[annotationReplicas] = "less than 1"
-	}
-
 	// Combined gateway: two sub-fields merged into one annotation with detailed description.
 	if sr.gatewayFail || sr.gatewayConfigFail {
 		var details []string
@@ -103,7 +99,6 @@ func (c *ImpactedWorkloadsCheck) validateCR(
 type specResult struct {
 	config            crConfig
 	orchConfigFail    bool
-	replicasFail      bool
 	gatewayFail       bool
 	detectorsFail     bool
 	gatewayConfigFail bool
@@ -115,7 +110,6 @@ func (c *ImpactedWorkloadsCheck) validateCRSpec(obj *unstructured.Unstructured) 
 	var r specResult
 
 	r.config.orchestratorConfigName, r.orchConfigFail = c.checkStringFieldMissing(obj, ".spec.orchestratorConfig")
-	r.replicasFail = c.checkReplicasInvalid(obj)
 	r.gatewayFail = c.checkBoolNotTrue(obj, ".spec.enableGuardrailsGateway")
 	r.detectorsFail = c.checkBoolNotTrue(obj, ".spec.enableBuiltInDetectors")
 	r.config.gatewayConfigName, r.gatewayConfigFail = c.checkStringFieldMissing(obj, ".spec.guardrailsGatewayConfig")
@@ -144,13 +138,6 @@ func (c *ImpactedWorkloadsCheck) checkBoolNotTrue(
 	val, err := jq.Query[bool](obj, query)
 
 	return err != nil || !val
-}
-
-// checkReplicasInvalid returns true if replicas is missing or less than 1.
-func (c *ImpactedWorkloadsCheck) checkReplicasInvalid(obj *unstructured.Unstructured) bool {
-	replicas, err := jq.Query[float64](obj, ".spec.replicas")
-
-	return err != nil || replicas < 1
 }
 
 // validateOrchestratorConfigMap validates the orchestrator ConfigMap's config.yaml content.

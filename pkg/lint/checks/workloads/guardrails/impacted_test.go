@@ -107,7 +107,6 @@ func TestImpactedWorkloadsCheck_ValidCR(t *testing.T) {
 
 	orch := newTestOrchestrator("test-orch", "test-ns", map[string]any{
 		"orchestratorConfig":      "orch-config",
-		"replicas":                int64(1),
 		"enableGuardrailsGateway": true,
 		"enableBuiltInDetectors":  true,
 		"guardrailsGatewayConfig": "gateway-config",
@@ -149,7 +148,6 @@ func TestImpactedWorkloadsCheck_InvalidCRSpec(t *testing.T) {
 
 	// CR with missing/invalid spec fields, no ConfigMap refs.
 	orch := newTestOrchestrator("bad-orch", "test-ns", map[string]any{
-		"replicas":                int64(0),
 		"enableGuardrailsGateway": false,
 		"enableBuiltInDetectors":  false,
 	})
@@ -186,7 +184,6 @@ func TestImpactedWorkloadsCheck_InvalidCRSpec(t *testing.T) {
 	// Impacted object annotations describe the specific issues.
 	g.Expect(result.ImpactedObjects[0].Annotations).To(And(
 		HaveKeyWithValue("guardrails.opendatahub.io/orchestrator-config", "not set"),
-		HaveKeyWithValue("guardrails.opendatahub.io/replicas", "less than 1"),
 		HaveKeyWithValue("guardrails.opendatahub.io/gateway-config",
 			"enableGuardrailsGateway not enabled; guardrailsGatewayConfig not set"),
 		HaveKeyWithValue("guardrails.opendatahub.io/builtin-detectors", "not enabled"),
@@ -200,7 +197,6 @@ func TestImpactedWorkloadsCheck_MissingOrchestratorConfigMap(t *testing.T) {
 	// CR references a ConfigMap that does not exist.
 	orch := newTestOrchestrator("test-orch", "test-ns", map[string]any{
 		"orchestratorConfig":      "missing-config",
-		"replicas":                int64(1),
 		"enableGuardrailsGateway": true,
 		"enableBuiltInDetectors":  true,
 		"guardrailsGatewayConfig": "gateway-config",
@@ -267,7 +263,6 @@ func TestImpactedWorkloadsCheck_InvalidOrchestratorConfigMap(t *testing.T) {
 
 	orch := newTestOrchestrator("test-orch", "test-ns", map[string]any{
 		"orchestratorConfig":      "orch-config",
-		"replicas":                int64(1),
 		"enableGuardrailsGateway": true,
 		"enableBuiltInDetectors":  true,
 		"guardrailsGatewayConfig": "gateway-config",
@@ -332,7 +327,6 @@ func TestImpactedWorkloadsCheck_MissingGatewayConfigMap(t *testing.T) {
 
 	orch := newTestOrchestrator("test-orch", "test-ns", map[string]any{
 		"orchestratorConfig":      "orch-config",
-		"replicas":                int64(1),
 		"enableGuardrailsGateway": true,
 		"enableBuiltInDetectors":  true,
 		"guardrailsGatewayConfig": "missing-gateway",
