@@ -13,7 +13,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
-	k8s.io/apiextensions-apiserver v0.35.0
+	k8s.io/apiextensions-apiserver v0.35.1
 	k8s.io/apimachinery v0.35.1
 	k8s.io/cli-runtime v0.35.0
 	k8s.io/client-go v0.35.1
@@ -23,7 +23,7 @@ require (
 
 require (
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
-	k8s.io/apiserver v0.35.0 // indirect
+	k8s.io/apiserver v0.35.1 // indirect
 )
 
 require (
