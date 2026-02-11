@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	"github.com/lburgazzoli/odh-cli/pkg/constants"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	resultpkg "github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/kserve"
@@ -111,7 +112,7 @@ func TestKServeServerlessRemovalCheck_ServerlessNotConfigured(t *testing.T) {
 		"Reason":  Equal(check.ReasonVersionCompatible),
 		"Message": ContainSubstring("serverless mode is not configured"),
 	}))
-	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationComponentManagementState, check.ManagementStateManaged))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationComponentManagementState, constants.ManagementStateManaged))
 }
 
 func TestKServeServerlessRemovalCheck_ServerlessManagedBlocking(t *testing.T) {
@@ -159,7 +160,7 @@ func TestKServeServerlessRemovalCheck_ServerlessManagedBlocking(t *testing.T) {
 	}))
 	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
 	g.Expect(result.Annotations).To(And(
-		HaveKeyWithValue(check.AnnotationComponentManagementState, check.ManagementStateManaged),
+		HaveKeyWithValue(check.AnnotationComponentManagementState, constants.ManagementStateManaged),
 		HaveKeyWithValue(check.AnnotationCheckTargetVersion, "3.0.0"),
 	))
 }
@@ -208,7 +209,7 @@ func TestKServeServerlessRemovalCheck_ServerlessUnmanagedBlocking(t *testing.T) 
 		"Message": ContainSubstring("state: Unmanaged"),
 	}))
 	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
-	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationComponentManagementState, check.ManagementStateManaged))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationComponentManagementState, constants.ManagementStateManaged))
 }
 
 func TestKServeServerlessRemovalCheck_ServerlessRemovedReady(t *testing.T) {
@@ -254,7 +255,7 @@ func TestKServeServerlessRemovalCheck_ServerlessRemovedReady(t *testing.T) {
 		"Reason":  Equal(check.ReasonVersionCompatible),
 		"Message": And(ContainSubstring("serverless mode is disabled"), ContainSubstring("ready for RHOAI 3.x upgrade")),
 	}))
-	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationComponentManagementState, check.ManagementStateManaged))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationComponentManagementState, constants.ManagementStateManaged))
 }
 
 func TestKServeServerlessRemovalCheck_Metadata(t *testing.T) {

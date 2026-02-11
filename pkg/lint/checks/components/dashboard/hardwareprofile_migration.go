@@ -5,9 +5,10 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/lburgazzoli/odh-cli/pkg/constants"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
@@ -25,7 +26,7 @@ func NewHardwareProfileMigrationCheck() *HardwareProfileMigrationCheck {
 	return &HardwareProfileMigrationCheck{
 		BaseCheck: check.BaseCheck{
 			CheckGroup:       check.GroupComponent,
-			Kind:             check.ComponentDashboard,
+			Kind:             constants.ComponentDashboard,
 			Type:             hardwareProfileCheckType,
 			CheckID:          "components.dashboard.hardwareprofile-migration",
 			CheckName:        "Components :: Dashboard :: HardwareProfile Migration (3.x)",

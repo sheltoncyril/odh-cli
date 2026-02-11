@@ -53,7 +53,7 @@ func NewCheck() *Check {
     return &Check{
         BaseCheck: check.BaseCheck{
             CheckGroup:       check.GroupComponent,
-            Kind:             check.ComponentDashboard,
+            Kind:             constants.ComponentDashboard,
             Type:             check.CheckTypeInstalled,
             CheckID:          "components.dashboard.status",
             CheckName:        "Components :: Dashboard :: Status",
@@ -483,7 +483,7 @@ Lint checks MUST NOT target these as primary resources:
 // ✓ CORRECT: Use validate.Component() builder (recommended)
 func (c *Check) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
     return validate.Component(c, target).
-        InState(check.ManagementStateManaged).
+        InState(constants.ManagementStateManaged).
         Run(ctx, func(ctx context.Context, req *validate.ComponentRequest) error {
             // Validate Dashboard component via req.DSC
             return nil
@@ -627,18 +627,18 @@ func populateImpactedObjects(
 
 ## Validation Builders
 
-The `pkg/lint/checks/shared/validate/` package provides fluent builder APIs that eliminate boilerplate for common check patterns. Using builders is the recommended approach for new checks.
+The `pkg/lint/check/validate/` package provides fluent builder APIs that eliminate boilerplate for common check patterns. Using builders is the recommended approach for new checks.
 
 ### Component Builder
 
 `validate.Component()` handles DSC fetching, component state filtering, and annotation population automatically. Use for checks that validate a component's configuration in the DataScienceCluster.
 
 ```go
-import "github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
+import "github.com/lburgazzoli/odh-cli/pkg/lint/check/validate"
 
 func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
     return validate.Component(c, target).
-        InState(check.ManagementStateManaged).
+        InState(constants.ManagementStateManaged).
         Run(ctx, validate.Removal("CodeFlare is enabled (state: %s) but will be removed in RHOAI 3.x"))
 }
 ```
@@ -692,7 +692,7 @@ func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*resu
             ))
         case err != nil:
             return fmt.Errorf("querying servicemesh managementState: %w", err)
-        case managementState == check.ManagementStateManaged:
+        case managementState == constants.ManagementStateManaged:
             dr.SetCondition(check.NewCondition(
                 check.ConditionTypeCompatible,
                 metav1.ConditionFalse,
@@ -819,7 +819,7 @@ import (
 
     "github.com/lburgazzoli/odh-cli/pkg/lint/check"
     "github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-    "github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
+    "github.com/lburgazzoli/odh-cli/pkg/lint/check/validate"
     "github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -848,7 +848,7 @@ func (c *RemovalCheck) CanApply(_ context.Context, target check.Target) (bool, e
 // Validate executes the check against the provided target.
 func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
     return validate.Component(c, target).
-        InState(check.ManagementStateManaged).
+        InState(constants.ManagementStateManaged).
         Run(ctx, validate.Removal("CodeFlare is enabled (state: %s) but will be removed in RHOAI 3.x"))
 }
 

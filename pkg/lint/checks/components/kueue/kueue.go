@@ -6,11 +6,12 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/lburgazzoli/odh-cli/pkg/constants"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/util/components"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -55,7 +56,7 @@ func (c *ManagementStateCheck) CanApply(ctx context.Context, target check.Target
 
 	return components.HasManagementState(
 		dsc, "kueue",
-		check.ManagementStateManaged, check.ManagementStateUnmanaged,
+		constants.ManagementStateManaged, constants.ManagementStateUnmanaged,
 	), nil
 }
 
@@ -63,7 +64,7 @@ func (c *ManagementStateCheck) Validate(ctx context.Context, target check.Target
 	return validate.Component(c, target).
 		Run(ctx, func(_ context.Context, req *validate.ComponentRequest) error {
 			switch req.ManagementState {
-			case check.ManagementStateManaged:
+			case constants.ManagementStateManaged:
 				req.Result.SetCondition(check.NewCondition(
 					check.ConditionTypeCompatible,
 					metav1.ConditionFalse,
@@ -72,7 +73,7 @@ func (c *ManagementStateCheck) Validate(ctx context.Context, target check.Target
 					check.WithImpact(result.ImpactBlocking),
 					check.WithRemediation(c.CheckRemediation),
 				))
-			case check.ManagementStateUnmanaged:
+			case constants.ManagementStateUnmanaged:
 				req.Result.SetCondition(check.NewCondition(
 					check.ConditionTypeCompatible,
 					metav1.ConditionTrue,

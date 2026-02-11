@@ -7,12 +7,13 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/lburgazzoli/odh-cli/pkg/constants"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/util/components"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -28,7 +29,7 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 	return &ImpactedWorkloadsCheck{
 		BaseCheck: check.BaseCheck{
 			CheckGroup:       check.GroupWorkload,
-			Kind:             check.ComponentTrainingOperator,
+			Kind:             constants.ComponentTrainingOperator,
 			Type:             check.CheckTypeImpactedWorkloads,
 			CheckID:          "workloads.trainingoperator.impacted-workloads",
 			CheckName:        "Workloads :: TrainingOperator :: Impacted Workloads (3.3+)",
@@ -51,7 +52,7 @@ func (c *ImpactedWorkloadsCheck) CanApply(ctx context.Context, target check.Targ
 		return false, fmt.Errorf("getting DataScienceCluster: %w", err)
 	}
 
-	return components.HasManagementState(dsc, check.ComponentTrainingOperator, check.ManagementStateManaged), nil
+	return components.HasManagementState(dsc, constants.ComponentTrainingOperator, constants.ManagementStateManaged), nil
 }
 
 func (c *ImpactedWorkloadsCheck) Validate(

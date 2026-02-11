@@ -8,9 +8,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
+	"github.com/lburgazzoli/odh-cli/pkg/constants"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
@@ -56,7 +57,7 @@ func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*resu
 			))
 		case err != nil:
 			return fmt.Errorf("querying servicemesh managementState: %w", err)
-		case managementState == check.ManagementStateManaged || managementState == check.ManagementStateUnmanaged:
+		case managementState == constants.ManagementStateManaged || managementState == constants.ManagementStateUnmanaged:
 			dr.SetCondition(check.NewCondition(
 				check.ConditionTypeCompatible,
 				metav1.ConditionFalse,

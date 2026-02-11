@@ -7,12 +7,13 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/lburgazzoli/odh-cli/pkg/constants"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/accelerator"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/util/components"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -50,7 +51,7 @@ func (c *AcceleratorMigrationCheck) CanApply(ctx context.Context, target check.T
 		return false, fmt.Errorf("getting DataScienceCluster: %w", err)
 	}
 
-	return components.HasManagementState(dsc, "workbenches", check.ManagementStateManaged), nil
+	return components.HasManagementState(dsc, "workbenches", constants.ManagementStateManaged), nil
 }
 
 // Validate executes the check against the provided target.

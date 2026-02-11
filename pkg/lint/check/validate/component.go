@@ -13,8 +13,8 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/util/components"
 )
 
 // ComponentBuilder provides a fluent API for component-based validation.
@@ -34,7 +34,7 @@ type ComponentBuilder struct {
 // Example:
 //
 //	validate.Component(c, target).
-//	    InState(check.ManagementStateManaged, check.ManagementStateUnmanaged).
+//	    InState(constants.ManagementStateManaged, constants.ManagementStateUnmanaged).
 //	    Run(ctx, func(ctx context.Context, req *ComponentRequest) error {
 //	        // Validation logic here
 //	        return nil
@@ -82,8 +82,8 @@ type ComponentConditionFn func(ctx context.Context, req *ComponentRequest) ([]re
 // If no states are specified (InState not called), validation runs for any configured state.
 //
 // Common patterns:
-//   - InState(check.ManagementStateManaged) - only validate when component is managed
-//   - InState(check.ManagementStateManaged, check.ManagementStateUnmanaged) - validate when enabled
+//   - InState(constants.ManagementStateManaged) - only validate when component is managed
+//   - InState(constants.ManagementStateManaged, constants.ManagementStateUnmanaged) - validate when enabled
 func (b *ComponentBuilder) InState(states ...string) *ComponentBuilder {
 	b.requiredStates = states
 
@@ -106,7 +106,7 @@ func (b *ComponentBuilder) WithApplicationsNamespace() *ComponentBuilder {
 // Example:
 //
 //	validate.Component(c, target).
-//	    InState(check.ManagementStateManaged).
+//	    InState(constants.ManagementStateManaged).
 //	    Run(ctx, validate.Removal("CodeFlare is enabled (state: %s) but will be removed in RHOAI 3.x"))
 func Removal(format string, opts ...check.ConditionOption) ComponentValidateFn {
 	return func(_ context.Context, req *ComponentRequest) error {

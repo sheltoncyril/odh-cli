@@ -7,11 +7,12 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/lburgazzoli/odh-cli/pkg/constants"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/util/components"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
@@ -27,7 +28,7 @@ func NewServerlessRemovalCheck() *ServerlessRemovalCheck {
 	return &ServerlessRemovalCheck{
 		BaseCheck: check.BaseCheck{
 			CheckGroup:       check.GroupComponent,
-			Kind:             check.ComponentKServe,
+			Kind:             constants.ComponentKServe,
 			Type:             checkType,
 			CheckID:          "components.kserve.serverless-removal",
 			CheckName:        "Components :: KServe :: Serverless Removal (3.x)",
@@ -49,7 +50,7 @@ func (c *ServerlessRemovalCheck) CanApply(ctx context.Context, target check.Targ
 		return false, fmt.Errorf("getting DataScienceCluster: %w", err)
 	}
 
-	return components.HasManagementState(dsc, check.ComponentKServe, check.ManagementStateManaged), nil
+	return components.HasManagementState(dsc, constants.ComponentKServe, constants.ManagementStateManaged), nil
 }
 
 func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
@@ -67,7 +68,7 @@ func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target check.Targ
 				))
 			case err != nil:
 				return fmt.Errorf("querying kserve serving managementState: %w", err)
-			case state == check.ManagementStateManaged || state == check.ManagementStateUnmanaged:
+			case state == constants.ManagementStateManaged || state == constants.ManagementStateUnmanaged:
 				req.Result.SetCondition(check.NewCondition(
 					check.ConditionTypeCompatible,
 					metav1.ConditionFalse,

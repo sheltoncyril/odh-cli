@@ -15,9 +15,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 
+	"github.com/lburgazzoli/odh-cli/pkg/constants"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 
@@ -93,7 +94,7 @@ func TestComponentBuilder(t *testing.T) {
 	})
 
 	t.Run("should pass when component state not in required states", func(t *testing.T) {
-		dsc := createDSCWithComponent("codeflare", check.ManagementStateRemoved)
+		dsc := createDSCWithComponent("codeflare", constants.ManagementStateRemoved)
 		scheme := runtime.NewScheme()
 		dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, dscListKinds, dsc)
 		c := client.NewForTesting(client.TestClientConfig{
@@ -106,7 +107,7 @@ func TestComponentBuilder(t *testing.T) {
 
 		chk := newTestCheck()
 		dr, err := validate.Component(chk, target).
-			InState(check.ManagementStateManaged, check.ManagementStateUnmanaged).
+			InState(constants.ManagementStateManaged, constants.ManagementStateUnmanaged).
 			Run(ctx, func(_ context.Context, _ *validate.ComponentRequest) error {
 				t.Fatal("validation function should not be called when state not in required states")
 
@@ -122,7 +123,7 @@ func TestComponentBuilder(t *testing.T) {
 	})
 
 	t.Run("should call validation function when component state matches", func(t *testing.T) {
-		dsc := createDSCWithComponent("codeflare", check.ManagementStateManaged)
+		dsc := createDSCWithComponent("codeflare", constants.ManagementStateManaged)
 		scheme := runtime.NewScheme()
 		dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, dscListKinds, dsc)
 		c := client.NewForTesting(client.TestClientConfig{
@@ -138,10 +139,10 @@ func TestComponentBuilder(t *testing.T) {
 		validationCalled := false
 		chk := newTestCheck()
 		dr, err := validate.Component(chk, target).
-			InState(check.ManagementStateManaged, check.ManagementStateUnmanaged).
+			InState(constants.ManagementStateManaged, constants.ManagementStateUnmanaged).
 			Run(ctx, func(_ context.Context, req *validate.ComponentRequest) error {
 				validationCalled = true
-				g.Expect(req.ManagementState).To(Equal(check.ManagementStateManaged))
+				g.Expect(req.ManagementState).To(Equal(constants.ManagementStateManaged))
 				g.Expect(req.DSC).ToNot(BeNil())
 				g.Expect(req.Client).ToNot(BeNil())
 				req.Result.SetCondition(check.NewCondition(
@@ -159,7 +160,7 @@ func TestComponentBuilder(t *testing.T) {
 		g.Expect(validationCalled).To(BeTrue())
 
 		// Verify annotations are auto-populated
-		g.Expect(dr.Annotations[check.AnnotationComponentManagementState]).To(Equal(check.ManagementStateManaged))
+		g.Expect(dr.Annotations[check.AnnotationComponentManagementState]).To(Equal(constants.ManagementStateManaged))
 		g.Expect(dr.Annotations[check.AnnotationCheckTargetVersion]).To(Equal("3.0.0"))
 
 		// Verify condition from validation function
@@ -168,7 +169,7 @@ func TestComponentBuilder(t *testing.T) {
 	})
 
 	t.Run("should run validation without InState filter", func(t *testing.T) {
-		dsc := createDSCWithComponent("codeflare", check.ManagementStateRemoved)
+		dsc := createDSCWithComponent("codeflare", constants.ManagementStateRemoved)
 		scheme := runtime.NewScheme()
 		dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, dscListKinds, dsc)
 		c := client.NewForTesting(client.TestClientConfig{
@@ -184,7 +185,7 @@ func TestComponentBuilder(t *testing.T) {
 		dr, err := validate.Component(chk, target).
 			Run(ctx, func(_ context.Context, req *validate.ComponentRequest) error {
 				validationCalled = true
-				g.Expect(req.ManagementState).To(Equal(check.ManagementStateRemoved))
+				g.Expect(req.ManagementState).To(Equal(constants.ManagementStateRemoved))
 				req.Result.SetCondition(check.NewCondition(
 					check.ConditionTypeCompatible,
 					metav1.ConditionTrue,
@@ -201,7 +202,7 @@ func TestComponentBuilder(t *testing.T) {
 	})
 
 	t.Run("should propagate error from validation function", func(t *testing.T) {
-		dsc := createDSCWithComponent("codeflare", check.ManagementStateManaged)
+		dsc := createDSCWithComponent("codeflare", constants.ManagementStateManaged)
 		scheme := runtime.NewScheme()
 		dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, dscListKinds, dsc)
 		c := client.NewForTesting(client.TestClientConfig{
@@ -215,7 +216,7 @@ func TestComponentBuilder(t *testing.T) {
 		expectedErr := errors.New("validation error")
 		chk := newTestCheck()
 		_, err := validate.Component(chk, target).
-			InState(check.ManagementStateManaged).
+			InState(constants.ManagementStateManaged).
 			Run(ctx, func(_ context.Context, _ *validate.ComponentRequest) error {
 				return expectedErr
 			})
@@ -228,7 +229,7 @@ func TestComponentBuilder_Complete_SetsConditions(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
-	dsc := createDSCWithComponent("codeflare", check.ManagementStateManaged)
+	dsc := createDSCWithComponent("codeflare", constants.ManagementStateManaged)
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, dscListKinds, dsc)
 	c := client.NewForTesting(client.TestClientConfig{
@@ -243,7 +244,7 @@ func TestComponentBuilder_Complete_SetsConditions(t *testing.T) {
 
 	chk := newTestCheck()
 	dr, err := validate.Component(chk, target).
-		InState(check.ManagementStateManaged).
+		InState(constants.ManagementStateManaged).
 		Complete(ctx, func(_ context.Context, req *validate.ComponentRequest) ([]result.Condition, error) {
 			return []result.Condition{
 				check.NewCondition(
@@ -263,7 +264,7 @@ func TestComponentBuilder_Complete_SetsConditions(t *testing.T) {
 		"Status": Equal(metav1.ConditionTrue),
 	}))
 	g.Expect(dr.Status.Conditions[0].Message).To(Equal("Component Managed is valid"))
-	g.Expect(dr.Annotations[check.AnnotationComponentManagementState]).To(Equal(check.ManagementStateManaged))
+	g.Expect(dr.Annotations[check.AnnotationComponentManagementState]).To(Equal(constants.ManagementStateManaged))
 	g.Expect(dr.Annotations[check.AnnotationCheckTargetVersion]).To(Equal("3.0.0"))
 }
 
@@ -271,7 +272,7 @@ func TestComponentBuilder_Complete_ErrorPropagated(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
-	dsc := createDSCWithComponent("codeflare", check.ManagementStateManaged)
+	dsc := createDSCWithComponent("codeflare", constants.ManagementStateManaged)
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, dscListKinds, dsc)
 	c := client.NewForTesting(client.TestClientConfig{
@@ -286,7 +287,7 @@ func TestComponentBuilder_Complete_ErrorPropagated(t *testing.T) {
 	chk := newTestCheck()
 
 	_, err := validate.Component(chk, target).
-		InState(check.ManagementStateManaged).
+		InState(constants.ManagementStateManaged).
 		Complete(ctx, func(_ context.Context, _ *validate.ComponentRequest) ([]result.Condition, error) {
 			return nil, expectedErr
 		})

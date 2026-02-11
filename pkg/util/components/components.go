@@ -7,7 +7,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
+	"github.com/lburgazzoli/odh-cli/pkg/constants"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 )
 
@@ -22,7 +22,7 @@ func GetManagementState(obj client.Object, componentKey string) (string, error) 
 	if err != nil {
 		if errors.Is(err, jq.ErrNotFound) {
 			// Treat "not configured" as "Removed" - both mean component is not active.
-			return check.ManagementStateRemoved, nil
+			return constants.ManagementStateRemoved, nil
 		}
 
 		return "", fmt.Errorf("querying %s managementState: %w", componentKey, err)

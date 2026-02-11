@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	"github.com/lburgazzoli/odh-cli/pkg/constants"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/dashboard"
@@ -111,7 +112,7 @@ func TestHardwareProfileMigrationCheck_Validate_NoProfiles(t *testing.T) {
 	g.Expect(dr).ToNot(BeNil())
 	g.Expect(dr).To(PointTo(MatchFields(IgnoreExtras, Fields{
 		"Group": Equal(string(check.GroupComponent)),
-		"Kind":  Equal(check.ComponentDashboard),
+		"Kind":  Equal(constants.ComponentDashboard),
 		"Name":  Equal("hardwareprofile-migration"),
 	})))
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
@@ -144,7 +145,7 @@ func TestHardwareProfileMigrationCheck_Validate_WithProfiles(t *testing.T) {
 	g.Expect(dr).ToNot(BeNil())
 	g.Expect(dr).To(PointTo(MatchFields(IgnoreExtras, Fields{
 		"Group": Equal(string(check.GroupComponent)),
-		"Kind":  Equal(check.ComponentDashboard),
+		"Kind":  Equal(constants.ComponentDashboard),
 	})))
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 	// Status=False (not yet migrated) with advisory impact since auto-migration is informational.

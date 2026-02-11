@@ -8,11 +8,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
+	"github.com/lburgazzoli/odh-cli/pkg/constants"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/util/components"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
@@ -45,7 +46,7 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 	return &ImpactedWorkloadsCheck{
 		BaseCheck: check.BaseCheck{
 			CheckGroup:       check.GroupWorkload,
-			Kind:             check.ComponentKServe,
+			Kind:             constants.ComponentKServe,
 			Type:             check.CheckTypeImpactedWorkloads,
 			CheckID:          "workloads.kserve.impacted-workloads",
 			CheckName:        "Workloads :: KServe :: Impacted Workloads (3.x)",
@@ -67,8 +68,8 @@ func (c *ImpactedWorkloadsCheck) CanApply(ctx context.Context, target check.Targ
 		return false, fmt.Errorf("getting DataScienceCluster: %w", err)
 	}
 
-	return components.HasManagementState(dsc, check.ComponentKServe, check.ManagementStateManaged) ||
-		components.HasManagementState(dsc, "modelmeshserving", check.ManagementStateManaged), nil
+	return components.HasManagementState(dsc, constants.ComponentKServe, constants.ManagementStateManaged) ||
+		components.HasManagementState(dsc, "modelmeshserving", constants.ManagementStateManaged), nil
 }
 
 // Validate executes the check against the provided target.

@@ -6,6 +6,7 @@ import (
 
 	"github.com/blang/semver/v4"
 
+	"github.com/lburgazzoli/odh-cli/pkg/constants"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 
@@ -39,7 +40,7 @@ func TestBaseCheck(t *testing.T) {
 	t.Run("NewResult should create properly initialized result", func(t *testing.T) {
 		bc := check.BaseCheck{
 			CheckGroup:       check.GroupComponent,
-			Kind:             check.ComponentKServe,
+			Kind:             constants.ComponentKServe,
 			Type:             check.CheckTypeRemoval,
 			CheckID:          "components.kserve.removal",
 			CheckName:        "KServe Removal",
@@ -49,7 +50,7 @@ func TestBaseCheck(t *testing.T) {
 		dr := bc.NewResult()
 
 		g.Expect(dr.Group).To(Equal("component"))
-		g.Expect(dr.Kind).To(Equal(check.ComponentKServe))
+		g.Expect(dr.Kind).To(Equal(constants.ComponentKServe))
 		g.Expect(dr.Name).To(Equal(check.CheckTypeRemoval))
 		g.Expect(dr.Spec.Description).To(Equal("Validates KServe removal"))
 		g.Expect(dr.Annotations).ToNot(BeNil())

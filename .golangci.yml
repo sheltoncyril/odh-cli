@@ -40,7 +40,7 @@ linters:
   settings:
     wrapcheck:
       ignore-package-globs:
-        - github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate
+        - github.com/lburgazzoli/odh-cli/pkg/lint/check/validate
     cyclop:
       max-complexity: 15  # Increased from default 10
     gocognit:

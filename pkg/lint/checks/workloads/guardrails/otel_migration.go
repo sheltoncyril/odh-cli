@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lburgazzoli/odh-cli/pkg/constants"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/util/components"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -47,7 +48,7 @@ func (c *OtelMigrationCheck) CanApply(ctx context.Context, target check.Target) 
 		return false, fmt.Errorf("getting DataScienceCluster: %w", err)
 	}
 
-	return components.HasManagementState(dsc, "trustyai", check.ManagementStateManaged), nil
+	return components.HasManagementState(dsc, "trustyai", constants.ManagementStateManaged), nil
 }
 
 // Validate executes the check against the provided target.
