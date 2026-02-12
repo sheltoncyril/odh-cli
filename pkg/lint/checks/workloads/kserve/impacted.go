@@ -15,6 +15,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/components"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
+	"github.com/lburgazzoli/odh-cli/pkg/util/kube"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -25,10 +26,17 @@ const (
 )
 
 const (
-	ConditionTypeServerlessISVCCompatible = "ServerlessInferenceServicesCompatible"
-	ConditionTypeModelMeshISVCCompatible  = "ModelMeshInferenceServicesCompatible"
-	ConditionTypeModelMeshSRCompatible    = "ModelMeshServingRuntimesCompatible"
-	ConditionTypeRemovedSRCompatible      = "RemovedServingRuntimesCompatible"
+	ConditionTypeServerlessISVCCompatible        = "ServerlessInferenceServicesCompatible"
+	ConditionTypeModelMeshISVCCompatible         = "ModelMeshInferenceServicesCompatible"
+	ConditionTypeModelMeshSRCompatible           = "ModelMeshServingRuntimesCompatible"
+	ConditionTypeRemovedSRCompatible             = "RemovedServingRuntimesCompatible"
+	ConditionTypeAcceleratorOnlySRCompatible     = "AcceleratorOnlyServingRuntimesCompatible"
+	ConditionTypeAcceleratorAndHWProfileSRCompat = "AcceleratorAndHWProfileServingRuntimesCompatible"
+	ConditionTypeAcceleratorSRISVCCompatible     = "AcceleratorServingRuntimeISVCsCompatible"
+)
+
+const (
+	annotationHardwareProfileName = "opendatahub.io/hardware-profile-name"
 )
 
 const (
@@ -50,8 +58,8 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 			Type:             check.CheckTypeImpactedWorkloads,
 			CheckID:          "workloads.kserve.impacted-workloads",
 			CheckName:        "Workloads :: KServe :: Impacted Workloads (3.x)",
-			CheckDescription: "Lists InferenceServices and ServingRuntimes using deprecated deployment modes (ModelMesh, Serverless) or removed ServingRuntimes that will be impacted in RHOAI 3.x",
-			CheckRemediation: "Migrate InferenceServices from Serverless/ModelMesh to RawDeployment mode, and update ServingRuntimes to supported versions before upgrading",
+			CheckDescription: "Lists InferenceServices and ServingRuntimes using deprecated deployment modes (ModelMesh, Serverless), removed ServingRuntimes, or ServingRuntimes referencing legacy AcceleratorProfiles that will be impacted in RHOAI 3.x",
+			CheckRemediation: "Migrate InferenceServices from Serverless/ModelMesh to RawDeployment mode, update ServingRuntimes to supported versions, and review AcceleratorProfile references before upgrading",
 		},
 	}
 }
@@ -107,12 +115,46 @@ func (c *ImpactedWorkloadsCheck) Validate(
 		return nil, err
 	}
 
+	// Fetch ServingRuntimes with accelerator profile annotation
+	acceleratorSRs, err := client.List[*metav1.PartialObjectMetadata](
+		ctx, target.Client, resources.ServingRuntime, hasAcceleratorAnnotation,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Split accelerator SRs into accelerator-only vs both annotations
+	var acceleratorOnlySRs, acceleratorAndHWProfileSRs []*metav1.PartialObjectMetadata
+
+	for _, sr := range acceleratorSRs {
+		if kube.GetAnnotation(sr, annotationHardwareProfileName) != "" {
+			acceleratorAndHWProfileSRs = append(acceleratorAndHWProfileSRs, sr)
+		} else {
+			acceleratorOnlySRs = append(acceleratorOnlySRs, sr)
+		}
+	}
+
+	// Fetch InferenceServices referencing accelerator-linked ServingRuntimes
+	allISVCsFull, err := client.List[*unstructured.Unstructured](
+		ctx, target.Client, resources.InferenceService, nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	// Each function appends its condition and impacted objects to the result
 	c.appendServerlessISVCCondition(dr, allISVCs)
 	c.appendModelMeshISVCCondition(dr, allISVCs)
 	c.appendModelMeshSRCondition(dr, impactedSRs)
 
 	if err := c.appendRemovedRuntimeISVCCondition(dr, removedRuntimeISVCs); err != nil {
+		return nil, err
+	}
+
+	c.appendAcceleratorOnlySRCondition(dr, acceleratorOnlySRs)
+	c.appendAcceleratorAndHWProfileSRCondition(dr, acceleratorAndHWProfileSRs)
+
+	if err := c.appendAcceleratorSRISVCCondition(dr, acceleratorSRs, allISVCsFull); err != nil {
 		return nil, err
 	}
 

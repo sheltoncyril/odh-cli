@@ -6,9 +6,11 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 	"github.com/lburgazzoli/odh-cli/pkg/util/kube"
@@ -168,6 +170,154 @@ func (c *ImpactedWorkloadsCheck) appendRemovedRuntimeISVCCondition(
 	)
 
 	for _, r := range items {
+		runtime, err := jq.Query[string](r, ".spec.predictor.model.runtime")
+		if err != nil {
+			return fmt.Errorf("querying runtime for %s/%s: %w", r.GetNamespace(), r.GetName(), err)
+		}
+
+		dr.ImpactedObjects = append(dr.ImpactedObjects, metav1.PartialObjectMetadata{
+			TypeMeta: resources.InferenceService.TypeMeta(),
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: r.GetNamespace(),
+				Name:      r.GetName(),
+				Annotations: map[string]string{
+					"serving.kserve.io/runtime": runtime,
+				},
+			},
+		})
+	}
+
+	return nil
+}
+
+// hasAcceleratorAnnotation returns true for objects with the accelerator profile annotation.
+func hasAcceleratorAnnotation(obj *metav1.PartialObjectMetadata) (bool, error) {
+	return kube.GetAnnotation(obj, validate.AnnotationAcceleratorName) != "", nil
+}
+
+// newAcceleratorSRCondition creates an advisory condition for accelerator-linked ServingRuntimes.
+func (c *ImpactedWorkloadsCheck) newAcceleratorSRCondition(
+	conditionType string,
+	count int,
+	workloadDescription string,
+) result.Condition {
+	if count > 0 {
+		return check.NewCondition(
+			conditionType,
+			metav1.ConditionFalse,
+			check.WithReason(check.ReasonConfigurationInvalid),
+			check.WithMessage("Found %d %s - AcceleratorProfiles will be auto-migrated to HardwareProfiles during upgrade", count, workloadDescription),
+			check.WithImpact(result.ImpactAdvisory),
+			check.WithRemediation(c.CheckRemediation),
+		)
+	}
+
+	return check.NewCondition(
+		conditionType,
+		metav1.ConditionTrue,
+		check.WithReason(check.ReasonVersionCompatible),
+		check.WithMessage("No %s found", workloadDescription),
+	)
+}
+
+// appendAcceleratorOnlySRCondition appends the condition and impacted objects for
+// ServingRuntimes with only the accelerator annotation (no hardware profile annotation).
+func (c *ImpactedWorkloadsCheck) appendAcceleratorOnlySRCondition(
+	dr *result.DiagnosticResult,
+	items []*metav1.PartialObjectMetadata,
+) {
+	dr.Status.Conditions = append(dr.Status.Conditions,
+		c.newAcceleratorSRCondition(
+			ConditionTypeAcceleratorOnlySRCompatible,
+			len(items),
+			"ServingRuntime(s) with AcceleratorProfile annotation only",
+		),
+	)
+
+	for _, r := range items {
+		dr.ImpactedObjects = append(dr.ImpactedObjects, metav1.PartialObjectMetadata{
+			TypeMeta: resources.ServingRuntime.TypeMeta(),
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: r.GetNamespace(),
+				Name:      r.GetName(),
+				Annotations: map[string]string{
+					validate.AnnotationAcceleratorName: kube.GetAnnotation(r, validate.AnnotationAcceleratorName),
+				},
+			},
+		})
+	}
+}
+
+// appendAcceleratorAndHWProfileSRCondition appends the condition and impacted objects for
+// ServingRuntimes with both accelerator and hardware profile annotations.
+func (c *ImpactedWorkloadsCheck) appendAcceleratorAndHWProfileSRCondition(
+	dr *result.DiagnosticResult,
+	items []*metav1.PartialObjectMetadata,
+) {
+	dr.Status.Conditions = append(dr.Status.Conditions,
+		c.newAcceleratorSRCondition(
+			ConditionTypeAcceleratorAndHWProfileSRCompat,
+			len(items),
+			"ServingRuntime(s) with both AcceleratorProfile and HardwareProfile annotations",
+		),
+	)
+
+	for _, r := range items {
+		dr.ImpactedObjects = append(dr.ImpactedObjects, metav1.PartialObjectMetadata{
+			TypeMeta: resources.ServingRuntime.TypeMeta(),
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: r.GetNamespace(),
+				Name:      r.GetName(),
+				Annotations: map[string]string{
+					validate.AnnotationAcceleratorName: kube.GetAnnotation(r, validate.AnnotationAcceleratorName),
+					annotationHardwareProfileName:      kube.GetAnnotation(r, annotationHardwareProfileName),
+				},
+			},
+		})
+	}
+}
+
+// appendAcceleratorSRISVCCondition appends the condition and impacted objects for
+// InferenceServices referencing accelerator-linked ServingRuntimes.
+func (c *ImpactedWorkloadsCheck) appendAcceleratorSRISVCCondition(
+	dr *result.DiagnosticResult,
+	acceleratorSRs []*metav1.PartialObjectMetadata,
+	allISVCs []*unstructured.Unstructured,
+) error {
+	// Build a set of namespace/name for accelerator-linked SRs
+	srSet := make(map[types.NamespacedName]bool, len(acceleratorSRs))
+	for _, sr := range acceleratorSRs {
+		srSet[types.NamespacedName{Namespace: sr.GetNamespace(), Name: sr.GetName()}] = true
+	}
+
+	// Find ISVCs whose runtime references one of the accelerator-linked SRs
+	var impacted []*unstructured.Unstructured
+
+	for _, isvc := range allISVCs {
+		runtime, err := jq.Query[string](isvc, ".spec.predictor.model.runtime")
+
+		switch {
+		case errors.Is(err, jq.ErrNotFound):
+			continue
+		case err != nil:
+			return fmt.Errorf("querying runtime for %s/%s: %w", isvc.GetNamespace(), isvc.GetName(), err)
+		}
+
+		key := types.NamespacedName{Namespace: isvc.GetNamespace(), Name: runtime}
+		if srSet[key] {
+			impacted = append(impacted, isvc)
+		}
+	}
+
+	dr.Status.Conditions = append(dr.Status.Conditions,
+		c.newAcceleratorSRCondition(
+			ConditionTypeAcceleratorSRISVCCompatible,
+			len(impacted),
+			"InferenceService(s) referencing AcceleratorProfile-linked ServingRuntime(s)",
+		),
+	)
+
+	for _, r := range impacted {
 		runtime, err := jq.Query[string](r, ".spec.predictor.model.runtime")
 		if err != nil {
 			return fmt.Errorf("querying runtime for %s/%s: %w", r.GetNamespace(), r.GetName(), err)
