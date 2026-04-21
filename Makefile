@@ -8,10 +8,14 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
+# Pinned commit SHA from odh-gitops for reproducible builds
+ODH_GITOPS_COMMIT ?= 1a55af06b8fe85c8ed63b1eff680477d9bf86be3
+
 # Build flags
 LDFLAGS = -X 'github.com/opendatahub-io/odh-cli/internal/version.Version=$(VERSION)' \
           -X 'github.com/opendatahub-io/odh-cli/internal/version.Commit=$(COMMIT)' \
-          -X 'github.com/opendatahub-io/odh-cli/internal/version.Date=$(DATE)'
+          -X 'github.com/opendatahub-io/odh-cli/internal/version.Date=$(DATE)' \
+          -X 'github.com/opendatahub-io/odh-cli/pkg/deps.gitopsRef=$(ODH_GITOPS_COMMIT)'
 
 # Linter configuration
 LINT_TIMEOUT := 10m
@@ -37,9 +41,19 @@ GOVULNCHECK ?= go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+# Fetch dependency manifest from odh-gitops
+.PHONY: fetch-deps
+fetch-deps:
+	@mkdir -p pkg/deps/data
+	@echo "Fetching dependency manifest from odh-gitops (commit: $(ODH_GITOPS_COMMIT))..."
+	@curl -fsSL "https://raw.githubusercontent.com/opendatahub-io/odh-gitops/$(ODH_GITOPS_COMMIT)/charts/rhai-on-openshift-chart/values.yaml" \
+		-o pkg/deps/data/values.yaml
+	@curl -fsSL "https://raw.githubusercontent.com/opendatahub-io/odh-gitops/$(ODH_GITOPS_COMMIT)/charts/rhai-on-openshift-chart/Chart.yaml" \
+		-o pkg/deps/data/Chart.yaml
+
 # Build the binary
 .PHONY: build
-build:
+build: fetch-deps
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) \
 		go build -ldflags "$(LDFLAGS)" -o $(BINARY_NAME) cmd/main.go
 
@@ -87,7 +101,7 @@ check: lint
 
 # Run tests
 .PHONY: test
-test:
+test: fetch-deps
 	go test -coverprofile=coverage.out ./...
 
 # Build container image without pushing (creates local manifest)
@@ -134,4 +148,5 @@ help:
 	@echo "  vulncheck   - Run vulnerability scanner"
 	@echo "  check       - Run all checks (lint)"
 	@echo "  test        - Run tests"
+	@echo "  fetch-deps  - Fetch dependency manifest from odh-gitops"
 	@echo "  help        - Show this help message"
