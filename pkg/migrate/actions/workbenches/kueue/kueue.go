@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/pflag"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -17,6 +18,7 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/action"
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
+	"github.com/opendatahub-io/odh-cli/pkg/util/confirmation"
 )
 
 const (
@@ -75,6 +77,20 @@ func (a *AttachKueueLabelAction) Run() action.Task {
 	return &runTask{action: a}
 }
 
+func (a *AttachKueueLabelAction) promptBeforeModification(
+	target action.Target,
+	count int,
+) bool {
+	if target.SkipConfirm {
+		return true
+	}
+
+	target.IO.Fprintln()
+	target.IO.Errorf("About to add the Kueue queue-name label to %d Notebook(s)", count)
+
+	return confirmation.Prompt(target.IO, "Proceed with label modifications?")
+}
+
 func (a *AttachKueueLabelAction) queueName() string {
 	if a.QueueName == "" {
 		return defaultQueueName
@@ -87,6 +103,21 @@ func (a *AttachKueueLabelAction) listNotebooks(
 	ctx context.Context,
 	target action.Target,
 ) ([]*unstructured.Unstructured, error) {
+	if a.WorkbenchName != "" {
+		nb, err := target.Client.Dynamic().Resource(resources.Notebook.GVR()).
+			Namespace(a.WorkbenchNamespace).
+			Get(ctx, a.WorkbenchName, metav1.GetOptions{})
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil, nil
+			}
+
+			return nil, fmt.Errorf("getting notebook %s/%s: %w", a.WorkbenchNamespace, a.WorkbenchName, err)
+		}
+
+		return []*unstructured.Unstructured{nb}, nil
+	}
+
 	var opts []client.ListResourcesOption
 	if a.WorkbenchNamespace != "" {
 		opts = append(opts, client.WithNamespace(a.WorkbenchNamespace))
@@ -95,16 +126,6 @@ func (a *AttachKueueLabelAction) listNotebooks(
 	nbs, err := target.Client.List(ctx, resources.Notebook, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("listing notebooks: %w", err)
-	}
-
-	if a.WorkbenchName != "" {
-		for _, nb := range nbs {
-			if nb.GetName() == a.WorkbenchName {
-				return []*unstructured.Unstructured{nb}, nil
-			}
-		}
-
-		return nil, nil
 	}
 
 	return nbs, nil
@@ -139,7 +160,7 @@ func (a *AttachKueueLabelAction) patchLabel(
 	nb *unstructured.Unstructured,
 ) error {
 	patch := map[string]any{
-		"metadata": map[string]any{
+		"metadata": map[string]any{ //nolint:goconst // standard K8s JSON patch key
 			"labels": map[string]any{
 				constants.LabelKueueQueueName: a.queueName(),
 			},

@@ -150,6 +150,35 @@ func newFakeClientWithPatchError(objects []*unstructured.Unstructured) client.Cl
 	})
 }
 
+func newFakeClientWithListError(objects []*unstructured.Unstructured) client.Client {
+	scheme := newScheme()
+
+	dynamicObjs := make([]runtime.Object, len(objects))
+	for i, obj := range objects {
+		dynamicObjs[i] = obj
+	}
+
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
+		scheme,
+		testListKinds,
+		dynamicObjs...,
+	)
+
+	dynamicClient.PrependReactor("list", "notebooks", func(_ k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, errors.New("simulated API server error")
+	})
+
+	metadataClient := metadatafake.NewSimpleMetadataClient(
+		scheme,
+		kube.ToPartialObjectMetadata(objects...)...,
+	)
+
+	return client.NewForTesting(client.TestClientConfig{
+		Dynamic:  dynamicClient,
+		Metadata: metadataClient,
+	})
+}
+
 func newTarget(k8sClient client.Client, opts ...func(*action.Target)) action.Target {
 	targetVersion := semver.MustParse("3.0.0")
 
@@ -194,6 +223,7 @@ func TestAttachKueueLabelAction_Metadata(t *testing.T) {
 }
 
 func TestAttachKueueLabelAction_CanApply(t *testing.T) {
+	v216 := semver.MustParse("2.16.0")
 	v3 := semver.MustParse("3.0.0")
 	v35 := semver.MustParse("3.5.0")
 
@@ -202,6 +232,7 @@ func TestAttachKueueLabelAction_CanApply(t *testing.T) {
 		targetVersion *semver.Version
 		expected      bool
 	}{
+		{"does not apply for target 2.16", &v216, false},
 		{"applies for target 3.0", &v3, true},
 		{"applies for target 3.5", &v35, true},
 		{"does not apply for nil target version", nil, false},
@@ -300,6 +331,9 @@ func TestQueueName_DefaultAndCustom(t *testing.T) {
 
 	a.QueueName = "custom-queue"
 	g.Expect(a.queueName()).To(Equal("custom-queue"))
+
+	a.QueueName = ""
+	g.Expect(a.queueName()).To(Equal("default"))
 }
 
 // --- Validate Tests ---
@@ -380,6 +414,33 @@ func TestRunTask_Validate_AllNotebooksAlreadyLabeled(t *testing.T) {
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result).ToNot(BeNil())
 	g.Expect(result.Status.Completed).To(BeTrue())
+}
+
+func TestRunTask_Validate_ListError(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	k8sClient := newFakeClientWithListError([]*unstructured.Unstructured{
+		newNamespace("ns1", kueueManagedLabels()),
+	})
+	target := newTarget(k8sClient)
+
+	a := &AttachKueueLabelAction{}
+	runTask := a.Run()
+
+	result, err := runTask.Validate(ctx, target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result).ToNot(BeNil())
+
+	hasFailedStep := false
+
+	for _, step := range result.Status.Steps {
+		if step.Status == "Failed" {
+			hasFailedStep = true
+		}
+	}
+
+	g.Expect(hasFailedStep).To(BeTrue())
 }
 
 // --- Execute Tests ---
@@ -974,4 +1035,75 @@ func TestRunTask_Execute_MixedManagedAndNonManaged(t *testing.T) {
 		Namespace("regular-ns").Get(context.Background(), "nb-regular", metav1.GetOptions{})
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(regular.GetLabels()).ToNot(HaveKey(constants.LabelKueueQueueName))
+}
+
+func TestRunTask_Execute_ListError(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	k8sClient := newFakeClientWithListError([]*unstructured.Unstructured{
+		newNamespace("ns1", kueueManagedLabels()),
+	})
+	target := newTarget(k8sClient)
+
+	a := &AttachKueueLabelAction{}
+	runTask := a.Run()
+
+	result, err := runTask.Execute(ctx, target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result).ToNot(BeNil())
+
+	hasFailedStep := false
+
+	for _, step := range result.Status.Steps {
+		if step.Status == "Failed" {
+			hasFailedStep = true
+		}
+	}
+
+	g.Expect(hasFailedStep).To(BeTrue())
+}
+
+// --- Confirmation Tests ---
+
+func TestRunTask_Execute_ConfirmationCancelled(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	k8sClient := newFakeClient([]*unstructured.Unstructured{
+		newNamespace("ns1", kueueManagedLabels()),
+		newNotebook("nb1", "ns1", nil),
+	})
+
+	stdinBuf := bytes.NewBufferString("n\n")
+
+	io := iostreams.NewIOStreams(
+		stdinBuf,
+		&bytes.Buffer{},
+		&bytes.Buffer{},
+	)
+
+	targetVersion := semver.MustParse("3.0.0")
+
+	target := action.Target{
+		Client:        k8sClient,
+		TargetVersion: &targetVersion,
+		DryRun:        false,
+		SkipConfirm:   false,
+		Recorder:      action.NewVerboseRootRecorder(io),
+		IO:            io,
+	}
+
+	a := &AttachKueueLabelAction{}
+	runTask := a.Run()
+
+	result, err := runTask.Execute(ctx, target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result).ToNot(BeNil())
+	g.Expect(result.Status.Completed).To(BeTrue())
+
+	nb, err := k8sClient.Dynamic().Resource(resources.Notebook.GVR()).
+		Namespace("ns1").Get(context.Background(), "nb1", metav1.GetOptions{})
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(nb.GetLabels()).ToNot(HaveKey(constants.LabelKueueQueueName))
 }

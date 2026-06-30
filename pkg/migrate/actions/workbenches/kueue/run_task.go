@@ -143,6 +143,12 @@ func (t *runTask) applyLabels(
 		return
 	}
 
+	if !t.action.promptBeforeModification(target, len(notebooks)) {
+		step.Completef(result.StepSkipped, "User cancelled modification")
+
+		return
+	}
+
 	successCount := 0
 	failCount := 0
 
